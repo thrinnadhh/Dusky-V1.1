@@ -20,6 +20,22 @@ const required = [
   'pnpm-lock.yaml',
   'gradlew',
 ];
+
+export function validateSetupNodeCaching(workflow) {
+  const setupNodePattern = /^\s*-\s+uses:\s+actions\/setup-node@[0-9a-f]{40}\s*$/gm;
+  const cacheDisabledPattern =
+    /^\s*-\s+uses:\s+actions\/setup-node@[0-9a-f]{40}\s*$\n^\s+with:\s*\{[^}\n]*package-manager-cache:\s*false[^}\n]*\}\s*$/gm;
+  const setupNodeCount = [...workflow.matchAll(setupNodePattern)].length;
+  const cacheDisabledCount = [...workflow.matchAll(cacheDisabledPattern)].length;
+  if (setupNodeCount === 0)
+    throw new Error('P0 workflow must pin at least one actions/setup-node use.');
+  if (cacheDisabledCount !== setupNodeCount)
+    throw new Error(
+      'Every setup-node step must set package-manager-cache: false so Corepack can enable pnpm first.',
+    );
+  return setupNodeCount;
+}
+
 export function validateRepository(root = DEFAULT_ROOT) {
   const missing = required.filter((path) => !existsSync(join(root, path)));
   if (missing.length) throw new Error(`Missing required repository paths:\n${missing.join('\n')}`);
@@ -28,12 +44,15 @@ export function validateRepository(root = DEFAULT_ROOT) {
   );
   if (competingLockfiles.length)
     throw new Error(`Competing root lockfiles: ${competingLockfiles.join(', ')}`);
+  const setupNodeJobCount = validateSetupNodeCaching(
+    readFileSync(join(root, '.github/workflows/p0-foundation.yml'), 'utf8'),
+  );
   for (const module of ['customer-app', 'merchant-app', 'captain-app', 'admin-web']) {
     const pkg = JSON.parse(readFileSync(join(root, 'apps', module, 'package.json'), 'utf8'));
     for (const command of ['format:check', 'lint', 'typecheck', 'test', 'config:validate', 'build'])
       if (!pkg.scripts?.[command]) throw new Error(`${module} missing ${command}`);
   }
-  return { requiredPathCount: required.length };
+  return { requiredPathCount: required.length, setupNodeJobCount };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
