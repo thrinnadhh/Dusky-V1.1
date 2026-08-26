@@ -2445,13 +2445,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-ASG-001",
-        "CAP-STATE-001"
+        "CAP-AUTH-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-STATE-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-STATE-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-STATE-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-PROFILE-PARSE",
+      "mappingResolutionReason": "Selected curated rule CAP-PROFILE-PARSE at priority 300 (path-and-feature specificity); lower-priority matches CAP-STATE-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-PROFILE-PARSE maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-D1636097BE5A",
@@ -2470,13 +2469,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-ASG-001",
-        "CAP-STATE-001"
+        "CAP-AUTH-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-STATE-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-STATE-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-STATE-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-PROFILE-PARSE",
+      "mappingResolutionReason": "Selected curated rule CAP-PROFILE-PARSE at priority 300 (path-and-feature specificity); lower-priority matches CAP-STATE-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-PROFILE-PARSE maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-2D564911E944",
@@ -2646,13 +2644,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-ASG-001",
-        "CAP-STATE-001"
+        "CAP-NOT-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-STATE-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-STATE-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-STATE-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-SUPPORT-TICKETS",
+      "mappingResolutionReason": "Selected curated rule CAP-SUPPORT-TICKETS at priority 300 (path-and-feature specificity); lower-priority matches CAP-STATE-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-SUPPORT-TICKETS maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-693921E54F2F",
@@ -2672,13 +2669,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-ASG-001",
-        "CAP-STATE-001"
+        "CAP-NOT-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-STATE-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-STATE-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-STATE-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-SUPPORT-TICKETS",
+      "mappingResolutionReason": "Selected curated rule CAP-SUPPORT-TICKETS at priority 300 (path-and-feature specificity); lower-priority matches CAP-STATE-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-SUPPORT-TICKETS maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-40C0932CE8B1",
@@ -2993,13 +2989,13 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-ASG-001",
-        "CAP-STATE-001"
+        "BE-REPR-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-STATE-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-STATE-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-STATE-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-FINGERPRINT-STATE",
+      "mappingResolutionReason": "Selected curated rule CAP-FINGERPRINT-STATE at priority 300 (path-and-feature specificity); lower-priority matches CAP-STATE-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-FINGERPRINT-STATE maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-ADA9DF4DC07B",
@@ -3018,13 +3014,13 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-ASG-001",
-        "CAP-STATE-001"
+        "BE-REPR-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-STATE-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-STATE-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-STATE-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-FINGERPRINT-STATE",
+      "mappingResolutionReason": "Selected curated rule CAP-FINGERPRINT-STATE at priority 300 (path-and-feature specificity); lower-priority matches CAP-STATE-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-FINGERPRINT-STATE maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-B9BE97F1B2A0",
@@ -4719,13 +4715,13 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-ASG-001",
-        "CAP-STATE-001"
+        "BE-IDEMP-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-STATE-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-STATE-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-STATE-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-IDEMP-DEDUP",
+      "mappingResolutionReason": "Selected curated rule CAP-IDEMP-DEDUP at priority 300 (path-and-feature specificity); lower-priority matches CAP-STATE-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-IDEMP-DEDUP maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-C1A6A83EA392",
@@ -4769,13 +4765,13 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-ASG-001",
-        "CAP-STATE-001"
+        "BE-IDEMP-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-STATE-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-STATE-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-STATE-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-IDEMP-DEDUP",
+      "mappingResolutionReason": "Selected curated rule CAP-IDEMP-DEDUP at priority 300 (path-and-feature specificity); lower-priority matches CAP-STATE-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-IDEMP-DEDUP maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-B277209E5A49",
@@ -4794,13 +4790,13 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-ASG-001",
-        "CAP-STATE-001"
+        "BE-IDEMP-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-STATE-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-STATE-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-STATE-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-IDEMP-DEDUP",
+      "mappingResolutionReason": "Selected curated rule CAP-IDEMP-DEDUP at priority 300 (path-and-feature specificity); lower-priority matches CAP-STATE-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-IDEMP-DEDUP maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-D396E8833135",
@@ -4819,13 +4815,13 @@
       ],
       "launchCriticality": "launch-critical",
       "targetDuskyContractIds": [
-        "CAP-ASG-001",
-        "CAP-STATE-001"
+        "BE-IDEMP-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-STATE-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-STATE-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-STATE-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-IDEMP-DEDUP",
+      "mappingResolutionReason": "Selected curated rule CAP-IDEMP-DEDUP at priority 300 (path-and-feature specificity); lower-priority matches CAP-STATE-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-IDEMP-DEDUP maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-440918879D2D",
@@ -4845,13 +4841,13 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-ASG-001",
-        "CAP-STATE-001"
+        "BE-IDEMP-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-STATE-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-STATE-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-STATE-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-IDEMP-DEDUP",
+      "mappingResolutionReason": "Selected curated rule CAP-IDEMP-DEDUP at priority 300 (path-and-feature specificity); lower-priority matches CAP-STATE-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-IDEMP-DEDUP maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-6851EB5C8C28",
@@ -6263,13 +6259,13 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-IDEMP-001",
-        "CAP-OFF-001"
+        "BE-IDEMP-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-SYNC-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-SYNC-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-SYNC-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-IDEMP-DEDUP",
+      "mappingResolutionReason": "Selected curated rule CAP-IDEMP-DEDUP at priority 300 (path-and-feature specificity); lower-priority matches CAP-SYNC-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-IDEMP-DEDUP maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-AFCDCF768441",
@@ -6314,13 +6310,13 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-IDEMP-001",
-        "CAP-OFF-001"
+        "BE-IDEMP-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-SYNC-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-SYNC-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-SYNC-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-IDEMP-DEDUP",
+      "mappingResolutionReason": "Selected curated rule CAP-IDEMP-DEDUP at priority 300 (path-and-feature specificity); lower-priority matches CAP-SYNC-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-IDEMP-DEDUP maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-350736D64CB7",
@@ -6364,13 +6360,13 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-ASG-001",
-        "CAP-CON-001"
+        "BE-IDEMP-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-ASSIGNMENT",
-      "mappingResolutionReason": "Selected curated rule CAP-ASSIGNMENT at priority 200 (bounded feature-name specificity); lower-priority matches CAP-SYNC-SUITES were intentionally suppressed.",
-      "dispositionEvidence": "Curated rule CAP-ASSIGNMENT maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-IDEMP-DEDUP",
+      "mappingResolutionReason": "Selected curated rule CAP-IDEMP-DEDUP at priority 300 (path-and-feature specificity); lower-priority matches CAP-ASSIGNMENT, CAP-SYNC-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-IDEMP-DEDUP maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-F751340A285E",
@@ -6414,13 +6410,13 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-IDEMP-001",
-        "CAP-OFF-001"
+        "BE-IDEMP-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-SYNC-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-SYNC-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-SYNC-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-IDEMP-DEDUP",
+      "mappingResolutionReason": "Selected curated rule CAP-IDEMP-DEDUP at priority 300 (path-and-feature specificity); lower-priority matches CAP-SYNC-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-IDEMP-DEDUP maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-E73F13FF6FED",
@@ -6440,13 +6436,13 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CAP-IDEMP-001",
-        "CAP-OFF-001"
+        "BE-IDEMP-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-SYNC-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-SYNC-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-SYNC-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-IDEMP-DEDUP",
+      "mappingResolutionReason": "Selected curated rule CAP-IDEMP-DEDUP at priority 300 (path-and-feature specificity); lower-priority matches CAP-SYNC-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-IDEMP-DEDUP maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-836ED5B78BC0",
@@ -6566,13 +6562,13 @@
       ],
       "launchCriticality": "launch-critical",
       "targetDuskyContractIds": [
-        "CAP-IDEMP-001",
-        "CAP-OFF-001"
+        "BE-IDEMP-001",
+        "CAP-IDEMP-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CAP-SYNC-SUITES",
-      "mappingResolutionReason": "Selected curated rule CAP-SYNC-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CAP-SYNC-SUITES maps the normalized Captain evidence to its bounded Dusky contract."
+      "mappingRuleId": "CAP-IDEMP-DEDUP",
+      "mappingResolutionReason": "Selected curated rule CAP-IDEMP-DEDUP at priority 300 (path-and-feature specificity); lower-priority matches CAP-SYNC-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CAP-IDEMP-DEDUP maps the normalized Captain evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-55F547AA7C16",
@@ -8574,9 +8570,9 @@
         "CUS-A11Y-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CUS-NAVIGATION-SUITES",
-      "mappingResolutionReason": "Selected curated rule CUS-NAVIGATION-SUITES at priority 100 (path specificity).",
-      "dispositionEvidence": "Curated rule CUS-NAVIGATION-SUITES maps the normalized Customer evidence to its bounded Dusky contract."
+      "mappingRuleId": "CUS-SCREEN-LAYOUT",
+      "mappingResolutionReason": "Selected curated rule CUS-SCREEN-LAYOUT at priority 300 (path specificity); lower-priority matches CUS-NAVIGATION-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-SCREEN-LAYOUT maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-4BC3BC9D084A",
@@ -8595,13 +8591,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CUS-PROV-001",
-        "CUS-SEARCH-001"
+        "CUS-A11Y-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CUS-DISCOVERY",
-      "mappingResolutionReason": "Selected curated rule CUS-DISCOVERY at priority 200 (bounded feature-name specificity); lower-priority matches CUS-NAVIGATION-SUITES were intentionally suppressed.",
-      "dispositionEvidence": "Curated rule CUS-DISCOVERY maps the normalized Customer evidence to its bounded Dusky contract."
+      "mappingRuleId": "CUS-SCREEN-LAYOUT",
+      "mappingResolutionReason": "Selected curated rule CUS-SCREEN-LAYOUT at priority 300 (path specificity); lower-priority matches CUS-DISCOVERY, CUS-NAVIGATION-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-SCREEN-LAYOUT maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-DFA126E93573",
@@ -8620,14 +8615,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CUS-APT-001",
-        "CUS-PROV-001",
-        "CUS-SEARCH-001"
+        "CUS-A11Y-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "COMPOSITE:CUS-REVIEWED-COMPOSITE-FILES",
-      "mappingResolutionReason": "Curated path rule CUS-REVIEWED-COMPOSITE-FILES resolved co-equal feature rules CUS-CARE-DISCOVERY, CUS-DISCOVERY as one composite mapping at priority 200; no first-match selection was used.",
-      "dispositionEvidence": "The reviewed CUS-REVIEWED-COMPOSITE-FILES source path contains one test spanning the bounded behaviors identified by CUS-CARE-DISCOVERY, CUS-DISCOVERY."
+      "mappingRuleId": "CUS-SCREEN-LAYOUT",
+      "mappingResolutionReason": "Selected curated rule CUS-SCREEN-LAYOUT at priority 300 (path specificity); lower-priority matches CUS-CARE-DISCOVERY, CUS-DISCOVERY, CUS-NAVIGATION-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-SCREEN-LAYOUT maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-D051697E75A8",
@@ -8646,12 +8639,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CUS-PROF-001"
+        "CUS-A11Y-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CUS-PROFILE",
-      "mappingResolutionReason": "Selected curated rule CUS-PROFILE at priority 200 (bounded feature-name specificity); lower-priority matches CUS-NAVIGATION-SUITES were intentionally suppressed.",
-      "dispositionEvidence": "Curated rule CUS-PROFILE maps the normalized Customer evidence to its bounded Dusky contract."
+      "mappingRuleId": "CUS-SCREEN-LAYOUT",
+      "mappingResolutionReason": "Selected curated rule CUS-SCREEN-LAYOUT at priority 300 (path specificity); lower-priority matches CUS-NAVIGATION-SUITES, CUS-PROFILE were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-SCREEN-LAYOUT maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-0A61CFB0F735",
@@ -8720,13 +8713,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CUS-PROV-001",
-        "CUS-SEARCH-001"
+        "CUS-A11Y-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CUS-DISCOVERY",
-      "mappingResolutionReason": "Selected curated rule CUS-DISCOVERY at priority 200 (bounded feature-name specificity); lower-priority matches CUS-NAVIGATION-SUITES were intentionally suppressed.",
-      "dispositionEvidence": "Curated rule CUS-DISCOVERY maps the normalized Customer evidence to its bounded Dusky contract."
+      "mappingRuleId": "CUS-TOUCH-TARGET",
+      "mappingResolutionReason": "Selected curated rule CUS-TOUCH-TARGET at priority 300 (path specificity); lower-priority matches CUS-DISCOVERY, CUS-NAVIGATION-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-TOUCH-TARGET maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-0F029F203962",
@@ -14634,13 +14626,14 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CUS-PROV-001",
-        "CUS-SEARCH-001"
+        "BE-AUTH-001",
+        "BE-OBJ-001",
+        "CUS-PROF-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CUS-DISCOVERY",
-      "mappingResolutionReason": "Selected curated rule CUS-DISCOVERY at priority 200 (bounded feature-name specificity); lower-priority matches CUS-SECURITY-SUITES were intentionally suppressed.",
-      "dispositionEvidence": "Curated rule CUS-DISCOVERY maps the normalized Customer evidence to its bounded Dusky contract."
+      "mappingRuleId": "CUS-DOCUMENT-OWNERSHIP",
+      "mappingResolutionReason": "Selected curated rule CUS-DOCUMENT-OWNERSHIP at priority 300 (path-and-feature specificity); lower-priority matches CUS-DISCOVERY, CUS-SECURITY-SUITES were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-DOCUMENT-OWNERSHIP maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-B5BF1E2FD98E",
@@ -15917,13 +15910,13 @@
       ],
       "launchCriticality": "launch-critical",
       "targetDuskyContractIds": [
-        "CUS-PROV-001",
-        "CUS-SEARCH-001"
+        "CUS-CHK-001",
+        "CUS-PRICE-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CUS-DISCOVERY",
-      "mappingResolutionReason": "Selected curated rule CUS-DISCOVERY at priority 200 (bounded feature-name specificity); lower-priority matches CUS-CHECKOUT-SUITES were intentionally suppressed.",
-      "dispositionEvidence": "Curated rule CUS-DISCOVERY maps the normalized Customer evidence to its bounded Dusky contract."
+      "mappingRuleId": "CUS-QUOTE-PRICING",
+      "mappingResolutionReason": "Selected curated rule CUS-QUOTE-PRICING at priority 300 (path-and-feature specificity); lower-priority matches CUS-CHECKOUT-SUITES, CUS-DISCOVERY were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-QUOTE-PRICING maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-BD5722834285",
@@ -16643,13 +16636,13 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "CUS-PROV-001",
-        "CUS-SEARCH-001"
+        "CUS-CHK-001",
+        "CUS-PRICE-001"
       ],
       "disposition": "mapped",
-      "mappingRuleId": "CUS-DISCOVERY",
-      "mappingResolutionReason": "Selected curated rule CUS-DISCOVERY at priority 200 (bounded feature-name specificity); lower-priority matches CUS-CARE-SUITES were intentionally suppressed.",
-      "dispositionEvidence": "Curated rule CUS-DISCOVERY maps the normalized Customer evidence to its bounded Dusky contract."
+      "mappingRuleId": "CUS-GROOMING-PRICING",
+      "mappingResolutionReason": "Selected curated rule CUS-GROOMING-PRICING at priority 300 (path-and-feature specificity); lower-priority matches CUS-CARE-SUITES, CUS-DISCOVERY were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-GROOMING-PRICING maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-FFA479C7677A",
@@ -18341,12 +18334,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "FOUND-CI-001"
+        "BE-REPR-001"
       ],
-      "disposition": "implementation-specific-rewritten",
-      "mappingRuleId": "CUS-UTILITIES-REWRITE",
-      "mappingResolutionReason": "Selected curated rule CUS-UTILITIES-REWRITE at priority 400 (path specificity).",
-      "dispositionEvidence": "Client utility and configuration assertions are rewritten as greenfield repository-policy evidence."
+      "disposition": "mapped",
+      "mappingRuleId": "CUS-UTILITIES-CURRENCY",
+      "mappingResolutionReason": "Selected curated rule CUS-UTILITIES-CURRENCY at priority 300 (path-and-feature specificity); lower-priority matches CUS-UTILITIES-REWRITE were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-UTILITIES-CURRENCY maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-A00EA93AE72E",
@@ -18365,12 +18358,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "FOUND-CI-001"
+        "BE-REPR-001"
       ],
-      "disposition": "implementation-specific-rewritten",
-      "mappingRuleId": "CUS-UTILITIES-REWRITE",
-      "mappingResolutionReason": "Selected curated rule CUS-UTILITIES-REWRITE at priority 400 (path specificity).",
-      "dispositionEvidence": "Client utility and configuration assertions are rewritten as greenfield repository-policy evidence."
+      "disposition": "mapped",
+      "mappingRuleId": "CUS-UTILITIES-DATETIME",
+      "mappingResolutionReason": "Selected curated rule CUS-UTILITIES-DATETIME at priority 300 (path-and-feature specificity); lower-priority matches CUS-UTILITIES-REWRITE were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-UTILITIES-DATETIME maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-912FA9135E85",
@@ -18389,12 +18382,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "FOUND-CI-001"
+        "BE-REPR-001"
       ],
-      "disposition": "implementation-specific-rewritten",
-      "mappingRuleId": "CUS-UTILITIES-REWRITE",
-      "mappingResolutionReason": "Selected curated rule CUS-UTILITIES-REWRITE at priority 400 (path specificity).",
-      "dispositionEvidence": "Client utility and configuration assertions are rewritten as greenfield repository-policy evidence."
+      "disposition": "mapped",
+      "mappingRuleId": "CUS-UTILITIES-DISTANCE",
+      "mappingResolutionReason": "Selected curated rule CUS-UTILITIES-DISTANCE at priority 300 (path-and-feature specificity); lower-priority matches CUS-UTILITIES-REWRITE were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-UTILITIES-DISTANCE maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-C63AD6A4E9AA",
@@ -18437,12 +18430,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "FOUND-CI-001"
+        "BE-RATE-001"
       ],
-      "disposition": "implementation-specific-rewritten",
-      "mappingRuleId": "CUS-UTILITIES-REWRITE",
-      "mappingResolutionReason": "Selected curated rule CUS-UTILITIES-REWRITE at priority 400 (path specificity).",
-      "dispositionEvidence": "Client utility and configuration assertions are rewritten as greenfield repository-policy evidence."
+      "disposition": "mapped",
+      "mappingRuleId": "CUS-UTILITIES-RETRY-AFTER",
+      "mappingResolutionReason": "Selected curated rule CUS-UTILITIES-RETRY-AFTER at priority 301 (path-and-feature specificity); lower-priority matches CUS-UTILITIES-DATETIME, CUS-UTILITIES-REWRITE were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-UTILITIES-RETRY-AFTER maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-6694E28086F6",
@@ -18485,12 +18478,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "FOUND-CI-001"
+        "BE-VALID-001"
       ],
-      "disposition": "implementation-specific-rewritten",
-      "mappingRuleId": "CUS-UTILITIES-REWRITE",
-      "mappingResolutionReason": "Selected curated rule CUS-UTILITIES-REWRITE at priority 400 (path specificity).",
-      "dispositionEvidence": "Client utility and configuration assertions are rewritten as greenfield repository-policy evidence."
+      "disposition": "mapped",
+      "mappingRuleId": "CUS-UTILITIES-ERROR-ENVELOPE",
+      "mappingResolutionReason": "Selected curated rule CUS-UTILITIES-ERROR-ENVELOPE at priority 300 (path-and-feature specificity); lower-priority matches CUS-UTILITIES-REWRITE were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-UTILITIES-ERROR-ENVELOPE maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-B5896DE3F815",
@@ -18509,12 +18502,12 @@
       ],
       "launchCriticality": "useful",
       "targetDuskyContractIds": [
-        "FOUND-CI-001"
+        "BE-VALID-001"
       ],
-      "disposition": "implementation-specific-rewritten",
-      "mappingRuleId": "CUS-UTILITIES-REWRITE",
-      "mappingResolutionReason": "Selected curated rule CUS-UTILITIES-REWRITE at priority 400 (path specificity); lower-priority matches CUS-MESSAGING were intentionally suppressed.",
-      "dispositionEvidence": "Client utility and configuration assertions are rewritten as greenfield repository-policy evidence."
+      "disposition": "mapped",
+      "mappingRuleId": "CUS-UTILITIES-ERROR-ENVELOPE",
+      "mappingResolutionReason": "Selected curated rule CUS-UTILITIES-ERROR-ENVELOPE at priority 300 (path-and-feature specificity); lower-priority matches CUS-MESSAGING, CUS-UTILITIES-REWRITE were intentionally suppressed.",
+      "dispositionEvidence": "Curated rule CUS-UTILITIES-ERROR-ENVELOPE maps the normalized Customer evidence to its bounded Dusky contract."
     },
     {
       "legacyTestId": "LEG-F6447C651D70",

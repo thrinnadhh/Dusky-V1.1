@@ -155,8 +155,56 @@ const customerRules = [
   rule('CUS-ACCESSIBILITY', 'Customer', ['CUS-A11Y-001'], {
     name: /(accessib|screen reader|focus|navigation)/,
   }),
+  rule('CUS-SCREEN-LAYOUT', 'Customer', ['CUS-A11Y-001'], {
+    path: /customer-screen-layout\.test\./,
+    priority: 300,
+  }),
+  rule('CUS-TOUCH-TARGET', 'Customer', ['CUS-A11Y-001'], {
+    path: /foundation-touch-target-contract\.test\./,
+    priority: 300,
+  }),
+  rule('CUS-DOCUMENT-OWNERSHIP', 'Customer', ['BE-OBJ-001', 'CUS-PROF-001', 'BE-AUTH-001'], {
+    path: /critical-security-services\.test\./,
+    name: /foreign.*document|document.*ownership|reject.*document|ownership.*rejection/,
+    priority: 300,
+  }),
+  rule('CUS-QUOTE-PRICING', 'Customer', ['CUS-CHK-001', 'CUS-PRICE-001'], {
+    path: /customer-quote-contract\.test\./,
+    name: /pricing|quote.*field|server.*pric|listing.*field|outlet.*field/,
+    priority: 300,
+  }),
+  rule('CUS-GROOMING-PRICING', 'Customer', ['CUS-CHK-001', 'CUS-PRICE-001'], {
+    path: /p10-grooming-services\.test\./,
+    name: /money|price|pricing|cost|leakage/,
+    priority: 300,
+  }),
+  rule('CUS-UTILITIES-CURRENCY', 'Customer', ['BE-REPR-001'], {
+    path: /production-utilities\.test\./,
+    name: /currency|money.*format|format.*currency/,
+    priority: 300,
+  }),
+  rule('CUS-UTILITIES-DATETIME', 'Customer', ['BE-REPR-001'], {
+    path: /production-utilities\.test\./,
+    name: /date|time|datetime|timestamp/,
+    priority: 300,
+  }),
+  rule('CUS-UTILITIES-DISTANCE', 'Customer', ['BE-REPR-001'], {
+    path: /production-utilities\.test\./,
+    name: /distance|percent|status.*label/,
+    priority: 300,
+  }),
+  rule('CUS-UTILITIES-RETRY-AFTER', 'Customer', ['BE-RATE-001'], {
+    path: /production-utilities\.test\./,
+    name: /retry.after/,
+    priority: 301,
+  }),
+  rule('CUS-UTILITIES-ERROR-ENVELOPE', 'Customer', ['BE-VALID-001'], {
+    path: /production-utilities\.test\./,
+    name: /ApiError|error.*envelope|api.*error|builds.*ApiError|status.*famil|classifies.*status/,
+    priority: 300,
+  }),
   rule('CUS-DISCOVERY', 'Customer', ['CUS-PROV-001', 'CUS-SEARCH-001'], {
-    name: /\b(?:catalog|provider|discovery|discover|category|search|filter|product|shop|listing)s?\b/,
+    name: /\b(?:catalog|provider|discovery|discover|category|search|filter|product(?!ion)|shop|listing)s?\b/,
   }),
   rule('CUS-MESSAGING', 'Customer', ['CUS-NOT-001'], {
     name: /(conversation|message|marking messages read|chat)/,
@@ -241,7 +289,7 @@ const customerRules = [
   }),
   rule('CUS-UTILITIES-REWRITE', 'Customer', ['FOUND-CI-001'], {
     path: /(?:production-utilities|app-config|uuid)\.test\./,
-    priority: 400,
+    priority: 299,
     disposition: 'implementation-specific-rewritten',
     evidence:
       'Client utility and configuration assertions are rewritten as greenfield repository-policy evidence.',
@@ -288,6 +336,26 @@ const merchantRules = [
 ];
 
 const captainRules = [
+  rule('CAP-SUPPORT-TICKETS', 'Captain', ['CAP-NOT-001'], {
+    path: /truthful-operational-ui\.test\./,
+    name: /support.*ticket|ticket.*support|create.*support|ticket.*creat|rejects.*ticket.*creat/,
+    priority: 300,
+  }),
+  rule('CAP-PROFILE-PARSE', 'Captain', ['CAP-AUTH-001'], {
+    path: /truthful-operational-ui\.test\./,
+    name: /profile.*pars|pars.*profile|captain.*profile|profile.*captain|parses.*profile|profile.*draft|draft.*profile/,
+    priority: 300,
+  }),
+  rule('CAP-FINGERPRINT-STATE', 'Captain', ['CAP-IDEMP-001', 'BE-REPR-001'], {
+    path: /command-state-machine\.test\./,
+    name: /fingerprint|FNV|payload.*finger|finger.*payload/,
+    priority: 300,
+  }),
+  rule('CAP-IDEMP-DEDUP', 'Captain', ['CAP-IDEMP-001', 'BE-IDEMP-001'], {
+    path: /command-runner\.test\./,
+    name: /deduplicat|idempot.*key|reuses.*idempot|idempotency_fingerprint|generates.*different.*key|concurrent.*operations/,
+    priority: 300,
+  }),
   rule('CAP-SERVER-AUTHORITY-OFFER-CONFLICT', 'Captain', ['CAP-ASG-001', 'CAP-CON-001'], {
     path: /domain\/server-authority\.test\./,
     name: /409 conflict|reject and not accept/,

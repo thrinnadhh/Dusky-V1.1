@@ -189,3 +189,270 @@ test('committed inventory records the selected rule and resolution reason', () =
     );
   }
 });
+
+test('Captain support ticket creation maps to notification/support, not assignment/state', () => {
+  const result = classify(
+    'apps/captain-app/src/__tests__/features/truthful-operational-ui.test.ts',
+    'creates support ticket with backend acknowledgement and returns ticketId',
+  );
+  assert.ok(result.targetDuskyContractIds.includes('CAP-NOT-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-ASG-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-STATE-001'));
+});
+
+test('Captain support ticket error maps to notification, not assignment/state', () => {
+  const result = classify(
+    'apps/captain-app/src/__tests__/features/truthful-operational-ui.test.ts',
+    'rejects ticket creation when server returns error and avoids false success',
+  );
+  assert.ok(result.targetDuskyContractIds.includes('CAP-NOT-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-ASG-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-STATE-001'));
+});
+
+test('Captain fingerprint tests map to representation/idempotency, not assignment/state', () => {
+  const result = classify(
+    'apps/captain-app/src/__tests__/level1-unit/state-machines/command-state-machine.test.ts',
+    'generates deterministic 32-bit FNV-1a payload fingerprints',
+  );
+  assert.ok(
+    result.targetDuskyContractIds.includes('CAP-IDEMP-001') ||
+      result.targetDuskyContractIds.includes('BE-IDEMP-001') ||
+      result.targetDuskyContractIds.includes('BE-REPR-001'),
+  );
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-ASG-001'));
+
+  const nested = classify(
+    'apps/captain-app/src/__tests__/level1-unit/state-machines/command-state-machine.test.ts',
+    'handles null, undefined, and complex nested payloads stably in fingerprinting',
+  );
+  assert.ok(
+    nested.targetDuskyContractIds.includes('CAP-IDEMP-001') ||
+      nested.targetDuskyContractIds.includes('BE-IDEMP-001') ||
+      nested.targetDuskyContractIds.includes('BE-REPR-001'),
+  );
+  assert.ok(!nested.targetDuskyContractIds.includes('CAP-ASG-001'));
+});
+
+test('Captain profile parsing maps to auth/profile, not assignment/state', () => {
+  const result = classify(
+    'apps/captain-app/src/__tests__/features/truthful-operational-ui.test.ts',
+    'accurately parses active and approved captain profile',
+  );
+  assert.ok(result.targetDuskyContractIds.includes('CAP-AUTH-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-ASG-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-STATE-001'));
+
+  const draft = classify(
+    'apps/captain-app/src/__tests__/features/truthful-operational-ui.test.ts',
+    'accurately parses unapproved / draft profile without fake fallback objects',
+  );
+  assert.ok(draft.targetDuskyContractIds.includes('CAP-AUTH-001'));
+  assert.ok(!draft.targetDuskyContractIds.includes('CAP-ASG-001'));
+  assert.ok(!draft.targetDuskyContractIds.includes('CAP-STATE-001'));
+});
+
+test('Captain idempotency deduplication maps to idempotency, not assignment/state', () => {
+  const result = classify(
+    'apps/captain-app/src/__tests__/level3-durable-commands/command-runner.test.ts',
+    'deduplicates rapid double-tap requests on same resource into exactly ONE execution',
+  );
+  assert.ok(
+    result.targetDuskyContractIds.includes('CAP-IDEMP-001') ||
+      result.targetDuskyContractIds.includes('BE-IDEMP-001'),
+  );
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-ASG-001'));
+});
+
+test('Captain idempotency key reuse maps to idempotency, not assignment/state', () => {
+  const result = classify(
+    'apps/captain-app/src/__tests__/level3-durable-commands/command-runner.test.ts',
+    'reuses the exact same idempotencyKey and commandId across 20 retries',
+  );
+  assert.ok(
+    result.targetDuskyContractIds.includes('CAP-IDEMP-001') ||
+      result.targetDuskyContractIds.includes('BE-IDEMP-001'),
+  );
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-ASG-001'));
+});
+
+test('Captain fingerprint mismatch maps to idempotency, not assignment/state', () => {
+  const result = classify(
+    'apps/captain-app/src/__tests__/level3-durable-commands/command-runner.test.ts',
+    'rejects with IDEMPOTENCY_FINGERPRINT_MISMATCH when same active scope receives altered payload',
+  );
+  assert.ok(
+    result.targetDuskyContractIds.includes('CAP-IDEMP-001') ||
+      result.targetDuskyContractIds.includes('BE-IDEMP-001') ||
+      result.targetDuskyContractIds.includes('BE-REPR-001'),
+  );
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-ASG-001'));
+});
+
+test('Captain concurrent operations maps to concurrency, not assignment/state', () => {
+  const result = classify(
+    'apps/captain-app/src/__tests__/level3-durable-commands/command-runner.test.ts',
+    'proves concurrent operations on different offers execute independently without blocking',
+  );
+  assert.ok(
+    result.targetDuskyContractIds.includes('CAP-IDEMP-001') ||
+      result.targetDuskyContractIds.includes('BE-IDEMP-001') ||
+      result.targetDuskyContractIds.includes('BE-CON-001'),
+  );
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-ASG-001'));
+});
+
+test('Captain different keys for different operations maps to idempotency/representation', () => {
+  const result = classify(
+    'apps/captain-app/src/__tests__/level3-durable-commands/command-runner.test.ts',
+    'generates different keys for different operations on the same job',
+  );
+  assert.ok(
+    result.targetDuskyContractIds.includes('CAP-IDEMP-001') ||
+      result.targetDuskyContractIds.includes('BE-IDEMP-001') ||
+      result.targetDuskyContractIds.includes('BE-REPR-001'),
+  );
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-ASG-001'));
+});
+
+test('Customer screen layout maps to accessibility, not discovery/search', () => {
+  const result = classify(
+    'apps/customer-app/src/__tests__/customer-screen-layout.test.ts',
+    'category header is outside the padded content area',
+  );
+  assert.ok(result.targetDuskyContractIds.includes('CUS-A11Y-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CUS-PROV-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CUS-SEARCH-001'));
+});
+
+test('Touch-target tests map to accessibility, not discovery/search', () => {
+  const result = classify(
+    'apps/customer-app/src/__tests__/foundation-touch-target-contract.test.ts',
+    'keeps shared filter chips and section actions on the canonical touch target',
+  );
+  assert.ok(result.targetDuskyContractIds.includes('CUS-A11Y-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CUS-PROV-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CUS-SEARCH-001'));
+});
+
+test('Foreign-document ownership rejection maps to authorization, not discovery/search', () => {
+  const result = classify(
+    'apps/customer-app/src/services/__tests__/critical-security-services.test.ts',
+    'rejects foreign document listings with the server trace',
+  );
+  assert.ok(
+    result.targetDuskyContractIds.includes('BE-OBJ-001') ||
+      result.targetDuskyContractIds.includes('CUS-PROF-001') ||
+      result.targetDuskyContractIds.includes('BE-AUTH-001'),
+  );
+  assert.ok(!result.targetDuskyContractIds.includes('CUS-PROV-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CUS-SEARCH-001'));
+});
+
+test('Quote fields and server pricing maps to checkout/pricing, not discovery/search', () => {
+  const result = classify(
+    'apps/customer-app/src/services/__tests__/customer-quote-contract.test.ts',
+    'sends only canonical outlet and listing-line fields and preserves server pricing',
+  );
+  assert.ok(
+    result.targetDuskyContractIds.includes('CUS-CHK-001') ||
+      result.targetDuskyContractIds.includes('CUS-PRICE-001'),
+  );
+  assert.ok(!result.targetDuskyContractIds.includes('CUS-PROV-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CUS-SEARCH-001'));
+});
+
+test('Malformed money in grooming services maps to pricing, not discovery/search', () => {
+  const result = classify(
+    'apps/customer-app/src/services/__tests__/p10-grooming-services.test.ts',
+    'rejects cross-provider leakage and malformed money instead of inventing zero price',
+  );
+  assert.ok(
+    result.targetDuskyContractIds.includes('CUS-CHK-001') ||
+      result.targetDuskyContractIds.includes('CUS-PRICE-001'),
+  );
+  assert.ok(!result.targetDuskyContractIds.includes('CUS-PROV-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CUS-SEARCH-001'));
+});
+
+test('Currency formatting in production-utilities maps to representation, not CI policy', () => {
+  const result = classify(
+    'apps/customer-app/src/utils/__tests__/production-utilities.test.ts',
+    'formats currency values and rejects missing or non-finite inputs',
+  );
+  assert.ok(result.targetDuskyContractIds.includes('BE-REPR-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('FOUND-CI-001'));
+});
+
+test('Date/time formatting in production-utilities maps to representation, not CI policy', () => {
+  const result = classify(
+    'apps/customer-app/src/utils/__tests__/production-utilities.test.ts',
+    'formats dates, date-times and times with invalid fallbacks',
+  );
+  assert.ok(result.targetDuskyContractIds.includes('BE-REPR-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('FOUND-CI-001'));
+});
+
+test('Distance/percentage formatting in production-utilities maps to representation, not CI policy', () => {
+  const result = classify(
+    'apps/customer-app/src/utils/__tests__/production-utilities.test.ts',
+    'formats distance, percentages and generic status labels',
+  );
+  assert.ok(result.targetDuskyContractIds.includes('BE-REPR-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('FOUND-CI-001'));
+});
+
+test('Retry-After parsing in production-utilities maps to rate-limit/retry, not CI policy', () => {
+  const result = classify(
+    'apps/customer-app/src/utils/__tests__/production-utilities.test.ts',
+    'parses Retry-After seconds, fractional seconds, dates and invalid values',
+  );
+  assert.ok(result.targetDuskyContractIds.includes('BE-RATE-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('FOUND-CI-001'));
+});
+
+test('API error-envelope parsing in production-utilities maps to validation/error, not CI policy', () => {
+  const result = classify(
+    'apps/customer-app/src/utils/__tests__/production-utilities.test.ts',
+    'builds ApiError from JSON and plain-text HTTP responses',
+  );
+  assert.ok(result.targetDuskyContractIds.includes('BE-VALID-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('FOUND-CI-001'));
+});
+
+test('API status classification in production-utilities maps to validation/error, not CI policy', () => {
+  const result = classify(
+    'apps/customer-app/src/utils/__tests__/production-utilities.test.ts',
+    'classifies every API status family and preserves useful messages',
+  );
+  assert.ok(result.targetDuskyContractIds.includes('BE-VALID-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('FOUND-CI-001'));
+});
+
+test('production cannot accidentally match product in name patterns', () => {
+  const result = classify(
+    'apps/customer-app/src/__tests__/misc.test.ts',
+    'production environment allows production traffic',
+  );
+  assert.ok(!result.targetDuskyContractIds.includes('CUS-PROV-001'));
+  assert.ok(!result.targetDuskyContractIds.includes('CUS-SEARCH-001'));
+});
+
+test('exact-file overrides do not affect a similar neighboring path', () => {
+  const result = classify(
+    'apps/customer-app/src/utils/__tests__/production-utilities-extra.test.ts',
+    'formats currency values and rejects missing or non-finite inputs',
+  );
+  assert.ok(result.mappingRuleId !== 'CUS-UTILITIES-CURRENCY');
+});
+
+test('resolved incompatible overlap requires documented reason', () => {
+  assert.throws(
+    () =>
+      classify(
+        'apps/customer-app/src/__tests__/misc.test.ts',
+        'checkout payment and reward recovery',
+      ),
+    /incompatible/i,
+  );
+});

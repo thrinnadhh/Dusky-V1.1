@@ -17,10 +17,10 @@
     "E2E": 83
   },
   "dispositionCounts": {
-    "mapped": 1029,
+    "mapped": 1035,
     "duplicate": 0,
     "obsolete-with-evidence": 0,
-    "implementation-specific-rewritten": 134,
+    "implementation-specific-rewritten": 128,
     "requires-business-decision": 0
   },
   "publicEvidence": {
