@@ -127,7 +127,7 @@ function maskKotlinCommentsAndStrings(content) {
       index += 2;
       continue;
     }
-    if (state === 'code' && triple === '\"\"\"') {
+    if (state === 'code' && triple === '"""') {
       state = 'triple-string';
       result += '   ';
       index += 3;
@@ -145,7 +145,7 @@ function maskKotlinCommentsAndStrings(content) {
       result += '  ';
       index += 2;
       continue;
-    } else if (state === 'triple-string' && triple === '\"\"\"') {
+    } else if (state === 'triple-string' && triple === '"""') {
       state = 'code';
       result += '   ';
       index += 3;
