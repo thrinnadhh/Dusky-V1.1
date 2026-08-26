@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with: { node-version: '22', cache: pnpm }
+        with: { node-version: '22' }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm validate:repository && pnpm validate:test-integrity
 
@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with: { node-version: '22', cache: pnpm }
+        with: { node-version: '22' }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm validate:legacy
 
@@ -42,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with: { node-version: '22', cache: pnpm }
+        with: { node-version: '22' }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm validate:contracts && pnpm validate:scenarios
       - run: node --test scripts/*.test.mjs
@@ -54,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with: { node-version: '22', cache: pnpm }
+        with: { node-version: '22' }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm --filter @dusky/customer-app format:check && pnpm --filter @dusky/customer-app lint && pnpm --filter @dusky/customer-app typecheck && pnpm --filter @dusky/customer-app test:coverage && pnpm --filter @dusky/customer-app config:validate
       - if: always()
@@ -72,7 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with: { node-version: '22', cache: pnpm }
+        with: { node-version: '22' }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm --filter @dusky/merchant-app format:check && pnpm --filter @dusky/merchant-app lint && pnpm --filter @dusky/merchant-app typecheck && pnpm --filter @dusky/merchant-app test:coverage && pnpm --filter @dusky/merchant-app config:validate
       - if: always()
@@ -90,7 +90,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with: { node-version: '22', cache: pnpm }
+        with: { node-version: '22' }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm --filter @dusky/captain-app format:check && pnpm --filter @dusky/captain-app lint && pnpm --filter @dusky/captain-app typecheck && pnpm --filter @dusky/captain-app test:coverage && pnpm --filter @dusky/captain-app config:validate
       - if: always()
@@ -108,7 +108,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with: { node-version: '22', cache: pnpm }
+        with: { node-version: '22' }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm --filter @dusky/admin-web format:check && pnpm --filter @dusky/admin-web lint && pnpm --filter @dusky/admin-web typecheck && pnpm --filter @dusky/admin-web test:coverage && pnpm --filter @dusky/admin-web config:validate && pnpm --filter @dusky/admin-web build
       - if: always()
@@ -142,7 +142,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with: { node-version: '22', cache: pnpm }
+        with: { node-version: '22' }
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm validate:scenarios && node -e "const c=require('./contracts/scenarios/e2e.json'); if(c.scenarios.length!==10) process.exit(1)"
 
@@ -164,7 +164,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with: { node-version: '22', cache: pnpm }
+        with: { node-version: '22' }
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with: { distribution: temurin, java-version: '21' }
       - run: corepack enable && pnpm install --frozen-lockfile
