@@ -13,7 +13,8 @@ describe('shared active contracts', () => {
   });
 
   it('rejects malformed contract identifiers', () => {
-    expect(() => ContractReferenceSchema.parse({ contractId: 'not namespaced', version: '1.0.0' })).toThrow();
+    expect(() =>
+      ContractReferenceSchema.parse({ contractId: 'not namespaced', version: '1.0.0' }),
+    ).toThrow();
   });
 });
-

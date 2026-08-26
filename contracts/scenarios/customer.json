@@ -1,0 +1,1852 @@
+{
+  "schemaVersion": "1.0.0",
+  "application": "Customer",
+  "scenarios": [
+    {
+      "scenarioId": "SCN-CUS-DISC-001",
+      "contractIds": ["CUS-DISC-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for guest browsing.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts guest browsing with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for guest browsing is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "GET",
+        "path": "/v1/contracts/cus-disc-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Guest browsing request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For guest browsing, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate guest browsing decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for guest browsing."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload guest browsing against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-DISC-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for guest browsing."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-AUTH-001",
+      "contractIds": ["CUS-AUTH-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for mobile authentication and otp.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts mobile authentication and otp with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for mobile authentication and otp is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-auth-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Mobile authentication and OTP request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For mobile authentication and otp, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate mobile authentication and otp decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for mobile authentication and otp."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload mobile authentication and otp against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-AUTH-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for mobile authentication and otp."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-SES-001",
+      "contractIds": ["CUS-SES-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for session restoration and logout.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts session restoration and logout with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for session restoration and logout is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-ses-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Session restoration and logout request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For session restoration and logout, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate session restoration and logout decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for session restoration and logout."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload session restoration and logout against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-SES-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for session restoration and logout."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-PROV-001",
+      "contractIds": ["CUS-PROV-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for provider and catalog discovery.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts provider and catalog discovery with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for provider and catalog discovery is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-prov-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Provider and catalog discovery request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For provider and catalog discovery, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate provider and catalog discovery decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for provider and catalog discovery."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload provider and catalog discovery against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-PROV-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for provider and catalog discovery."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-SVC-001",
+      "contractIds": ["CUS-SVC-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for six-digit pin serviceability.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts six-digit pin serviceability with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for six-digit pin serviceability is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-svc-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Six-digit PIN serviceability request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For six-digit pin serviceability, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate six-digit pin serviceability decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for six-digit pin serviceability."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload six-digit pin serviceability against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-SVC-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for six-digit pin serviceability."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-SEARCH-001",
+      "contractIds": ["CUS-SEARCH-001"],
+      "priority": "P1",
+      "given": [
+        "Authenticated role and required fixture state exist for search and filtering.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts search and filtering with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for search and filtering is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-search-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Search and filtering request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For search and filtering, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate search and filtering decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for search and filtering."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload search and filtering against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-SEARCH-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for search and filtering."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-PDP-001",
+      "contractIds": ["CUS-PDP-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for product detail.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts product detail with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for product detail is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-pdp-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Product detail request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For product detail, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate product detail decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for product detail."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload product detail against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-PDP-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for product detail."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-FAV-001",
+      "contractIds": ["CUS-FAV-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for favourites.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts favourites with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for favourites is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-fav-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Favourites request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For favourites, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": ["Validate favourites decisions, boundaries, and stable error codes."],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for favourites."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload favourites against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-FAV-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for favourites."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-CART-001",
+      "contractIds": ["CUS-CART-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for one-outlet cart totals and persistence.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts one-outlet cart totals and persistence with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for one-outlet cart totals and persistence is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-cart-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "One-outlet cart totals and persistence request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For one-outlet cart totals and persistence, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate one-outlet cart totals and persistence decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for one-outlet cart totals and persistence."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload one-outlet cart totals and persistence against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-CART-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for one-outlet cart totals and persistence."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-CART-002",
+      "contractIds": ["CUS-CART-002"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for price and stock revalidation.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts price and stock revalidation with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for price and stock revalidation is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-cart-002",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Price and stock revalidation request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For price and stock revalidation, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate price and stock revalidation decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for price and stock revalidation."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload price and stock revalidation against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-CART-002."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for price and stock revalidation."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-CHK-001",
+      "contractIds": ["CUS-CHK-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for authenticated checkout.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts authenticated checkout with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for authenticated checkout is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-chk-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Authenticated checkout request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For authenticated checkout, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate authenticated checkout decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for authenticated checkout."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload authenticated checkout against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-CHK-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for authenticated checkout."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-PRICE-001",
+      "contractIds": ["CUS-PRICE-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for fees coupons and rewards.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts fees coupons and rewards with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for fees coupons and rewards is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-price-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Fees coupons and rewards request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For fees coupons and rewards, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate fees coupons and rewards decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for fees coupons and rewards."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload fees coupons and rewards against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-PRICE-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for fees coupons and rewards."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-PAY-001",
+      "contractIds": ["CUS-PAY-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for cod and payment recovery.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts cod and payment recovery with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for cod and payment recovery is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-pay-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "COD and payment recovery request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For cod and payment recovery, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate cod and payment recovery decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for cod and payment recovery."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload cod and payment recovery against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-PAY-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for cod and payment recovery."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-ORD-001",
+      "contractIds": ["CUS-ORD-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for order history and detail.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts order history and detail with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for order history and detail is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-ord-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Order history and detail request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For order history and detail, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate order history and detail decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for order history and detail."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload order history and detail against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-ORD-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for order history and detail."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-APT-001",
+      "contractIds": ["CUS-APT-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for grooming and veterinary discovery.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts grooming and veterinary discovery with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for grooming and veterinary discovery is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-apt-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Grooming and veterinary discovery request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For grooming and veterinary discovery, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate grooming and veterinary discovery decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for grooming and veterinary discovery."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload grooming and veterinary discovery against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-APT-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for grooming and veterinary discovery."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-APT-002",
+      "contractIds": ["CUS-APT-002"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for appointment booking payment and history.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts appointment booking payment and history with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for appointment booking payment and history is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-apt-002",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Appointment booking payment and history request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For appointment booking payment and history, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate appointment booking payment and history decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for appointment booking payment and history."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload appointment booking payment and history against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-APT-002."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for appointment booking payment and history."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-PROF-001",
+      "contractIds": ["CUS-PROF-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for profile pets and addresses.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts profile pets and addresses with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for profile pets and addresses is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-prof-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Profile pets and addresses request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For profile pets and addresses, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate profile pets and addresses decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for profile pets and addresses."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload profile pets and addresses against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-PROF-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for profile pets and addresses."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-LOY-001",
+      "contractIds": ["CUS-LOY-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for customer loyalty.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts customer loyalty with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for customer loyalty is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-loy-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Customer loyalty request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For customer loyalty, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate customer loyalty decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for customer loyalty."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload customer loyalty against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-LOY-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for customer loyalty."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-REC-001",
+      "contractIds": ["CUS-REC-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for recurring-order proposals.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts recurring-order proposals with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for recurring-order proposals is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-rec-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Recurring-order proposals request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For recurring-order proposals, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate recurring-order proposals decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for recurring-order proposals."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload recurring-order proposals against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-REC-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for recurring-order proposals."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-NOT-001",
+      "contractIds": ["CUS-NOT-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for notifications and deep links.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts notifications and deep links with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for notifications and deep links is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-not-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Notifications and deep links request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For notifications and deep links, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate notifications and deep links decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for notifications and deep links."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload notifications and deep links against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-NOT-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for notifications and deep links."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-OFF-001",
+      "contractIds": ["CUS-OFF-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for offline and reconnect.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts offline and reconnect with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for offline and reconnect is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-off-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Offline and reconnect request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For offline and reconnect, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate offline and reconnect decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for offline and reconnect."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload offline and reconnect against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-OFF-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for offline and reconnect."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-A11Y-001",
+      "contractIds": ["CUS-A11Y-001"],
+      "priority": "P1",
+      "given": [
+        "Authenticated role and required fixture state exist for navigation and accessibility.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts navigation and accessibility with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for navigation and accessibility is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/cus-a11y-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Navigation and accessibility request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Customer role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For navigation and accessibility, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate navigation and accessibility decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for navigation and accessibility."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload navigation and accessibility against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CUS-A11Y-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for navigation and accessibility."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    }
+  ]
+}

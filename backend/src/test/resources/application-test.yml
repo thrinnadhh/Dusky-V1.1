@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:h2:mem:dusky;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
     username: sa
-    password: ""
+    password: ''
   flyway:
     enabled: true
 management:
@@ -10,4 +10,3 @@ management:
     health:
       probes:
         enabled: true
-

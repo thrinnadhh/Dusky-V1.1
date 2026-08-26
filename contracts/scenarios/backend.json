@@ -1,0 +1,1512 @@
+{
+  "schemaVersion": "1.0.0",
+  "application": "Backend",
+  "scenarios": [
+    {
+      "scenarioId": "SCN-BE-AUTH-001",
+      "contractIds": ["BE-AUTH-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for authentication and authorization.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts authentication and authorization with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for authentication and authorization is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-auth-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Authentication and authorization request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For authentication and authorization, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate authentication and authorization decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for authentication and authorization."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload authentication and authorization against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-AUTH-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for authentication and authorization."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-OBJ-001",
+      "contractIds": ["BE-OBJ-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for object-level authorization.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts object-level authorization with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for object-level authorization is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-obj-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Object-level authorization request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For object-level authorization, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate object-level authorization decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for object-level authorization."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload object-level authorization against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-OBJ-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for object-level authorization."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-TENANT-001",
+      "contractIds": ["BE-TENANT-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for tenant and outlet isolation.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts tenant and outlet isolation with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for tenant and outlet isolation is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-tenant-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Tenant and outlet isolation request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For tenant and outlet isolation, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate tenant and outlet isolation decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for tenant and outlet isolation."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload tenant and outlet isolation against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-TENANT-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for tenant and outlet isolation."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-VALID-001",
+      "contractIds": ["BE-VALID-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for request validation.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts request validation with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for request validation is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-valid-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Request validation request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For request validation, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate request validation decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for request validation."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload request validation against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-VALID-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for request validation."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-PAGE-001",
+      "contractIds": ["BE-PAGE-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for pagination.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts pagination with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for pagination is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-page-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Pagination request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For pagination, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": ["Validate pagination decisions, boundaries, and stable error codes."],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for pagination."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload pagination against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-PAGE-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for pagination."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-REPR-001",
+      "contractIds": ["BE-REPR-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for uuid money and time representation.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts uuid money and time representation with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for uuid money and time representation is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-repr-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "UUID money and time representation request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For uuid money and time representation, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate uuid money and time representation decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for uuid money and time representation."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload uuid money and time representation against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-REPR-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for uuid money and time representation."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-IDEMP-001",
+      "contractIds": ["BE-IDEMP-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for idempotent commands.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts idempotent commands with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for idempotent commands is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-idemp-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Idempotent commands request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For idempotent commands, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate idempotent commands decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for idempotent commands."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload idempotent commands against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-IDEMP-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for idempotent commands."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-CON-001",
+      "contractIds": ["BE-CON-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for concurrency control.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts concurrency control with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for concurrency control is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-con-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Concurrency control request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For concurrency control, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate concurrency control decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for concurrency control."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload concurrency control against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-CON-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for concurrency control."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-STATE-001",
+      "contractIds": ["BE-STATE-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for authoritative state machines.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts authoritative state machines with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for authoritative state machines is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-state-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Authoritative state machines request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For authoritative state machines, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate authoritative state machines decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for authoritative state machines."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload authoritative state machines against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-STATE-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for authoritative state machines."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-INV-001",
+      "contractIds": ["BE-INV-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for inventory authority.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts inventory authority with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for inventory authority is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-inv-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Inventory authority request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For inventory authority, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate inventory authority decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for inventory authority."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload inventory authority against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-INV-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for inventory authority."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-PAY-001",
+      "contractIds": ["BE-PAY-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for payment and webhook authority.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts payment and webhook authority with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for payment and webhook authority is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-pay-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Payment and webhook authority request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For payment and webhook authority, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate payment and webhook authority decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for payment and webhook authority."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload payment and webhook authority against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-PAY-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for payment and webhook authority."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-OTP-001",
+      "contractIds": ["BE-OTP-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for otp abuse protection.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts otp abuse protection with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for otp abuse protection is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-otp-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "OTP abuse protection request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For otp abuse protection, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate otp abuse protection decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for otp abuse protection."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload otp abuse protection against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-OTP-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for otp abuse protection."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-NOT-001",
+      "contractIds": ["BE-NOT-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for notification payloads.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts notification payloads with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for notification payloads is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-not-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Notification payloads request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For notification payloads, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate notification payloads decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for notification payloads."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload notification payloads against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-NOT-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for notification payloads."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-AUD-001",
+      "contractIds": ["BE-AUD-001"],
+      "priority": "P1",
+      "given": [
+        "Authenticated role and required fixture state exist for audit records.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts audit records with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for audit records is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-aud-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Audit records request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For audit records, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate audit records decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for audit records."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload audit records against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-AUD-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for audit records."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-MIG-001",
+      "contractIds": ["BE-MIG-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for versioned postgresql migrations.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts versioned postgresql migrations with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for versioned postgresql migrations is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-mig-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Versioned PostgreSQL migrations request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For versioned postgresql migrations, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate versioned postgresql migrations decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for versioned postgresql migrations."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload versioned postgresql migrations against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-MIG-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for versioned postgresql migrations."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-CORS-001",
+      "contractIds": ["BE-CORS-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for cors policy.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts cors policy with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for cors policy is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-cors-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "CORS policy request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For cors policy, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": ["Validate cors policy decisions, boundaries, and stable error codes."],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for cors policy."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload cors policy against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-CORS-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for cors policy."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-RATE-001",
+      "contractIds": ["BE-RATE-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for rate limits.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts rate limits with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for rate limits is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-rate-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Rate limits request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For rate limits, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": ["Validate rate limits decisions, boundaries, and stable error codes."],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for rate limits."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload rate limits against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-RATE-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for rate limits."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-LOG-001",
+      "contractIds": ["BE-LOG-001"],
+      "priority": "P1",
+      "given": [
+        "Authenticated role and required fixture state exist for structured logging.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts structured logging with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for structured logging is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/be-log-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Structured logging request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning Backend role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For structured logging, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate structured logging decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for structured logging."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload structured logging against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for BE-LOG-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for structured logging."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    }
+  ]
+}

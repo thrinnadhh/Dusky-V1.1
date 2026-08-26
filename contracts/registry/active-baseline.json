@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0.0",
+  "activeContractIds": [
+    "FOUND-APP-CUS-001",
+    "FOUND-APP-MER-001",
+    "FOUND-APP-CAP-001",
+    "FOUND-APP-ADM-001",
+    "FOUND-BE-HEALTH-001",
+    "FOUND-BE-ERROR-001",
+    "FOUND-DB-001",
+    "FOUND-CON-001",
+    "FOUND-FIX-001",
+    "FOUND-REG-001",
+    "FOUND-CI-001"
+  ]
+}

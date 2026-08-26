@@ -1,14 +1,19 @@
 import React from 'react';
-import renderer from 'react-test-renderer';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import App from '../App';
+import { AppErrorBoundary } from './AppErrorBoundary';
 
 describe('Merchant bootstrap', () => {
   it('renders its app-specific identity and active contract reference', () => {
-    let component: renderer.ReactTestRenderer;
-    renderer.act(() => { component = renderer.create(<App />); });
-    const tree = component!.toJSON();
-    expect(JSON.stringify(tree)).toContain('Dusky Merchant');
-    expect(JSON.stringify(tree)).toContain('FOUND-APP-MER-001');
+    const html = renderToStaticMarkup(<App />);
+    expect(html).toContain('Dusky Merchant');
+    expect(html).toContain('FOUND-APP-MER-001');
+  });
+
+  it('renders an accessible fallback after a bootstrap error', () => {
+    const boundary = new AppErrorBoundary({ children: null });
+    boundary.state = AppErrorBoundary.getDerivedStateFromError();
+    expect(renderToStaticMarkup(boundary.render() as React.ReactElement)).toContain('role="alert"');
   });
 });

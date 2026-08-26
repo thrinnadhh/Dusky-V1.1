@@ -45,4 +45,3 @@ export class FakeStorageAdapter {
     return this.values.get(key);
   }
 }
-

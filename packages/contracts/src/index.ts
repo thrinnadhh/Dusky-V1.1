@@ -25,4 +25,3 @@ export const ACTIVE_FOUNDATION_CONTRACTS = {
   captain: ContractReferenceSchema.parse({ contractId: 'FOUND-APP-CAP-001', version: '1.0.0' }),
   admin: ContractReferenceSchema.parse({ contractId: 'FOUND-APP-ADM-001', version: '1.0.0' }),
 } as const;
-

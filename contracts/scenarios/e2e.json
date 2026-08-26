@@ -1,0 +1,846 @@
+{
+  "schemaVersion": "1.0.0",
+  "application": "E2E",
+  "scenarios": [
+    {
+      "scenarioId": "SCN-E2E-INV-001",
+      "contractIds": ["E2E-INV-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for merchant inventory to customer availability.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts merchant inventory to customer availability with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for merchant inventory to customer availability is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/e2e-inv-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Merchant inventory to Customer availability request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning E2E role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For merchant inventory to customer availability, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate merchant inventory to customer availability decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for merchant inventory to customer availability."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload merchant inventory to customer availability against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-INV-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for merchant inventory to customer availability."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-E2E-ORDER-001",
+      "contractIds": ["E2E-ORDER-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for customer order to merchant to captain to delivered history.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts customer order to merchant to captain to delivered history with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for customer order to merchant to captain to delivered history is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/e2e-order-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Customer order to Merchant to Captain to delivered history request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning E2E role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For customer order to merchant to captain to delivered history, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate customer order to merchant to captain to delivered history decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for customer order to merchant to captain to delivered history."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload customer order to merchant to captain to delivered history against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-ORDER-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for customer order to merchant to captain to delivered history."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-E2E-APT-001",
+      "contractIds": ["E2E-APT-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for customer appointment through merchant processing.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts customer appointment through merchant processing with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for customer appointment through merchant processing is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/e2e-apt-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Customer appointment through Merchant processing request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning E2E role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For customer appointment through merchant processing, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate customer appointment through merchant processing decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for customer appointment through merchant processing."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload customer appointment through merchant processing against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-APT-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for customer appointment through merchant processing."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-E2E-POS-001",
+      "contractIds": ["E2E-POS-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for merchant pos to inventory and loyalty.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts merchant pos to inventory and loyalty with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for merchant pos to inventory and loyalty is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/e2e-pos-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Merchant POS to inventory and loyalty request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning E2E role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For merchant pos to inventory and loyalty, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate merchant pos to inventory and loyalty decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for merchant pos to inventory and loyalty."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload merchant pos to inventory and loyalty against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-POS-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for merchant pos to inventory and loyalty."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-E2E-MOD-001",
+      "contractIds": ["E2E-MOD-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for admin moderation visibility propagation.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts admin moderation visibility propagation with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for admin moderation visibility propagation is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/e2e-mod-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Admin moderation visibility propagation request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning E2E role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For admin moderation visibility propagation, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate admin moderation visibility propagation decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for admin moderation visibility propagation."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload admin moderation visibility propagation against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-MOD-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for admin moderation visibility propagation."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-E2E-OFF-001",
+      "contractIds": ["E2E-OFF-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for offline replay and idempotent reconciliation.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts offline replay and idempotent reconciliation with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for offline replay and idempotent reconciliation is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/e2e-off-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Offline replay and idempotent reconciliation request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning E2E role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For offline replay and idempotent reconciliation, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate offline replay and idempotent reconciliation decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for offline replay and idempotent reconciliation."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload offline replay and idempotent reconciliation against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-OFF-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for offline replay and idempotent reconciliation."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-E2E-IDEMP-001",
+      "contractIds": ["E2E-IDEMP-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for duplicate command produces one business result.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts duplicate command produces one business result with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for duplicate command produces one business result is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/e2e-idemp-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Duplicate command produces one business result request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning E2E role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For duplicate command produces one business result, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate duplicate command produces one business result decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for duplicate command produces one business result."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload duplicate command produces one business result against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-IDEMP-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for duplicate command produces one business result."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-E2E-AUTH-001",
+      "contractIds": ["E2E-AUTH-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for cross-role and cross-tenant rejection.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts cross-role and cross-tenant rejection with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for cross-role and cross-tenant rejection is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/e2e-auth-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Cross-role and cross-tenant rejection request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning E2E role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For cross-role and cross-tenant rejection, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate cross-role and cross-tenant rejection decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for cross-role and cross-tenant rejection."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload cross-role and cross-tenant rejection against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-AUTH-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for cross-role and cross-tenant rejection."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-E2E-PAY-001",
+      "contractIds": ["E2E-PAY-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for payment webhook authority to customer history.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts payment webhook authority to customer history with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for payment webhook authority to customer history is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/e2e-pay-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Payment webhook authority to Customer history request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning E2E role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For payment webhook authority to customer history, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate payment webhook authority to customer history decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for payment webhook authority to customer history."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload payment webhook authority to customer history against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-PAY-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for payment webhook authority to customer history."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    },
+    {
+      "scenarioId": "SCN-E2E-NOT-001",
+      "contractIds": ["E2E-NOT-001"],
+      "priority": "P0-launch",
+      "given": [
+        "Authenticated role and required fixture state exist for notification deep link to authoritative state.",
+        "The request carries a trace ID and idempotency key when state-changing."
+      ],
+      "when": [
+        "The authorized actor attempts notification deep link to authoritative state with a versioned request.",
+        "The same operation is exercised once normally and once under retry or conflict."
+      ],
+      "then": [
+        "The authoritative result for notification deep link to authoritative state is persisted exactly once.",
+        "Invalid or stale input returns the standard error envelope without partial mutation.",
+        "No unauthorized, duplicate, or partial business result is visible."
+      ],
+      "requiredFixtures": [
+        "deterministic clock",
+        "deterministic UUID sequence",
+        "role and tenant identities",
+        "minimal authoritative database state"
+      ],
+      "apiRequest": {
+        "method": "POST",
+        "path": "/v1/contracts/e2e-not-001",
+        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
+        "body": "Notification deep link to authoritative state request DTO with explicit version"
+      },
+      "apiResponse": {
+        "success": "Versioned authoritative resource/result DTO",
+        "failure": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["Owning E2E role with same tenant/outlet"],
+        "denied": [
+          "anonymous unless explicitly public",
+          "different role",
+          "different tenant/outlet",
+          "revoked session"
+        ]
+      },
+      "databaseInvariant": "For notification deep link to authoritative state, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
+      "duplicateRetryExpectation": [
+        "The same actor, operation, and idempotency key produce one business result.",
+        "A reused key with a different payload is rejected."
+      ],
+      "concurrencyExpectation": [
+        "Concurrent conflicting commands have one deterministic winner.",
+        "Losers receive the current authoritative version."
+      ],
+      "offlineReconnectExpectation": [
+        "Clients may queue only explicitly retryable commands.",
+        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      ],
+      "accessibilityExpectation": [
+        "Expose semantic names, roles, state, focus order, and non-color status cues.",
+        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      ],
+      "requiredUnitTests": [
+        "Validate notification deep link to authoritative state decisions, boundaries, and stable error codes."
+      ],
+      "requiredComponentTests": [
+        "Render success, loading, empty, denied, stale, offline, and retry states for notification deep link to authoritative state."
+      ],
+      "requiredIntegrationTests": [
+        "Persist and reload notification deep link to authoritative state against PostgreSQL with tenant isolation."
+      ],
+      "requiredContractTests": [
+        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-NOT-001."
+      ],
+      "requiredE2ETests": [
+        "Exercise the owning-role journey and authoritative cross-app visibility for notification deep link to authoritative state."
+      ],
+      "evidenceRequiredToActivate": [
+        "production implementation paths",
+        "executable test paths",
+        "focused validation output",
+        "full CI result at exact SHA",
+        "coverage and migration evidence",
+        "no unresolved launch-critical decision"
+      ]
+    }
+  ]
+}

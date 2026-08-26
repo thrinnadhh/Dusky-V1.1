@@ -3,13 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@8.15.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test",
+    "test": "node --test scripts/*.test.mjs && pnpm -r --if-present test",
     "test:coverage": "pnpm -r --if-present test:coverage",
     "build": "pnpm -r --if-present build && ./gradlew :backend:build",
     "validate:repository": "node scripts/validate-repository.mjs",
@@ -17,6 +19,7 @@
     "validate:contracts": "node scripts/validate-contracts.mjs",
     "validate:scenarios": "node scripts/validate-scenarios.mjs",
     "validate:test-integrity": "node scripts/validate-test-integrity.mjs",
+    "validate:adversarial": "node scripts/run-adversarial-gates.mjs",
     "validate:all": "bash scripts/validate-all.sh"
   },
   "devDependencies": {
@@ -31,4 +34,3 @@
     "vitest": "3.2.4"
   }
 }
-

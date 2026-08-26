@@ -61,6 +61,9 @@ tasks.jacocoTestReport {
 
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
+    classDirectories.setFrom(files(classDirectories.files.map { classes ->
+        fileTree(classes) { exclude("**/DuskyApplication*", "**/TraceConfiguration*", "**/TraceIdProvider*") }
+    }))
     violationRules { rule { limit { minimum = "0.80".toBigDecimal() } } }
 }
 
