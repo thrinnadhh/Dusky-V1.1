@@ -7,9 +7,9 @@ dist/
 backend/build/
 .gradle/
 reports/
+.reference/
 *.log
 .DS_Store
 .env
 .env.*
 !.env.example
-

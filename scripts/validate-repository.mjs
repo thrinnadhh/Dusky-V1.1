@@ -44,9 +44,21 @@ export function validateRepository(root = DEFAULT_ROOT) {
   );
   if (competingLockfiles.length)
     throw new Error(`Competing root lockfiles: ${competingLockfiles.join(', ')}`);
-  const setupNodeJobCount = validateSetupNodeCaching(
-    readFileSync(join(root, '.github/workflows/p0-foundation.yml'), 'utf8'),
-  );
+  const workflow = readFileSync(join(root, '.github/workflows/p0-foundation.yml'), 'utf8');
+  const setupNodeJobCount = validateSetupNodeCaching(workflow);
+  if (
+    !/fetch-depth:\s*0/.test(workflow) ||
+    !/validate:contracts --base-sha "\$\{\{ github\.event\.pull_request\.base\.sha \}\}"/.test(
+      workflow,
+    )
+  )
+    throw new Error('Pull-request contract validation must load the actual fetched base SHA.');
+  if (
+    !/repository:\s*thrinnadhh\/Mypetnew/.test(workflow) ||
+    !/ref:\s*817c6487cdbf18fc282dc0a44538d83e7bc5ef8b/.test(workflow) ||
+    !/MYPETNEW_PATH=\.reference\/mypetnew pnpm validate:legacy/.test(workflow)
+  )
+    throw new Error('Legacy CI must verify a clean MyPetNew checkout at the pinned SHA.');
   for (const module of ['customer-app', 'merchant-app', 'captain-app', 'admin-web']) {
     const pkg = JSON.parse(readFileSync(join(root, 'apps', module, 'package.json'), 'utf8'));
     for (const command of ['format:check', 'lint', 'typecheck', 'test', 'config:validate', 'build'])

@@ -3,9 +3,9 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { validateRegistryData } from './validate-contracts.mjs';
+
+import { validateActiveContractProtection, validateRegistryData } from './validate-contracts.mjs';
 import { validateRepository } from './validate-repository.mjs';
-import { validateTestIntegrity } from './validate-test-integrity.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 const json = (path) => JSON.parse(readFileSync(join(root, path), 'utf8'));
@@ -16,7 +16,7 @@ const input = () => ({
   root,
   registry: structuredClone(json('contracts/registry/contracts.json')),
   schema: json('contracts/registry/contract.schema.json'),
-  activeBaseline: json('contracts/registry/active-baseline.json'),
+  activeBaseline: structuredClone(json('contracts/registry/active-baseline.json')),
   exceptions: json('contracts/registry/breaking-change-exceptions.json'),
   scenarioCatalogs: structuredClone(catalogs),
 });
@@ -53,36 +53,71 @@ const downgrade = input();
 downgrade.registry.contracts.find(({ contractId }) => contractId === 'FOUND-APP-CUS-001').status =
   'planned';
 expectGate(
-  'active-to-planned downgrade',
+  'editable baseline active-to-planned downgrade',
   () => validateRegistryData(downgrade),
   /Active-to-planned downgrade/,
 );
 
-const provenance = input();
-provenance.registry.contracts.find(
+const missingExactProvenance = input();
+missingExactProvenance.registry.contracts.find(
   ({ status }) => status === 'planned',
-).legacyProvenance[0].sourcePath = 'missing/evidence.json';
+).provenance.legacyTestIds = ['LEG-FFFFFFFFFFFF'];
 expectGate(
-  'broken legacy provenance',
-  () => validateRegistryData(provenance),
-  /Broken provenance path/,
+  'missing exact legacy provenance ID',
+  () => validateRegistryData(missingExactProvenance),
+  /missing legacy test ID/,
 );
 
-const integrityRoot = mkdtempSync(join(tmpdir(), 'dusky-adversarial-integrity-'));
-for (const app of ['customer-app', 'merchant-app', 'captain-app', 'admin-web']) {
-  mkdirSync(join(integrityRoot, 'apps', app), { recursive: true });
-  writeFileSync(
-    join(integrityRoot, 'apps', app, 'package.json'),
-    JSON.stringify({ scripts: { test: 'test' } }),
-  );
-}
-mkdirSync(join(integrityRoot, 'backend/src/test'), { recursive: true });
-mkdirSync(join(integrityRoot, 'src'), { recursive: true });
-writeFileSync(
-  join(integrityRoot, 'src/disabled.test.ts'),
-  `${['test', 'skip'].join('.')}('disabled', () => {});`,
+const baseAwareWeakening = input();
+const protectedContract = baseAwareWeakening.registry.contracts.find(
+  ({ contractId }) => contractId === 'FOUND-CI-001',
 );
-expectGate('skipped/focused test', () => validateTestIntegrity(integrityRoot), /skipped test/);
+const baseRegistry = { contracts: [structuredClone(protectedContract)] };
+baseAwareWeakening.registry.contracts.find(
+  ({ contractId }) => contractId === 'FOUND-CI-001',
+).errorBehavior = ['A failed quality gate may be ignored.'];
+baseAwareWeakening.activeBaseline.activeContractIds =
+  baseAwareWeakening.activeBaseline.activeContractIds.filter(
+    (contractId) => contractId !== 'FOUND-CI-001',
+  );
+baseAwareWeakening.baseRegistry = baseRegistry;
+expectGate(
+  'base-active weakening hidden by edited baseline',
+  () => validateRegistryData(baseAwareWeakening),
+  /silent weakening|semantic change/i,
+);
+
+const weakened = { contracts: [structuredClone(protectedContract)] };
+weakened.contracts[0].errorBehavior = ['Failures may be ignored.'];
+expectGate(
+  'base-active semantic weakening',
+  () =>
+    validateActiveContractProtection({
+      baseRegistry,
+      currentRegistry: weakened,
+      exceptions: { exceptions: [] },
+    }),
+  /silent weakening|semantic change/i,
+);
+
+const adversarialSuites = [
+  'scripts/contract-catalog-quality.test.mjs',
+  'scripts/validate-semantic-contracts.test.mjs',
+  'scripts/legacy-mapping.test.mjs',
+  'scripts/validate-provenance.test.mjs',
+  'scripts/validate-test-integrity.test.mjs',
+];
+const adversarial = spawnSync(process.execPath, ['--test', ...adversarialSuites], {
+  cwd: root,
+  encoding: 'utf8',
+});
+if (adversarial.status !== 0)
+  throw new Error(
+    `Adversarial regression suite failed:\n${adversarial.stdout}\n${adversarial.stderr}`,
+  );
+console.log(
+  'PASS: semantic, mapping, reciprocal provenance, focused/disabled/todo, JUnit, empty-suite, placeholder, and suppressed-exit adversarial fixtures passed.',
+);
 
 const repositoryRoot = mkdtempSync(join(tmpdir(), 'dusky-adversarial-repository-'));
 for (const path of [

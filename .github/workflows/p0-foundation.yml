@@ -31,20 +31,31 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: thrinnadhh/Mypetnew
+          ref: 817c6487cdbf18fc282dc0a44538d83e7bc5ef8b
+          path: .reference/mypetnew
+          persist-credentials: false
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with: { node-version: '22', package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
-      - run: pnpm validate:legacy
+      - run: MYPETNEW_PATH=.reference/mypetnew pnpm validate:legacy
 
   contract-registry:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with: { fetch-depth: 0 }
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with: { node-version: '22', package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
-      - run: pnpm validate:contracts && pnpm validate:scenarios
+      - if: github.event_name == 'pull_request'
+        run: pnpm validate:contracts --base-sha "${{ github.event.pull_request.base.sha }}"
+      - if: github.event_name != 'pull_request'
+        run: pnpm validate:contracts
+      - run: pnpm validate:scenarios
       - run: node --test scripts/*.test.mjs
       - run: pnpm --filter @dusky/contracts test:coverage && pnpm --filter @dusky/test-kit test:coverage
 
