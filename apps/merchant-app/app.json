@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Dusky Merchant",
+    "slug": "dusky-merchant",
+    "scheme": "dusky-merchant",
+    "version": "0.0.1",
+    "platforms": ["android", "ios", "web"],
+    "android": { "package": "in.dusky.merchant" },
+    "ios": { "bundleIdentifier": "in.dusky.merchant" }
+  }
+}
+

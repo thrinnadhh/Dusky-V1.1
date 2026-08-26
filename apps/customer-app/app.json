@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Dusky Customer",
+    "slug": "dusky-customer",
+    "scheme": "dusky-customer",
+    "version": "0.0.1",
+    "platforms": ["android", "ios", "web"],
+    "android": { "package": "in.dusky.customer" },
+    "ios": { "bundleIdentifier": "in.dusky.customer" }
+  }
+}
+
