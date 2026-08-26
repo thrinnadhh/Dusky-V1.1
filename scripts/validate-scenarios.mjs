@@ -4,13 +4,102 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const DEFAULT_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
+
+const textOf = (value) => JSON.stringify(value ?? '').toLowerCase();
+const hasAuthenticatedPrecondition = (scenario) =>
+  /authenticated (?:customer|actor|role|session).*(?:exists|required|signed in)|requires? an authenticated/i.test(
+    (scenario.given ?? []).join(' ').replaceAll(/\bunauthenticated\b/gi, 'guest'),
+  );
+
+export function validateSemanticCatalog({ contracts, scenarios }) {
+  const contractsById = new Map(contracts.map((contract) => [contract.contractId, contract]));
+  const fingerprints = new Map();
+  for (const scenario of scenarios) {
+    const contract = contractsById.get(scenario.contractIds?.[0]);
+    if (!contract)
+      throw new Error(`${scenario.scenarioId} has no contract available for semantic validation.`);
+    const label = `${contract.contractId} ${contract.title}`;
+    if (/guest browsing/i.test(label) && hasAuthenticatedPrecondition(scenario))
+      throw new Error(`Guest browsing has an authenticated precondition: ${scenario.scenarioId}`);
+    if (
+      /(?:mobile authentication|otp)/i.test(label) &&
+      /otp\/requests/i.test(scenario.apiRequest?.path ?? '') &&
+      hasAuthenticatedPrecondition(scenario)
+    )
+      throw new Error(`OTP initiation has an authenticated precondition: ${scenario.scenarioId}`);
+    if (/\/v1\/contracts\//i.test(scenario.apiRequest?.path ?? ''))
+      throw new Error(`Placeholder endpoint in ${scenario.scenarioId}`);
+    if (/owning .*e2e role|\be2e (?:actor|role|user)\b/i.test(textOf(scenario.actors)))
+      throw new Error(`Artificial actor in ${scenario.scenarioId}`);
+    if (
+      scenario.apiRequest?.method === 'GET' &&
+      /persist(?:ed|s)? exactly once|insert(?:ed)?|updated? row|business mutation/i.test(
+        scenario.databaseInvariant ?? '',
+      )
+    )
+      throw new Error(`Read-only GET uses persistence semantics in ${scenario.scenarioId}`);
+    for (const [name, requirement] of Object.entries(scenario.applicability ?? {})) {
+      if (!['applicable', 'not-applicable', 'blocked'].includes(requirement?.status))
+        throw new Error(`${scenario.scenarioId} has unexplained ${name} applicability.`);
+      if (
+        typeof requirement.reason !== 'string' ||
+        requirement.reason.length < 20 ||
+        /applies? where applicable|as applicable|if applicable|generic requirement/i.test(
+          requirement.reason,
+        )
+      )
+        throw new Error(`Generic applicability for ${name} in ${scenario.scenarioId}`);
+    }
+    if (scenario.priority === 'P0-launch') {
+      const actors = scenario.actors ?? {};
+      if (
+        !actors.initiators?.length ||
+        !actors.allowed?.length ||
+        !actors.denied?.length ||
+        !scenario.stateTransitions?.length ||
+        !scenario.errorCodes?.length ||
+        !scenario.featureBehavior?.length
+      )
+        throw new Error(
+          `Launch scenario lacks real actors, state, errors, or feature behavior: ${scenario.scenarioId}`,
+        );
+      if (!scenario.evidenceRequiredToActivate?.length)
+        throw new Error(`Launch scenario lacks activation evidence: ${scenario.scenarioId}`);
+    }
+    const fingerprint = JSON.stringify({
+      actors: scenario.actors,
+      given: scenario.given,
+      when: scenario.when,
+      then: scenario.then,
+      stateTransitions: scenario.stateTransitions,
+      apiRequest: scenario.apiRequest,
+      apiResponse: scenario.apiResponse,
+      errorCodes: scenario.errorCodes,
+      databaseInvariant: scenario.databaseInvariant,
+      applicability: scenario.applicability,
+      featureBehavior: scenario.featureBehavior,
+    });
+    const previous = fingerprints.get(fingerprint);
+    if (previous && previous.domain !== contract.domain)
+      throw new Error(
+        `Duplicated semantic boilerplate across unrelated contracts: ${previous.id} and ${scenario.scenarioId}`,
+      );
+    fingerprints.set(fingerprint, { id: scenario.scenarioId, domain: contract.domain });
+  }
+  return { semanticScenarioCount: scenarios.length };
+}
+
 export function validateScenarios(root = DEFAULT_ROOT) {
   const directory = join(root, 'contracts/scenarios');
   const schema = JSON.parse(readFileSync(join(directory, 'scenario.schema.json'), 'utf8'));
+  const registry = JSON.parse(
+    readFileSync(join(root, 'contracts/registry/contracts.json'), 'utf8'),
+  );
   const ajv = new Ajv2020({ allErrors: true, strict: true });
   const validate = ajv.compile(schema);
   let count = 0;
   const ids = new Set();
+  const scenarios = [];
   for (const name of readdirSync(directory).filter(
     (value) => value.endsWith('.json') && value !== 'scenario.schema.json',
   )) {
@@ -26,10 +115,12 @@ export function validateScenarios(root = DEFAULT_ROOT) {
         (scenario.given.length < 2 || scenario.when.length < 2 || scenario.then.length < 3)
       )
         throw new Error(`Launch scenario is not detailed: ${scenario.scenarioId}`);
+      scenarios.push(scenario);
       count += 1;
     }
   }
-  return { scenarioCount: count };
+  const semantic = validateSemanticCatalog({ contracts: registry.contracts, scenarios });
+  return { scenarioCount: count, semanticScenarioCount: semantic.semanticScenarioCount };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

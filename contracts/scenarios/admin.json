@@ -1,1265 +1,2105 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "application": "Admin",
   "scenarios": [
     {
       "scenarioId": "SCN-ADM-AUTH-001",
       "contractIds": ["ADM-AUTH-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for admin authentication.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts admin authentication with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for admin authentication is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-auth-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Admin authentication request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["admin operator with MFA"],
+        "allowed": ["admin operator with MFA"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended admin operator with MFA",
+          "actor outside admin identity",
+          "actor presenting a resource outside admin identity"
         ]
       },
-      "databaseInvariant": "For admin authentication, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "admin operator with MFA has a current server-verified identity authorized for admin identity.",
+        "no admin session is the authoritative starting state for privileged admin session."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "admin operator with MFA invokes create admin session with identityToken, mfaCode.",
+        "The producer authorizes authorize admin identity on the server before reading or changing privileged admin session. and evaluates ADMIN_MFA_REQUIRED, ADMIN_ACCOUNT_DISABLED, ADMIN_IDENTITY_INVALID."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Create a short-lived admin session only after identity, MFA, and account status verification.",
+        "ADMIN_MFA_REQUIRED returns the standard error envelope and leaves privileged admin session at its last committed version.",
+        "The observed state is admin session active; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "no admin session",
+          "to": "admin session active",
+          "trigger": "POST /api/v1/admin/auth/sessions completes create admin session"
+        }
+      ],
+      "requiredFixtures": [
+        "no admin session fixture for Admin authentication",
+        "admin operator with MFA and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "create admin session",
+        "method": "POST",
+        "path": "/api/v1/admin/auth/sessions",
+        "fields": ["identityToken", "mfaCode"]
+      },
+      "apiResponse": {
+        "fields": ["accessToken", "admin", "permissions", "expiresAt"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["ADMIN_MFA_REQUIRED", "ADMIN_ACCOUNT_DISABLED", "ADMIN_IDENTITY_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["admin operator with MFA"],
+        "denied": [
+          "revoked or suspended admin operator with MFA",
+          "actor outside admin identity",
+          "actor presenting a resource outside admin identity"
+        ],
+        "ownershipRules": [
+          "Authorize admin identity on the server before reading or changing privileged admin session.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The no admin session to admin session active transition, ownership checks, and audit or outbox record for privileged admin session commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Admin authentication can change privileged admin session, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to admin operator with MFA, the operation, and the canonical request payload.",
+            "Return the original privileged admin session result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Admin authentication has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["session revocation version invalidates stale tokens"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Admin authentication has an explicit connectivity and reconnect rule for privileged admin session.",
+          "behavior": ["admin authentication requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Admin authentication changes state or exercises privileged authority over privileged admin session.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for privileged admin session."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Admin authentication has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and privileged admin session status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Admin authentication does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-AUTH-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of privileged admin session."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Create a short-lived admin session only after identity, MFA, and account status verification.",
+        "Scope every privileged admin session read or write to admin identity.",
+        "Admin authentication exposes only accessToken, admin, permissions, expiresAt after create admin session."
       ],
       "requiredUnitTests": [
-        "Validate admin authentication decisions, boundaries, and stable error codes."
+        "Exercise Admin authentication boundaries, ADMIN_MFA_REQUIRED, ADMIN_ACCOUNT_DISABLED, ADMIN_IDENTITY_INVALID, and the no admin session to admin session active decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for admin authentication."
+        "Render Admin authentication loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload admin authentication against PostgreSQL with tenant isolation."
+        "Verify privileged admin session ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-AUTH-001."
+        "Validate create admin session fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for admin authentication."
+        "Drive admin operator with MFA through Admin authentication and verify the resulting privileged admin session projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing create admin session.",
+        "Executable tests for ADM-AUTH-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ADMIN_MFA_REQUIRED, ADMIN_ACCOUNT_DISABLED, ADMIN_IDENTITY_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-ADM-RBAC-001",
       "contractIds": ["ADM-RBAC-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for rbac and route protection.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts rbac and route protection with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for rbac and route protection is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-rbac-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "RBAC and route protection request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["authenticated admin operator"],
+        "allowed": ["authenticated admin operator"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended authenticated admin operator",
+          "actor outside admin permission and resource scope",
+          "actor presenting a resource outside admin permission and resource scope"
         ]
       },
-      "databaseInvariant": "For rbac and route protection, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "authenticated admin operator has a current server-verified identity authorized for admin permission and resource scope.",
+        "request unauthorized is the authoritative starting state for admin permission decision."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "authenticated admin operator invokes AdminAuthorizationPolicy.authorize with adminId, permission, resourceScope.",
+        "The producer authorizes authorize admin permission and resource scope on the server before reading or changing admin permission decision. and evaluates ADMIN_PERMISSION_DENIED, ADMIN_SCOPE_DENIED."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Deny every route/action lacking an exact permission and resource scope.",
+        "ADMIN_PERMISSION_DENIED returns the standard error envelope and leaves admin permission decision at its last committed version.",
+        "The observed state is request allowed or denied; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "request unauthorized",
+          "to": "request allowed or denied",
+          "trigger": "AdminAuthorizationPolicy.authorize completes AdminAuthorizationPolicy.authorize"
+        }
+      ],
+      "requiredFixtures": [
+        "request unauthorized fixture for RBAC and route protection",
+        "authenticated admin operator and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "AdminAuthorizationPolicy.authorize",
+        "interface": "AdminAuthorizationPolicy.authorize",
+        "fields": ["adminId", "permission", "resourceScope"]
+      },
+      "apiResponse": {
+        "fields": ["allowed", "reasonCode"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["ADMIN_PERMISSION_DENIED", "ADMIN_SCOPE_DENIED"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated admin operator"],
+        "denied": [
+          "revoked or suspended authenticated admin operator",
+          "actor outside admin permission and resource scope",
+          "actor presenting a resource outside admin permission and resource scope"
+        ],
+        "ownershipRules": [
+          "Authorize admin permission and resource scope on the server before reading or changing admin permission decision.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "AdminAuthorizationPolicy.authorize does not mutate admin permission decision; it reads admin permission and resource scope from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "RBAC and route protection observes admin permission decision without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "RBAC and route protection must not combine incompatible versions of admin permission decision in one response.",
+          "behavior": ["permission version is checked per request"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "RBAC and route protection has an explicit connectivity and reconnect rule for admin permission decision.",
+          "behavior": ["admin actions cannot execute offline"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "RBAC and route protection changes state or exercises privileged authority over admin permission decision.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for admin permission decision."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "RBAC and route protection has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and admin permission decision status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "RBAC and route protection does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-RBAC-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of admin permission decision."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Deny every route/action lacking an exact permission and resource scope.",
+        "Scope every admin permission decision read to admin permission and resource scope.",
+        "RBAC and route protection exposes only allowed, reasonCode after AdminAuthorizationPolicy.authorize."
       ],
       "requiredUnitTests": [
-        "Validate rbac and route protection decisions, boundaries, and stable error codes."
+        "Exercise RBAC and route protection boundaries, ADMIN_PERMISSION_DENIED, ADMIN_SCOPE_DENIED, and the request unauthorized to request allowed or denied decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for rbac and route protection."
+        "Render RBAC and route protection loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload rbac and route protection against PostgreSQL with tenant isolation."
+        "Verify admin permission decision ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-RBAC-001."
+        "Validate AdminAuthorizationPolicy.authorize fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for rbac and route protection."
+        "Drive authenticated admin operator through RBAC and route protection and verify the resulting admin permission decision projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing AdminAuthorizationPolicy.authorize.",
+        "Executable tests for ADM-RBAC-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ADMIN_PERMISSION_DENIED, ADMIN_SCOPE_DENIED, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-ADM-MER-001",
       "contractIds": ["ADM-MER-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for merchant and outlet management.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts merchant and outlet management with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for merchant and outlet management is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-mer-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Merchant and outlet management request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["merchant-operations admin"],
+        "allowed": ["merchant-operations admin"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended merchant-operations admin",
+          "actor outside authorized merchant administration scope",
+          "actor presenting a resource outside authorized merchant administration scope"
         ]
       },
-      "databaseInvariant": "For merchant and outlet management, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "merchant-operations admin has a current server-verified identity authorized for authorized merchant administration scope.",
+        "merchant status current is the authoritative starting state for merchant/outlet administration record."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "merchant-operations admin invokes administer merchant with merchantId, action, reason, expectedVersion.",
+        "The producer authorizes authorize authorized merchant administration scope on the server before reading or changing merchant/outlet administration record. and evaluates MERCHANT_NOT_FOUND, MERCHANT_TRANSITION_INVALID, MERCHANT_VERSION_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Apply an authorized merchant/outlet status change and emit an immutable audit event.",
+        "MERCHANT_NOT_FOUND returns the standard error envelope and leaves merchant/outlet administration record at its last committed version.",
+        "The observed state is merchant status changed; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "merchant status current",
+          "to": "merchant status changed",
+          "trigger": "PATCH /api/v1/admin/merchants/{merchantId} completes administer merchant"
+        }
+      ],
+      "requiredFixtures": [
+        "merchant status current fixture for Merchant and outlet management",
+        "merchant-operations admin and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "administer merchant",
+        "method": "PATCH",
+        "path": "/api/v1/admin/merchants/{merchantId}",
+        "fields": ["merchantId", "action", "reason", "expectedVersion"]
+      },
+      "apiResponse": {
+        "fields": ["merchantId", "status", "version"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["MERCHANT_NOT_FOUND", "MERCHANT_TRANSITION_INVALID", "MERCHANT_VERSION_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["merchant-operations admin"],
+        "denied": [
+          "revoked or suspended merchant-operations admin",
+          "actor outside authorized merchant administration scope",
+          "actor presenting a resource outside authorized merchant administration scope"
+        ],
+        "ownershipRules": [
+          "Authorize authorized merchant administration scope on the server before reading or changing merchant/outlet administration record.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The merchant status current to merchant status changed transition, ownership checks, and audit or outbox record for merchant/outlet administration record commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Merchant and outlet management can change merchant/outlet administration record, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to merchant-operations admin, the operation, and the canonical request payload.",
+            "Return the original merchant/outlet administration record result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Merchant and outlet management has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["expected version prevents lost status updates"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Merchant and outlet management has an explicit connectivity and reconnect rule for merchant/outlet administration record.",
+          "behavior": ["privileged mutation requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Merchant and outlet management changes state or exercises privileged authority over merchant/outlet administration record.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for merchant/outlet administration record."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Merchant and outlet management has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and merchant/outlet administration record status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Merchant and outlet management does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-MER-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of merchant/outlet administration record."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Apply an authorized merchant/outlet status change and emit an immutable audit event.",
+        "Scope every merchant/outlet administration record read or write to authorized merchant administration scope.",
+        "Merchant and outlet management exposes only merchantId, status, version after administer merchant."
       ],
       "requiredUnitTests": [
-        "Validate merchant and outlet management decisions, boundaries, and stable error codes."
+        "Exercise Merchant and outlet management boundaries, MERCHANT_NOT_FOUND, MERCHANT_TRANSITION_INVALID, MERCHANT_VERSION_STALE, and the merchant status current to merchant status changed decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for merchant and outlet management."
+        "Render Merchant and outlet management loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload merchant and outlet management against PostgreSQL with tenant isolation."
+        "Verify merchant/outlet administration record ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-MER-001."
+        "Validate administer merchant fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for merchant and outlet management."
+        "Drive merchant-operations admin through Merchant and outlet management and verify the resulting merchant/outlet administration record projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing administer merchant.",
+        "Executable tests for ADM-MER-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, MERCHANT_NOT_FOUND, MERCHANT_TRANSITION_INVALID, MERCHANT_VERSION_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-ADM-USER-001",
       "contractIds": ["ADM-USER-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for customer and captain management.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts customer and captain management with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for customer and captain management is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-user-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Customer and captain management request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["user-operations admin"],
+        "allowed": ["user-operations admin"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended user-operations admin",
+          "actor outside authorized user administration scope",
+          "actor presenting a resource outside authorized user administration scope"
         ]
       },
-      "databaseInvariant": "For customer and captain management, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "user-operations admin has a current server-verified identity authorized for authorized user administration scope.",
+        "user status current is the authoritative starting state for customer or captain administration record."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "user-operations admin invokes administer user with userId, userType, action, reason, expectedVersion.",
+        "The producer authorizes authorize authorized user administration scope on the server before reading or changing customer or captain administration record. and evaluates USER_NOT_FOUND, USER_ACTION_FORBIDDEN, USER_VERSION_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Apply only permitted user/captain actions without changing server-fixed role identity.",
+        "USER_NOT_FOUND returns the standard error envelope and leaves customer or captain administration record at its last committed version.",
+        "The observed state is user status changed; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "user status current",
+          "to": "user status changed",
+          "trigger": "PATCH /api/v1/admin/users/{userId} completes administer user"
+        }
+      ],
+      "requiredFixtures": [
+        "user status current fixture for Customer and captain management",
+        "user-operations admin and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "administer user",
+        "method": "PATCH",
+        "path": "/api/v1/admin/users/{userId}",
+        "fields": ["userId", "userType", "action", "reason", "expectedVersion"]
+      },
+      "apiResponse": {
+        "fields": ["userId", "status", "version"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["USER_NOT_FOUND", "USER_ACTION_FORBIDDEN", "USER_VERSION_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["user-operations admin"],
+        "denied": [
+          "revoked or suspended user-operations admin",
+          "actor outside authorized user administration scope",
+          "actor presenting a resource outside authorized user administration scope"
+        ],
+        "ownershipRules": [
+          "Authorize authorized user administration scope on the server before reading or changing customer or captain administration record.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The user status current to user status changed transition, ownership checks, and audit or outbox record for customer or captain administration record commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Customer and captain management can change customer or captain administration record, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to user-operations admin, the operation, and the canonical request payload.",
+            "Return the original customer or captain administration record result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Customer and captain management has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["expected version prevents lost updates"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Customer and captain management has an explicit connectivity and reconnect rule for customer or captain administration record.",
+          "behavior": ["privileged mutation requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Customer and captain management changes state or exercises privileged authority over customer or captain administration record.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for customer or captain administration record."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Customer and captain management has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer or captain administration record status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Customer and captain management does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-USER-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer or captain administration record."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Apply only permitted user/captain actions without changing server-fixed role identity.",
+        "Scope every customer or captain administration record read or write to authorized user administration scope.",
+        "Customer and captain management exposes only userId, status, version after administer user."
       ],
       "requiredUnitTests": [
-        "Validate customer and captain management decisions, boundaries, and stable error codes."
+        "Exercise Customer and captain management boundaries, USER_NOT_FOUND, USER_ACTION_FORBIDDEN, USER_VERSION_STALE, and the user status current to user status changed decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for customer and captain management."
+        "Render Customer and captain management loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload customer and captain management against PostgreSQL with tenant isolation."
+        "Verify customer or captain administration record ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-USER-001."
+        "Validate administer user fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for customer and captain management."
+        "Drive user-operations admin through Customer and captain management and verify the resulting customer or captain administration record projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing administer user.",
+        "Executable tests for ADM-USER-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, USER_NOT_FOUND, USER_ACTION_FORBIDDEN, USER_VERSION_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-ADM-CAT-001",
       "contractIds": ["ADM-CAT-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for category and catalog moderation.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts category and catalog moderation with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for category and catalog moderation is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-cat-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Category and catalog moderation request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["catalog moderator"],
+        "allowed": ["catalog moderator"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended catalog moderator",
+          "actor outside catalog moderation scope",
+          "actor presenting a resource outside catalog moderation scope"
         ]
       },
-      "databaseInvariant": "For category and catalog moderation, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "catalog moderator has a current server-verified identity authorized for catalog moderation scope.",
+        "target pending review is the authoritative starting state for global category or listing moderation decision."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "catalog moderator invokes moderate catalog with targetType, targetId, decision, reason.",
+        "The producer authorizes authorize catalog moderation scope on the server before reading or changing global category or listing moderation decision. and evaluates MODERATION_TARGET_NOT_FOUND, MODERATION_DECISION_INVALID."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Record an approve/reject decision with reason and publish only approved content.",
+        "MODERATION_TARGET_NOT_FOUND returns the standard error envelope and leaves global category or listing moderation decision at its last committed version.",
+        "The observed state is target approved or rejected; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "target pending review",
+          "to": "target approved or rejected",
+          "trigger": "POST /api/v1/admin/catalog/moderation-decisions completes moderate catalog"
+        }
+      ],
+      "requiredFixtures": [
+        "target pending review fixture for Category and catalog moderation",
+        "catalog moderator and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "moderate catalog",
+        "method": "POST",
+        "path": "/api/v1/admin/catalog/moderation-decisions",
+        "fields": ["targetType", "targetId", "decision", "reason"]
+      },
+      "apiResponse": {
+        "fields": ["decisionId", "targetStatus", "effectiveAt"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["MODERATION_TARGET_NOT_FOUND", "MODERATION_DECISION_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["catalog moderator"],
+        "denied": [
+          "revoked or suspended catalog moderator",
+          "actor outside catalog moderation scope",
+          "actor presenting a resource outside catalog moderation scope"
+        ],
+        "ownershipRules": [
+          "Authorize catalog moderation scope on the server before reading or changing global category or listing moderation decision.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The target pending review to target approved or rejected transition, ownership checks, and audit or outbox record for global category or listing moderation decision commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Category and catalog moderation can change global category or listing moderation decision, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to catalog moderator, the operation, and the canonical request payload.",
+            "Return the original global category or listing moderation decision result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Category and catalog moderation has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one terminal decision per target version"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Category and catalog moderation has an explicit connectivity and reconnect rule for global category or listing moderation decision.",
+          "behavior": ["moderation requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Category and catalog moderation changes state or exercises privileged authority over global category or listing moderation decision.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for global category or listing moderation decision."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Category and catalog moderation has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and global category or listing moderation decision status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Category and catalog moderation does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-CAT-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of global category or listing moderation decision."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Record an approve/reject decision with reason and publish only approved content.",
+        "Scope every global category or listing moderation decision read or write to catalog moderation scope.",
+        "Category and catalog moderation exposes only decisionId, targetStatus, effectiveAt after moderate catalog."
       ],
       "requiredUnitTests": [
-        "Validate category and catalog moderation decisions, boundaries, and stable error codes."
+        "Exercise Category and catalog moderation boundaries, MODERATION_TARGET_NOT_FOUND, MODERATION_DECISION_INVALID, and the target pending review to target approved or rejected decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for category and catalog moderation."
+        "Render Category and catalog moderation loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload category and catalog moderation against PostgreSQL with tenant isolation."
+        "Verify global category or listing moderation decision ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-CAT-001."
+        "Validate moderate catalog fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for category and catalog moderation."
+        "Drive catalog moderator through Category and catalog moderation and verify the resulting global category or listing moderation decision projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing moderate catalog.",
+        "Executable tests for ADM-CAT-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, MODERATION_TARGET_NOT_FOUND, MODERATION_DECISION_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-ADM-VIS-001",
       "contractIds": ["ADM-VIS-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for product visibility.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts product visibility with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for product visibility is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-vis-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Product visibility request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["catalog moderator"],
+        "allowed": ["catalog moderator"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended catalog moderator",
+          "actor outside catalog moderation scope",
+          "actor presenting a resource outside catalog moderation scope"
         ]
       },
-      "databaseInvariant": "For product visibility, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "catalog moderator has a current server-verified identity authorized for catalog moderation scope.",
+        "visibility current is the authoritative starting state for public listing visibility override."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "catalog moderator invokes change listing visibility with listingId, visible, reason, expectedVersion.",
+        "The producer authorizes authorize catalog moderation scope on the server before reading or changing public listing visibility override. and evaluates LISTING_NOT_FOUND, VISIBILITY_REASON_REQUIRED, LISTING_VERSION_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Change public visibility without editing merchant inventory or price.",
+        "LISTING_NOT_FOUND returns the standard error envelope and leaves public listing visibility override at its last committed version.",
+        "The observed state is visibility updated; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "visibility current",
+          "to": "visibility updated",
+          "trigger": "PATCH /api/v1/admin/listings/{listingId}/visibility completes change listing visibility"
+        }
+      ],
+      "requiredFixtures": [
+        "visibility current fixture for Product visibility",
+        "catalog moderator and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "change listing visibility",
+        "method": "PATCH",
+        "path": "/api/v1/admin/listings/{listingId}/visibility",
+        "fields": ["listingId", "visible", "reason", "expectedVersion"]
+      },
+      "apiResponse": {
+        "fields": ["listingId", "visible", "version"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["LISTING_NOT_FOUND", "VISIBILITY_REASON_REQUIRED", "LISTING_VERSION_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["catalog moderator"],
+        "denied": [
+          "revoked or suspended catalog moderator",
+          "actor outside catalog moderation scope",
+          "actor presenting a resource outside catalog moderation scope"
+        ],
+        "ownershipRules": [
+          "Authorize catalog moderation scope on the server before reading or changing public listing visibility override.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The visibility current to visibility updated transition, ownership checks, and audit or outbox record for public listing visibility override commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Product visibility can change public listing visibility override, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to catalog moderator, the operation, and the canonical request payload.",
+            "Return the original public listing visibility override result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Product visibility has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["listing version prevents stale override"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Product visibility has an explicit connectivity and reconnect rule for public listing visibility override.",
+          "behavior": ["visibility change requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Product visibility changes state or exercises privileged authority over public listing visibility override.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for public listing visibility override."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Product visibility has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and public listing visibility override status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Product visibility does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-VIS-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of public listing visibility override."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Change public visibility without editing merchant inventory or price.",
+        "Scope every public listing visibility override read or write to catalog moderation scope.",
+        "Product visibility exposes only listingId, visible, version after change listing visibility."
       ],
       "requiredUnitTests": [
-        "Validate product visibility decisions, boundaries, and stable error codes."
+        "Exercise Product visibility boundaries, LISTING_NOT_FOUND, VISIBILITY_REASON_REQUIRED, LISTING_VERSION_STALE, and the visibility current to visibility updated decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for product visibility."
+        "Render Product visibility loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload product visibility against PostgreSQL with tenant isolation."
+        "Verify public listing visibility override ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-VIS-001."
+        "Validate change listing visibility fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for product visibility."
+        "Drive catalog moderator through Product visibility and verify the resulting public listing visibility override projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing change listing visibility.",
+        "Executable tests for ADM-VIS-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, LISTING_NOT_FOUND, VISIBILITY_REASON_REQUIRED, LISTING_VERSION_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-ADM-ORD-001",
       "contractIds": ["ADM-ORD-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for admin order operations.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts admin order operations with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for admin order operations is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-ord-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Admin order operations request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["order-support admin"],
+        "allowed": ["order-support admin"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended order-support admin",
+          "actor outside authorized order support scope",
+          "actor presenting a resource outside authorized order support scope"
         ]
       },
-      "databaseInvariant": "For admin order operations, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "order-support admin has a current server-verified identity authorized for authorized order support scope.",
+        "order in supportable state is the authoritative starting state for admin order support action."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "order-support admin invokes perform admin order action with orderId, action, reason, expectedStatus.",
+        "The producer authorizes authorize authorized order support scope on the server before reading or changing admin order support action. and evaluates ADMIN_ORDER_ACTION_FORBIDDEN, ORDER_TRANSITION_INVALID, ORDER_VERSION_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Perform only allow-listed support actions and retain the domain state machine as authority.",
+        "ADMIN_ORDER_ACTION_FORBIDDEN returns the standard error envelope and leaves admin order support action at its last committed version.",
+        "The observed state is order action applied; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "order in supportable state",
+          "to": "order action applied",
+          "trigger": "POST /api/v1/admin/orders/{orderId}/actions completes perform admin order action"
+        }
+      ],
+      "requiredFixtures": [
+        "order in supportable state fixture for Admin order operations",
+        "order-support admin and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "perform admin order action",
+        "method": "POST",
+        "path": "/api/v1/admin/orders/{orderId}/actions",
+        "fields": ["orderId", "action", "reason", "expectedStatus"]
+      },
+      "apiResponse": {
+        "fields": ["orderId", "status", "auditEventId"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "ADMIN_ORDER_ACTION_FORBIDDEN",
+        "ORDER_TRANSITION_INVALID",
+        "ORDER_VERSION_STALE"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["order-support admin"],
+        "denied": [
+          "revoked or suspended order-support admin",
+          "actor outside authorized order support scope",
+          "actor presenting a resource outside authorized order support scope"
+        ],
+        "ownershipRules": [
+          "Authorize authorized order support scope on the server before reading or changing admin order support action.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The order in supportable state to order action applied transition, ownership checks, and audit or outbox record for admin order support action commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Admin order operations can change admin order support action, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to order-support admin, the operation, and the canonical request payload.",
+            "Return the original admin order support action result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Admin order operations has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["expected status serializes admin and operational actions"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Admin order operations has an explicit connectivity and reconnect rule for admin order support action.",
+          "behavior": ["admin action requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Admin order operations changes state or exercises privileged authority over admin order support action.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for admin order support action."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Admin order operations has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and admin order support action status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Admin order operations contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-008."
+          ],
+          "decisionRefs": ["BD-008"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-ORD-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of admin order support action."
+      ],
+      "businessDecisionRefs": ["BD-008"],
+      "featureBehavior": [
+        "Perform only allow-listed support actions and retain the domain state machine as authority.",
+        "Scope every admin order support action read or write to authorized order support scope.",
+        "Admin order operations exposes only orderId, status, auditEventId after perform admin order action."
       ],
       "requiredUnitTests": [
-        "Validate admin order operations decisions, boundaries, and stable error codes."
+        "Exercise Admin order operations boundaries, ADMIN_ORDER_ACTION_FORBIDDEN, ORDER_TRANSITION_INVALID, ORDER_VERSION_STALE, and the order in supportable state to order action applied decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for admin order operations."
+        "Render Admin order operations loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload admin order operations against PostgreSQL with tenant isolation."
+        "Verify admin order support action ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-ORD-001."
+        "Validate perform admin order action fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for admin order operations."
+        "Drive order-support admin through Admin order operations and verify the resulting admin order support action projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing perform admin order action.",
+        "Executable tests for ADM-ORD-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ADMIN_ORDER_ACTION_FORBIDDEN, ORDER_TRANSITION_INVALID, ORDER_VERSION_STALE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-008 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-ADM-APT-001",
       "contractIds": ["ADM-APT-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for admin appointment operations.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts admin appointment operations with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for admin appointment operations is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-apt-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Admin appointment operations request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["appointment-support admin"],
+        "allowed": ["appointment-support admin"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended appointment-support admin",
+          "actor outside authorized appointment support scope",
+          "actor presenting a resource outside authorized appointment support scope"
         ]
       },
-      "databaseInvariant": "For admin appointment operations, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "appointment-support admin has a current server-verified identity authorized for authorized appointment support scope.",
+        "appointment in supportable state is the authoritative starting state for admin appointment support action."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "appointment-support admin invokes perform admin appointment action with appointmentId, action, reason, expectedStatus.",
+        "The producer authorizes authorize authorized appointment support scope on the server before reading or changing admin appointment support action. and evaluates ADMIN_APPOINTMENT_ACTION_FORBIDDEN, APPOINTMENT_TRANSITION_INVALID."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Perform only allow-listed appointment support actions with audited lifecycle consequences.",
+        "ADMIN_APPOINTMENT_ACTION_FORBIDDEN returns the standard error envelope and leaves admin appointment support action at its last committed version.",
+        "The observed state is appointment action applied; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "appointment in supportable state",
+          "to": "appointment action applied",
+          "trigger": "POST /api/v1/admin/appointments/{appointmentId}/actions completes perform admin appointment action"
+        }
+      ],
+      "requiredFixtures": [
+        "appointment in supportable state fixture for Admin appointment operations",
+        "appointment-support admin and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "perform admin appointment action",
+        "method": "POST",
+        "path": "/api/v1/admin/appointments/{appointmentId}/actions",
+        "fields": ["appointmentId", "action", "reason", "expectedStatus"]
+      },
+      "apiResponse": {
+        "fields": ["appointmentId", "status", "auditEventId"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["ADMIN_APPOINTMENT_ACTION_FORBIDDEN", "APPOINTMENT_TRANSITION_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["appointment-support admin"],
+        "denied": [
+          "revoked or suspended appointment-support admin",
+          "actor outside authorized appointment support scope",
+          "actor presenting a resource outside authorized appointment support scope"
+        ],
+        "ownershipRules": [
+          "Authorize authorized appointment support scope on the server before reading or changing admin appointment support action.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The appointment in supportable state to appointment action applied transition, ownership checks, and audit or outbox record for admin appointment support action commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Admin appointment operations can change admin appointment support action, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to appointment-support admin, the operation, and the canonical request payload.",
+            "Return the original admin appointment support action result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Admin appointment operations has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["expected status serializes admin and provider actions"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Admin appointment operations has an explicit connectivity and reconnect rule for admin appointment support action.",
+          "behavior": ["admin action requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Admin appointment operations changes state or exercises privileged authority over admin appointment support action.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for admin appointment support action."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Admin appointment operations has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and admin appointment support action status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Admin appointment operations contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-004, BD-008."
+          ],
+          "decisionRefs": ["BD-004", "BD-008"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-APT-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of admin appointment support action."
+      ],
+      "businessDecisionRefs": ["BD-004", "BD-008"],
+      "featureBehavior": [
+        "Perform only allow-listed appointment support actions with audited lifecycle consequences.",
+        "Scope every admin appointment support action read or write to authorized appointment support scope.",
+        "Admin appointment operations exposes only appointmentId, status, auditEventId after perform admin appointment action."
       ],
       "requiredUnitTests": [
-        "Validate admin appointment operations decisions, boundaries, and stable error codes."
+        "Exercise Admin appointment operations boundaries, ADMIN_APPOINTMENT_ACTION_FORBIDDEN, APPOINTMENT_TRANSITION_INVALID, and the appointment in supportable state to appointment action applied decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for admin appointment operations."
+        "Render Admin appointment operations loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload admin appointment operations against PostgreSQL with tenant isolation."
+        "Verify admin appointment support action ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-APT-001."
+        "Validate perform admin appointment action fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for admin appointment operations."
+        "Drive appointment-support admin through Admin appointment operations and verify the resulting admin appointment support action projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing perform admin appointment action.",
+        "Executable tests for ADM-APT-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ADMIN_APPOINTMENT_ACTION_FORBIDDEN, APPOINTMENT_TRANSITION_INVALID, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-004, BD-008 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-ADM-LOY-001",
       "contractIds": ["ADM-LOY-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for loyalty and coupon configuration.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts loyalty and coupon configuration with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for loyalty and coupon configuration is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-loy-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Loyalty and coupon configuration request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["loyalty-policy admin"],
+        "allowed": ["loyalty-policy admin"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended loyalty-policy admin",
+          "actor outside loyalty policy administration scope",
+          "actor presenting a resource outside loyalty policy administration scope"
         ]
       },
-      "databaseInvariant": "For loyalty and coupon configuration, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "loyalty-policy admin has a current server-verified identity authorized for loyalty policy administration scope.",
+        "policy version current is the authoritative starting state for global or outlet promotion policy."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "loyalty-policy admin invokes configure loyalty policy with policyId, rules, effectiveAt, expectedVersion.",
+        "The producer authorizes authorize loyalty policy administration scope on the server before reading or changing global or outlet promotion policy. and evaluates LOYALTY_POLICY_INVALID, LOYALTY_POLICY_VERSION_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Validate bounded rules and apply them prospectively without rewriting issued ledger entries.",
+        "LOYALTY_POLICY_INVALID returns the standard error envelope and leaves global or outlet promotion policy at its last committed version.",
+        "The observed state is policy version incremented; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "policy version current",
+          "to": "policy version incremented",
+          "trigger": "PUT /api/v1/admin/loyalty/policies/{policyId} completes configure loyalty policy"
+        }
+      ],
+      "requiredFixtures": [
+        "policy version current fixture for Loyalty and coupon configuration",
+        "loyalty-policy admin and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "configure loyalty policy",
+        "method": "PUT",
+        "path": "/api/v1/admin/loyalty/policies/{policyId}",
+        "fields": ["policyId", "rules", "effectiveAt", "expectedVersion"]
+      },
+      "apiResponse": {
+        "fields": ["policyId", "version", "status"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["LOYALTY_POLICY_INVALID", "LOYALTY_POLICY_VERSION_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["loyalty-policy admin"],
+        "denied": [
+          "revoked or suspended loyalty-policy admin",
+          "actor outside loyalty policy administration scope",
+          "actor presenting a resource outside loyalty policy administration scope"
+        ],
+        "ownershipRules": [
+          "Authorize loyalty policy administration scope on the server before reading or changing global or outlet promotion policy.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The policy version current to policy version incremented transition, ownership checks, and audit or outbox record for global or outlet promotion policy commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Loyalty and coupon configuration can change global or outlet promotion policy, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to loyalty-policy admin, the operation, and the canonical request payload.",
+            "Return the original global or outlet promotion policy result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Loyalty and coupon configuration has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["policy version prevents lost updates"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Loyalty and coupon configuration has an explicit connectivity and reconnect rule for global or outlet promotion policy.",
+          "behavior": ["policy mutation requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Loyalty and coupon configuration changes state or exercises privileged authority over global or outlet promotion policy.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for global or outlet promotion policy."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Loyalty and coupon configuration has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and global or outlet promotion policy status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Loyalty and coupon configuration contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-003."
+          ],
+          "decisionRefs": ["BD-003"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-LOY-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of global or outlet promotion policy."
+      ],
+      "businessDecisionRefs": ["BD-003"],
+      "featureBehavior": [
+        "Validate bounded rules and apply them prospectively without rewriting issued ledger entries.",
+        "Scope every global or outlet promotion policy read or write to loyalty policy administration scope.",
+        "Loyalty and coupon configuration exposes only policyId, version, status after configure loyalty policy."
       ],
       "requiredUnitTests": [
-        "Validate loyalty and coupon configuration decisions, boundaries, and stable error codes."
+        "Exercise Loyalty and coupon configuration boundaries, LOYALTY_POLICY_INVALID, LOYALTY_POLICY_VERSION_STALE, and the policy version current to policy version incremented decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for loyalty and coupon configuration."
+        "Render Loyalty and coupon configuration loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload loyalty and coupon configuration against PostgreSQL with tenant isolation."
+        "Verify global or outlet promotion policy ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-LOY-001."
+        "Validate configure loyalty policy fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for loyalty and coupon configuration."
+        "Drive loyalty-policy admin through Loyalty and coupon configuration and verify the resulting global or outlet promotion policy projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing configure loyalty policy.",
+        "Executable tests for ADM-LOY-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, LOYALTY_POLICY_INVALID, LOYALTY_POLICY_VERSION_STALE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-003 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-ADM-OVR-001",
       "contractIds": ["ADM-OVR-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for controlled overrides.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts controlled overrides with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for controlled overrides is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-ovr-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Controlled overrides request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["override-authorized admin"],
+        "allowed": ["override-authorized admin"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended override-authorized admin",
+          "actor outside exact override permission and resource",
+          "actor presenting a resource outside exact override permission and resource"
         ]
       },
-      "databaseInvariant": "For controlled overrides, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "override-authorized admin has a current server-verified identity authorized for exact override permission and resource.",
+        "resource authoritative is the authoritative starting state for dual-controlled business override."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "override-authorized admin invokes request controlled override with resourceType, resourceId, requestedChange, reason, approvalReference.",
+        "The producer authorizes authorize exact override permission and resource on the server before reading or changing dual-controlled business override. and evaluates OVERRIDE_TYPE_FORBIDDEN, DUAL_CONTROL_REQUIRED, OVERRIDE_SCOPE_DENIED."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Apply only approved override types with required dual control and immutable before/after evidence.",
+        "OVERRIDE_TYPE_FORBIDDEN returns the standard error envelope and leaves dual-controlled business override at its last committed version.",
+        "The observed state is override pending or applied; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "resource authoritative",
+          "to": "override pending or applied",
+          "trigger": "POST /api/v1/admin/overrides completes request controlled override"
+        }
+      ],
+      "requiredFixtures": [
+        "resource authoritative fixture for Controlled overrides",
+        "override-authorized admin and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "request controlled override",
+        "method": "POST",
+        "path": "/api/v1/admin/overrides",
+        "fields": ["resourceType", "resourceId", "requestedChange", "reason", "approvalReference"]
+      },
+      "apiResponse": {
+        "fields": ["overrideId", "status", "auditEventIds"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["OVERRIDE_TYPE_FORBIDDEN", "DUAL_CONTROL_REQUIRED", "OVERRIDE_SCOPE_DENIED"],
+      "authorizationMatrix": {
+        "allowed": ["override-authorized admin"],
+        "denied": [
+          "revoked or suspended override-authorized admin",
+          "actor outside exact override permission and resource",
+          "actor presenting a resource outside exact override permission and resource"
+        ],
+        "ownershipRules": [
+          "Authorize exact override permission and resource on the server before reading or changing dual-controlled business override.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The resource authoritative to override pending or applied transition, ownership checks, and audit or outbox record for dual-controlled business override commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Controlled overrides can change dual-controlled business override, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to override-authorized admin, the operation, and the canonical request payload.",
+            "Return the original dual-controlled business override result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Controlled overrides has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one pending override per resource/version"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Controlled overrides has an explicit connectivity and reconnect rule for dual-controlled business override.",
+          "behavior": ["override requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Controlled overrides changes state or exercises privileged authority over dual-controlled business override.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for dual-controlled business override."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Controlled overrides has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and dual-controlled business override status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Controlled overrides contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-008."
+          ],
+          "decisionRefs": ["BD-008"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-OVR-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of dual-controlled business override."
+      ],
+      "businessDecisionRefs": ["BD-008"],
+      "featureBehavior": [
+        "Apply only approved override types with required dual control and immutable before/after evidence.",
+        "Scope every dual-controlled business override read or write to exact override permission and resource.",
+        "Controlled overrides exposes only overrideId, status, auditEventIds after request controlled override."
       ],
       "requiredUnitTests": [
-        "Validate controlled overrides decisions, boundaries, and stable error codes."
+        "Exercise Controlled overrides boundaries, OVERRIDE_TYPE_FORBIDDEN, DUAL_CONTROL_REQUIRED, OVERRIDE_SCOPE_DENIED, and the resource authoritative to override pending or applied decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for controlled overrides."
+        "Render Controlled overrides loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload controlled overrides against PostgreSQL with tenant isolation."
+        "Verify dual-controlled business override ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-OVR-001."
+        "Validate request controlled override fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for controlled overrides."
+        "Drive override-authorized admin through Controlled overrides and verify the resulting dual-controlled business override projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing request controlled override.",
+        "Executable tests for ADM-OVR-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, OVERRIDE_TYPE_FORBIDDEN, DUAL_CONTROL_REQUIRED, OVERRIDE_SCOPE_DENIED, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-008 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-ADM-AUD-001",
       "contractIds": ["ADM-AUD-001"],
       "priority": "P1",
-      "given": [
-        "Authenticated role and required fixture state exist for admin audit logs.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts admin audit logs with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for admin audit logs is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-aud-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Admin audit logs request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["audit-reader admin"],
+        "allowed": ["audit-reader admin"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended audit-reader admin",
+          "actor outside audit-reader scope",
+          "actor presenting a resource outside audit-reader scope"
         ]
       },
-      "databaseInvariant": "For admin audit logs, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "audit-reader admin has a current server-verified identity authorized for audit-reader scope.",
+        "audit log unchanged is the authoritative starting state for privileged audit event page."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "audit-reader admin invokes view admin audit with actorId, resourceType, outcome, cursor.",
+        "The producer authorizes authorize audit-reader scope on the server before reading or changing privileged audit event page. and evaluates AUDIT_SCOPE_DENIED, AUDIT_CURSOR_INVALID."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Return immutable, redactable events while denying audit mutation.",
+        "AUDIT_SCOPE_DENIED returns the standard error envelope and leaves privileged audit event page at its last committed version.",
+        "The observed state is audit log unchanged; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "audit log unchanged",
+          "to": "audit log unchanged",
+          "trigger": "GET /api/v1/admin/audit-events completes view admin audit"
+        }
+      ],
+      "requiredFixtures": [
+        "audit log unchanged fixture for Admin audit logs",
+        "audit-reader admin and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "view admin audit",
+        "method": "GET",
+        "path": "/api/v1/admin/audit-events",
+        "fields": ["actorId", "resourceType", "outcome", "cursor"]
+      },
+      "apiResponse": {
+        "fields": ["events", "nextCursor"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["AUDIT_SCOPE_DENIED", "AUDIT_CURSOR_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["audit-reader admin"],
+        "denied": [
+          "revoked or suspended audit-reader admin",
+          "actor outside audit-reader scope",
+          "actor presenting a resource outside audit-reader scope"
+        ],
+        "ownershipRules": [
+          "Authorize audit-reader scope on the server before reading or changing privileged audit event page.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "view admin audit does not mutate privileged audit event page; it reads audit-reader scope from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Admin audit logs observes privileged audit event page without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Admin audit logs must not combine incompatible versions of privileged audit event page in one response.",
+          "behavior": [
+            "Read privileged audit event page from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Admin audit logs has an explicit connectivity and reconnect rule for privileged audit event page.",
+          "behavior": ["audit export requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Admin audit logs changes state or exercises privileged authority over privileged audit event page.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for privileged audit event page."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Admin audit logs has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and privileged audit event page status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Admin audit logs does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-AUD-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of privileged audit event page."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Return immutable, redactable events while denying audit mutation.",
+        "Scope every privileged audit event page read to audit-reader scope.",
+        "Admin audit logs exposes only events, nextCursor after view admin audit."
       ],
       "requiredUnitTests": [
-        "Validate admin audit logs decisions, boundaries, and stable error codes."
+        "Exercise Admin audit logs boundaries, AUDIT_SCOPE_DENIED, AUDIT_CURSOR_INVALID, and the audit log unchanged to audit log unchanged decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for admin audit logs."
+        "Render Admin audit logs loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload admin audit logs against PostgreSQL with tenant isolation."
+        "Verify privileged audit event page ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-AUD-001."
+        "Validate view admin audit fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for admin audit logs."
+        "Drive audit-reader admin through Admin audit logs and verify the resulting privileged audit event page projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing view admin audit.",
+        "Executable tests for ADM-AUD-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, AUDIT_SCOPE_DENIED, AUDIT_CURSOR_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-ADM-SEARCH-001",
       "contractIds": ["ADM-SEARCH-001"],
       "priority": "P1",
-      "given": [
-        "Authenticated role and required fixture state exist for search and pagination.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts search and pagination with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for search and pagination is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-search-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Search and pagination request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["authorized admin operator"],
+        "allowed": ["authorized admin operator"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended authorized admin operator",
+          "actor outside permission-filtered resource search",
+          "actor presenting a resource outside permission-filtered resource search"
         ]
       },
-      "databaseInvariant": "For search and pagination, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "authorized admin operator has a current server-verified identity authorized for permission-filtered resource search.",
+        "resources unchanged is the authoritative starting state for admin resource search page."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "authorized admin operator invokes search admin resources with resourceType, query, status, cursor.",
+        "The producer authorizes authorize permission-filtered resource search on the server before reading or changing admin resource search page. and evaluates ADMIN_SEARCH_FILTER_INVALID, ADMIN_SEARCH_CURSOR_INVALID."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Apply resource-specific filters, stable ordering, and opaque cursor pagination within permission scope.",
+        "ADMIN_SEARCH_FILTER_INVALID returns the standard error envelope and leaves admin resource search page at its last committed version.",
+        "The observed state is resources unchanged; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "resources unchanged",
+          "to": "resources unchanged",
+          "trigger": "GET /api/v1/admin/search completes search admin resources"
+        }
+      ],
+      "requiredFixtures": [
+        "resources unchanged fixture for Search and pagination",
+        "authorized admin operator and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "search admin resources",
+        "method": "GET",
+        "path": "/api/v1/admin/search",
+        "fields": ["resourceType", "query", "status", "cursor"]
+      },
+      "apiResponse": {
+        "fields": ["results", "nextCursor"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["ADMIN_SEARCH_FILTER_INVALID", "ADMIN_SEARCH_CURSOR_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["authorized admin operator"],
+        "denied": [
+          "revoked or suspended authorized admin operator",
+          "actor outside permission-filtered resource search",
+          "actor presenting a resource outside permission-filtered resource search"
+        ],
+        "ownershipRules": [
+          "Authorize permission-filtered resource search on the server before reading or changing admin resource search page.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "search admin resources does not mutate admin resource search page; it reads permission-filtered resource search from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Search and pagination observes admin resource search page without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Search and pagination must not combine incompatible versions of admin resource search page in one response.",
+          "behavior": [
+            "Read admin resource search page from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Search and pagination has an explicit connectivity and reconnect rule for admin resource search page.",
+          "behavior": ["admin search requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Search and pagination changes state or exercises privileged authority over admin resource search page.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for admin resource search page."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Search and pagination has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and admin resource search page status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Search and pagination does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-SEARCH-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of admin resource search page."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Apply resource-specific filters, stable ordering, and opaque cursor pagination within permission scope.",
+        "Scope every admin resource search page read to permission-filtered resource search.",
+        "Search and pagination exposes only results, nextCursor after search admin resources."
       ],
       "requiredUnitTests": [
-        "Validate search and pagination decisions, boundaries, and stable error codes."
+        "Exercise Search and pagination boundaries, ADMIN_SEARCH_FILTER_INVALID, ADMIN_SEARCH_CURSOR_INVALID, and the resources unchanged to resources unchanged decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for search and pagination."
+        "Render Search and pagination loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload search and pagination against PostgreSQL with tenant isolation."
+        "Verify admin resource search page ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-SEARCH-001."
+        "Validate search admin resources fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for search and pagination."
+        "Drive authorized admin operator through Search and pagination and verify the resulting admin resource search page projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing search admin resources.",
+        "Executable tests for ADM-SEARCH-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ADMIN_SEARCH_FILTER_INVALID, ADMIN_SEARCH_CURSOR_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-ADM-DEST-001",
       "contractIds": ["ADM-DEST-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for safe destructive actions.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts safe destructive actions with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for safe destructive actions is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-dest-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Safe destructive actions request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["destructive-action admin"],
+        "allowed": ["destructive-action admin"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended destructive-action admin",
+          "actor outside exact destructive permission and resource",
+          "actor presenting a resource outside exact destructive permission and resource"
         ]
       },
-      "databaseInvariant": "For safe destructive actions, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "destructive-action admin has a current server-verified identity authorized for exact destructive permission and resource.",
+        "resource retained is the authoritative starting state for destructive-action request."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "destructive-action admin invokes request destructive action with resourceType, resourceId, action, confirmationToken, reason.",
+        "The producer authorizes authorize exact destructive permission and resource on the server before reading or changing destructive-action request. and evaluates DESTRUCTIVE_ACTION_FORBIDDEN, CONFIRMATION_TOKEN_INVALID, LEGAL_HOLD_ACTIVE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Require explicit confirmation, retention policy, authorization, and audit evidence before destructive processing.",
+        "DESTRUCTIVE_ACTION_FORBIDDEN returns the standard error envelope and leaves destructive-action request at its last committed version.",
+        "The observed state is destructive request pending; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "resource retained",
+          "to": "destructive request pending",
+          "trigger": "POST /api/v1/admin/destructive-actions completes request destructive action"
+        }
+      ],
+      "requiredFixtures": [
+        "resource retained fixture for Safe destructive actions",
+        "destructive-action admin and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "request destructive action",
+        "method": "POST",
+        "path": "/api/v1/admin/destructive-actions",
+        "fields": ["resourceType", "resourceId", "action", "confirmationToken", "reason"]
+      },
+      "apiResponse": {
+        "fields": ["requestId", "status", "recoverableUntil"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "DESTRUCTIVE_ACTION_FORBIDDEN",
+        "CONFIRMATION_TOKEN_INVALID",
+        "LEGAL_HOLD_ACTIVE"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["destructive-action admin"],
+        "denied": [
+          "revoked or suspended destructive-action admin",
+          "actor outside exact destructive permission and resource",
+          "actor presenting a resource outside exact destructive permission and resource"
+        ],
+        "ownershipRules": [
+          "Authorize exact destructive permission and resource on the server before reading or changing destructive-action request.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The resource retained to destructive request pending transition, ownership checks, and audit or outbox record for destructive-action request commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Safe destructive actions can change destructive-action request, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to destructive-action admin, the operation, and the canonical request payload.",
+            "Return the original destructive-action request result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Safe destructive actions has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one active destructive request per resource"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Safe destructive actions has an explicit connectivity and reconnect rule for destructive-action request.",
+          "behavior": ["destructive action requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Safe destructive actions changes state or exercises privileged authority over destructive-action request.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for destructive-action request."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Safe destructive actions has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and destructive-action request status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Safe destructive actions contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-009."
+          ],
+          "decisionRefs": ["BD-009"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-DEST-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of destructive-action request."
+      ],
+      "businessDecisionRefs": ["BD-009"],
+      "featureBehavior": [
+        "Require explicit confirmation, retention policy, authorization, and audit evidence before destructive processing.",
+        "Scope every destructive-action request read or write to exact destructive permission and resource.",
+        "Safe destructive actions exposes only requestId, status, recoverableUntil after request destructive action."
       ],
       "requiredUnitTests": [
-        "Validate safe destructive actions decisions, boundaries, and stable error codes."
+        "Exercise Safe destructive actions boundaries, DESTRUCTIVE_ACTION_FORBIDDEN, CONFIRMATION_TOKEN_INVALID, LEGAL_HOLD_ACTIVE, and the resource retained to destructive request pending decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for safe destructive actions."
+        "Render Safe destructive actions loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload safe destructive actions against PostgreSQL with tenant isolation."
+        "Verify destructive-action request ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-DEST-001."
+        "Validate request destructive action fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for safe destructive actions."
+        "Drive destructive-action admin through Safe destructive actions and verify the resulting destructive-action request projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing request destructive action.",
+        "Executable tests for ADM-DEST-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, DESTRUCTIVE_ACTION_FORBIDDEN, CONFIRMATION_TOKEN_INVALID, LEGAL_HOLD_ACTIVE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-009 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-ADM-INV-001",
       "contractIds": ["ADM-INV-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for inventory authority limitations.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts inventory authority limitations with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for inventory authority limitations is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-inv-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Inventory authority limitations request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["inventory-audit admin"],
+        "allowed": ["inventory-audit admin"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended inventory-audit admin",
+          "actor outside inventory audit scope",
+          "actor presenting a resource outside inventory audit scope"
         ]
       },
-      "databaseInvariant": "For inventory authority limitations, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "inventory-audit admin has a current server-verified identity authorized for inventory audit scope.",
+        "inventory unchanged is the authoritative starting state for admin inventory diagnostic projection."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "inventory-audit admin invokes inspect inventory with listingId.",
+        "The producer authorizes authorize inventory audit scope on the server before reading or changing admin inventory diagnostic projection. and evaluates INVENTORY_SCOPE_DENIED, DIRECT_BALANCE_OVERRIDE_FORBIDDEN."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Expose diagnostic inventory truth but forbid direct balance edits outside merchant movement commands.",
+        "INVENTORY_SCOPE_DENIED returns the standard error envelope and leaves admin inventory diagnostic projection at its last committed version.",
+        "The observed state is inventory unchanged; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "inventory unchanged",
+          "to": "inventory unchanged",
+          "trigger": "GET /api/v1/admin/inventory/{listingId} completes inspect inventory"
+        }
+      ],
+      "requiredFixtures": [
+        "inventory unchanged fixture for Inventory authority limitations",
+        "inventory-audit admin and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "inspect inventory",
+        "method": "GET",
+        "path": "/api/v1/admin/inventory/{listingId}",
+        "fields": ["listingId"]
+      },
+      "apiResponse": {
+        "fields": ["balance", "movements", "outletId", "asOf"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["INVENTORY_SCOPE_DENIED", "DIRECT_BALANCE_OVERRIDE_FORBIDDEN"],
+      "authorizationMatrix": {
+        "allowed": ["inventory-audit admin"],
+        "denied": [
+          "revoked or suspended inventory-audit admin",
+          "actor outside inventory audit scope",
+          "actor presenting a resource outside inventory audit scope"
+        ],
+        "ownershipRules": [
+          "Authorize inventory audit scope on the server before reading or changing admin inventory diagnostic projection.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "inspect inventory does not mutate admin inventory diagnostic projection; it reads inventory audit scope from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Inventory authority limitations observes admin inventory diagnostic projection without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Inventory authority limitations must not combine incompatible versions of admin inventory diagnostic projection in one response.",
+          "behavior": [
+            "Read admin inventory diagnostic projection from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Inventory authority limitations has an explicit connectivity and reconnect rule for admin inventory diagnostic projection.",
+          "behavior": ["diagnostic read requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Inventory authority limitations changes state or exercises privileged authority over admin inventory diagnostic projection.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for admin inventory diagnostic projection."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Inventory authority limitations has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and admin inventory diagnostic projection status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Inventory authority limitations contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-008."
+          ],
+          "decisionRefs": ["BD-008"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-INV-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of admin inventory diagnostic projection."
+      ],
+      "businessDecisionRefs": ["BD-008"],
+      "featureBehavior": [
+        "Expose diagnostic inventory truth but forbid direct balance edits outside merchant movement commands.",
+        "Scope every admin inventory diagnostic projection read to inventory audit scope.",
+        "Inventory authority limitations exposes only balance, movements, outletId, asOf after inspect inventory."
       ],
       "requiredUnitTests": [
-        "Validate inventory authority limitations decisions, boundaries, and stable error codes."
+        "Exercise Inventory authority limitations boundaries, INVENTORY_SCOPE_DENIED, DIRECT_BALANCE_OVERRIDE_FORBIDDEN, and the inventory unchanged to inventory unchanged decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for inventory authority limitations."
+        "Render Inventory authority limitations loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload inventory authority limitations against PostgreSQL with tenant isolation."
+        "Verify admin inventory diagnostic projection ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-INV-001."
+        "Validate inspect inventory fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for inventory authority limitations."
+        "Drive inventory-audit admin through Inventory authority limitations and verify the resulting admin inventory diagnostic projection projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing inspect inventory.",
+        "Executable tests for ADM-INV-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, INVENTORY_SCOPE_DENIED, DIRECT_BALANCE_OVERRIDE_FORBIDDEN, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-008 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-ADM-RESP-001",
       "contractIds": ["ADM-RESP-001"],
       "priority": "P1",
-      "given": [
-        "Authenticated role and required fixture state exist for responsive browser accessibility.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts responsive browser accessibility with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for responsive browser accessibility is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/adm-resp-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Responsive browser accessibility request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Admin role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["admin using keyboard or assistive technology"],
+        "allowed": ["admin using keyboard or assistive technology"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended admin using keyboard or assistive technology",
+          "actor outside current admin UI and permissions",
+          "actor presenting a resource outside current admin UI and permissions"
         ]
       },
-      "databaseInvariant": "For responsive browser accessibility, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "admin using keyboard or assistive technology has a current server-verified identity authorized for current admin UI and permissions.",
+        "layout unresolved is the authoritative starting state for admin responsive and accessible shell."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "admin using keyboard or assistive technology invokes AdminResponsiveLayout.resolve with viewport, route, permissions.",
+        "The producer authorizes authorize current admin ui and permissions on the server before reading or changing admin responsive and accessible shell. and evaluates ADMIN_ROUTE_FORBIDDEN, FOCUS_TARGET_MISSING."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Preserve protected navigation, tables, dialogs, focus, and error announcements across supported viewports.",
+        "ADMIN_ROUTE_FORBIDDEN returns the standard error envelope and leaves admin responsive and accessible shell at its last committed version.",
+        "The observed state is layout operable; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "layout unresolved",
+          "to": "layout operable",
+          "trigger": "AdminResponsiveLayout.resolve completes AdminResponsiveLayout.resolve"
+        }
+      ],
+      "requiredFixtures": [
+        "layout unresolved fixture for Responsive browser accessibility",
+        "admin using keyboard or assistive technology and denied cross-scope actor identities",
+        "deterministic admin clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "client",
+        "operation": "AdminResponsiveLayout.resolve",
+        "interface": "AdminResponsiveLayout.resolve",
+        "fields": ["viewport", "route", "permissions"]
+      },
+      "apiResponse": {
+        "fields": ["layout", "navigation", "focusTarget"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["ADMIN_ROUTE_FORBIDDEN", "FOCUS_TARGET_MISSING"],
+      "authorizationMatrix": {
+        "allowed": ["admin using keyboard or assistive technology"],
+        "denied": [
+          "revoked or suspended admin using keyboard or assistive technology",
+          "actor outside current admin UI and permissions",
+          "actor presenting a resource outside current admin UI and permissions"
+        ],
+        "ownershipRules": [
+          "Authorize current admin UI and permissions on the server before reading or changing admin responsive and accessible shell.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "AdminResponsiveLayout.resolve does not mutate admin responsive and accessible shell; it reads current admin UI and permissions from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Responsive browser accessibility observes admin responsive and accessible shell without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Responsive browser accessibility must not combine incompatible versions of admin responsive and accessible shell in one response.",
+          "behavior": ["latest navigation intent wins"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Responsive browser accessibility has an explicit connectivity and reconnect rule for admin responsive and accessible shell.",
+          "behavior": ["admin shell reports connectivity loss and disables mutations"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Responsive browser accessibility changes state or exercises privileged authority over admin responsive and accessible shell.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for admin responsive and accessible shell."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Responsive browser accessibility has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and admin responsive and accessible shell status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Responsive browser accessibility does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit ADM-RESP-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of admin responsive and accessible shell."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Preserve protected navigation, tables, dialogs, focus, and error announcements across supported viewports.",
+        "Scope every admin responsive and accessible shell read to current admin UI and permissions.",
+        "Responsive browser accessibility exposes only layout, navigation, focusTarget after AdminResponsiveLayout.resolve."
       ],
       "requiredUnitTests": [
-        "Validate responsive browser accessibility decisions, boundaries, and stable error codes."
+        "Exercise Responsive browser accessibility boundaries, ADMIN_ROUTE_FORBIDDEN, FOCUS_TARGET_MISSING, and the layout unresolved to layout operable decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for responsive browser accessibility."
+        "Render Responsive browser accessibility loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload responsive browser accessibility against PostgreSQL with tenant isolation."
+        "Verify admin responsive and accessible shell ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for ADM-RESP-001."
+        "Validate AdminResponsiveLayout.resolve fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for responsive browser accessibility."
+        "Drive admin using keyboard or assistive technology through Responsive browser accessibility and verify the resulting admin responsive and accessible shell projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing AdminResponsiveLayout.resolve.",
+        "Executable tests for ADM-RESP-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ADMIN_ROUTE_FORBIDDEN, FOCUS_TARGET_MISSING, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     }
   ]

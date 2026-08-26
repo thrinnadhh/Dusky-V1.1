@@ -1,87 +1,233 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "additionalProperties": false,
   "required": ["schemaVersion", "contracts"],
   "properties": {
-    "schemaVersion": { "const": "1.0.0" },
+    "schemaVersion": { "const": "2.0.0" },
     "contracts": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "contractId",
-          "title",
-          "domain",
-          "description",
-          "producer",
-          "consumers",
-          "owningModule",
-          "status",
-          "criticality",
-          "version",
-          "preconditions",
-          "successBehavior",
-          "errorBehavior",
-          "authorization",
-          "tenantOutletIsolation",
-          "idempotency",
-          "concurrency",
-          "offlineRetryBehavior",
-          "observabilityExpectations",
-          "accessibilityExpectations",
-          "legacyProvenance",
-          "plannedImplementationWorkstream",
-          "requiredTestLayers",
-          "executableTestPaths"
-        ],
-        "properties": {
-          "contractId": { "type": "string", "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+){2,}$" },
-          "title": { "type": "string", "minLength": 3 },
-          "domain": { "enum": ["Customer", "Merchant", "Captain", "Admin", "Backend", "E2E"] },
-          "description": { "type": "string", "minLength": 20 },
-          "producer": { "type": "string", "minLength": 2 },
-          "consumers": { "$ref": "#/$defs/nonEmptyStrings" },
-          "owningModule": { "type": "string", "minLength": 2 },
-          "status": { "enum": ["active", "planned"] },
-          "criticality": { "enum": ["foundation", "launch-critical", "high", "medium"] },
-          "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
-          "preconditions": { "$ref": "#/$defs/nonEmptyStrings" },
-          "successBehavior": { "$ref": "#/$defs/nonEmptyStrings" },
-          "errorBehavior": { "$ref": "#/$defs/nonEmptyStrings" },
-          "authorization": { "$ref": "#/$defs/nonEmptyStrings" },
-          "tenantOutletIsolation": { "$ref": "#/$defs/nonEmptyStrings" },
-          "idempotency": { "$ref": "#/$defs/nonEmptyStrings" },
-          "concurrency": { "$ref": "#/$defs/nonEmptyStrings" },
-          "offlineRetryBehavior": { "$ref": "#/$defs/nonEmptyStrings" },
-          "observabilityExpectations": { "$ref": "#/$defs/nonEmptyStrings" },
-          "accessibilityExpectations": { "$ref": "#/$defs/nonEmptyStrings" },
-          "legacyProvenance": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-              "type": "object",
-              "required": ["sourceRepository", "sourceSha", "sourcePath", "note"],
-              "properties": {
-                "sourceRepository": { "type": "string" },
-                "sourceSha": { "type": "string" },
-                "sourcePath": { "type": "string" },
-                "note": { "type": "string" }
-              }
-            }
-          },
-          "plannedImplementationWorkstream": { "type": "string", "minLength": 2 },
-          "requiredTestLayers": { "$ref": "#/$defs/nonEmptyStrings" },
-          "executableTestPaths": { "type": "array", "items": { "type": "string" } }
-        }
-      }
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/contract" }
     }
   },
   "$defs": {
+    "strings": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 2 },
+      "uniqueItems": true
+    },
     "nonEmptyStrings": {
       "type": "array",
       "minItems": 1,
-      "items": { "type": "string", "minLength": 3 }
+      "items": { "type": "string", "minLength": 2 },
+      "uniqueItems": true
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason", "behavior", "decisionRefs"],
+      "properties": {
+        "status": { "enum": ["applicable", "not-applicable", "blocked"] },
+        "reason": { "type": "string", "minLength": 20 },
+        "behavior": { "$ref": "#/$defs/strings" },
+        "decisionRefs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^BD-[0-9]{3}$" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "actors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["initiators", "public", "guest", "authenticated", "privileged", "denied"],
+      "properties": {
+        "initiators": { "$ref": "#/$defs/nonEmptyStrings" },
+        "public": { "$ref": "#/$defs/strings" },
+        "guest": { "$ref": "#/$defs/strings" },
+        "authenticated": { "$ref": "#/$defs/strings" },
+        "privileged": { "$ref": "#/$defs/strings" },
+        "denied": { "$ref": "#/$defs/nonEmptyStrings" }
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed", "denied", "ownershipRules"],
+      "properties": {
+        "allowed": { "$ref": "#/$defs/nonEmptyStrings" },
+        "denied": { "$ref": "#/$defs/nonEmptyStrings" },
+        "ownershipRules": { "$ref": "#/$defs/nonEmptyStrings" }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "trigger"],
+      "properties": {
+        "from": { "type": "string", "minLength": 2 },
+        "to": { "type": "string", "minLength": 2 },
+        "trigger": { "type": "string", "minLength": 10 }
+      }
+    },
+    "interaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "operation", "requestFields", "responseFields"],
+      "properties": {
+        "kind": { "enum": ["http", "client", "internal", "database"] },
+        "operation": { "type": "string", "minLength": 3 },
+        "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+        "path": { "type": "string", "pattern": "^/api/v1/" },
+        "interface": { "type": "string", "minLength": 3 },
+        "requestFields": { "$ref": "#/$defs/nonEmptyStrings" },
+        "responseFields": { "$ref": "#/$defs/nonEmptyStrings" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "http" } } },
+          "then": { "properties": { "method": {}, "path": {} }, "required": ["method", "path"] },
+          "else": { "properties": { "interface": {} }, "required": ["interface"] }
+        }
+      ]
+    },
+    "applicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency",
+        "concurrency",
+        "offlineRetry",
+        "observability",
+        "audit",
+        "accessibility",
+        "businessDecision"
+      ],
+      "properties": {
+        "idempotency": { "$ref": "#/$defs/requirement" },
+        "concurrency": { "$ref": "#/$defs/requirement" },
+        "offlineRetry": { "$ref": "#/$defs/requirement" },
+        "observability": { "$ref": "#/$defs/requirement" },
+        "audit": { "$ref": "#/$defs/requirement" },
+        "accessibility": { "$ref": "#/$defs/requirement" },
+        "businessDecision": { "$ref": "#/$defs/requirement" }
+      }
+    },
+    "testExpectations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit", "component", "integration", "contract", "e2e"],
+      "properties": {
+        "unit": { "$ref": "#/$defs/nonEmptyStrings" },
+        "component": { "$ref": "#/$defs/nonEmptyStrings" },
+        "integration": { "$ref": "#/$defs/nonEmptyStrings" },
+        "contract": { "$ref": "#/$defs/nonEmptyStrings" },
+        "e2e": { "$ref": "#/$defs/nonEmptyStrings" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["legacyTestIds", "greenfieldRationale"],
+      "properties": {
+        "legacyTestIds": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^(LEG|LOCAL)-[A-F0-9]{12}$" },
+          "uniqueItems": true
+        },
+        "greenfieldRationale": { "type": ["string", "null"], "minLength": 20 }
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractId",
+        "title",
+        "domain",
+        "description",
+        "producer",
+        "consumers",
+        "owningModule",
+        "status",
+        "criticality",
+        "version",
+        "actors",
+        "preconditions",
+        "successBehavior",
+        "errorBehavior",
+        "stateTransitions",
+        "databaseInvariants",
+        "interactions",
+        "errorCodes",
+        "authorization",
+        "tenantOutletIsolation",
+        "applicability",
+        "businessDecisionRefs",
+        "provenance",
+        "plannedImplementationWorkstream",
+        "requiredTestLayers",
+        "testExpectations",
+        "activationEvidence",
+        "executableTestPaths"
+      ],
+      "properties": {
+        "contractId": { "type": "string", "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+){2,}$" },
+        "title": { "type": "string", "minLength": 3 },
+        "domain": { "enum": ["Customer", "Merchant", "Captain", "Admin", "Backend", "E2E"] },
+        "description": { "type": "string", "minLength": 30 },
+        "producer": { "type": "string", "minLength": 2 },
+        "consumers": { "$ref": "#/$defs/nonEmptyStrings" },
+        "owningModule": { "type": "string", "minLength": 2 },
+        "status": { "enum": ["active", "planned"] },
+        "criticality": { "enum": ["foundation", "launch-critical", "high", "medium"] },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "actors": { "$ref": "#/$defs/actors" },
+        "preconditions": { "$ref": "#/$defs/nonEmptyStrings" },
+        "successBehavior": { "$ref": "#/$defs/nonEmptyStrings" },
+        "errorBehavior": { "$ref": "#/$defs/nonEmptyStrings" },
+        "stateTransitions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/transition" }
+        },
+        "databaseInvariants": { "$ref": "#/$defs/nonEmptyStrings" },
+        "interactions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/interaction" }
+        },
+        "errorCodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+          "uniqueItems": true
+        },
+        "authorization": { "$ref": "#/$defs/authorization" },
+        "tenantOutletIsolation": { "$ref": "#/$defs/nonEmptyStrings" },
+        "applicability": { "$ref": "#/$defs/applicability" },
+        "businessDecisionRefs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^BD-[0-9]{3}$" },
+          "uniqueItems": true
+        },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "plannedImplementationWorkstream": { "type": "string", "minLength": 2 },
+        "requiredTestLayers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["unit", "component", "integration", "contract", "e2e"] },
+          "uniqueItems": true
+        },
+        "testExpectations": { "$ref": "#/$defs/testExpectations" },
+        "activationEvidence": { "$ref": "#/$defs/nonEmptyStrings" },
+        "executableTestPaths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 2 },
+          "uniqueItems": true
+        }
+      }
     }
   }
 }

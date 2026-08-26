@@ -21,6 +21,14 @@ const baseInput = () => ({
 test('committed contract registry is valid', () =>
   assert.equal(validateContracts(root).contractCount, 110));
 
+test('committed registry can be compared with the actual bootstrap base SHA', () => {
+  const result = validateContracts(root, {
+    baseSha: 'de300e3da2fafb5a50328769b8feaa6fe69b3850',
+  });
+  assert.equal(result.protectedActiveCount, 0);
+  assert.equal(result.reciprocalLegacyIdCount, 1163);
+});
+
 test('committed scenario catalogs satisfy their schema', () =>
   assert.equal(validateScenarios(root).scenarioCount, 99));
 

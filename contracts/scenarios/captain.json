@@ -1,1265 +1,2099 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "application": "Captain",
   "scenarios": [
     {
       "scenarioId": "SCN-CAP-AUTH-001",
       "contractIds": ["CAP-AUTH-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for captain authentication.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts captain authentication with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for captain authentication is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-auth-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Captain authentication request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["unauthenticated captain"],
+        "allowed": ["unauthenticated captain"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended unauthenticated captain",
+          "actor outside captain identity",
+          "actor presenting a resource outside captain identity"
         ]
       },
-      "databaseInvariant": "For captain authentication, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "unauthenticated captain supplies the required input; no authenticated session is assumed.",
+        "challenge pending is the authoritative starting state for captain role and approval session."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "unauthenticated captain invokes verify captain OTP with challengeId, otp.",
+        "The producer authorizes authorize captain identity on the server before reading or changing captain role and approval session. and evaluates CAPTAIN_NOT_APPROVED, OTP_INVALID, CAPTAIN_ROLE_MISMATCH."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Create a CAPTAIN session only with server-fixed role and expose approval status without fake active profiles.",
+        "CAPTAIN_NOT_APPROVED returns the standard error envelope and leaves captain role and approval session at its last committed version.",
+        "The observed state is captain session active; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "challenge pending",
+          "to": "captain session active",
+          "trigger": "POST /api/v1/captain/auth/otp/verifications completes verify captain OTP"
+        }
+      ],
+      "requiredFixtures": [
+        "challenge pending fixture for Captain authentication",
+        "unauthenticated captain and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "verify captain OTP",
+        "method": "POST",
+        "path": "/api/v1/captain/auth/otp/verifications",
+        "fields": ["challengeId", "otp"]
+      },
+      "apiResponse": {
+        "fields": ["accessToken", "refreshToken", "captain"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["CAPTAIN_NOT_APPROVED", "OTP_INVALID", "CAPTAIN_ROLE_MISMATCH"],
+      "authorizationMatrix": {
+        "allowed": ["unauthenticated captain"],
+        "denied": [
+          "revoked or suspended unauthenticated captain",
+          "actor outside captain identity",
+          "actor presenting a resource outside captain identity"
+        ],
+        "ownershipRules": [
+          "Authorize captain identity on the server before reading or changing captain role and approval session.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The challenge pending to captain session active transition, ownership checks, and audit or outbox record for captain role and approval session commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Captain authentication can change captain role and approval session, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to unauthenticated captain, the operation, and the canonical request payload.",
+            "Return the original captain role and approval session result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Captain authentication has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one refresh flow per auth generation"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Captain authentication has an explicit connectivity and reconnect rule for captain role and approval session.",
+          "behavior": [
+            "Do not assume an offline mutation; retry only after reloading captain role and approval session."
+          ],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Captain authentication changes state or exercises privileged authority over captain role and approval session.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for captain role and approval session."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Captain authentication has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and captain role and approval session status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Captain authentication contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-006."
+          ],
+          "decisionRefs": ["BD-006"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-AUTH-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of captain role and approval session."
+      ],
+      "businessDecisionRefs": ["BD-006"],
+      "featureBehavior": [
+        "Create a CAPTAIN session only with server-fixed role and expose approval status without fake active profiles.",
+        "Scope every captain role and approval session read or write to captain identity.",
+        "Captain authentication exposes only accessToken, refreshToken, captain after verify captain OTP."
       ],
       "requiredUnitTests": [
-        "Validate captain authentication decisions, boundaries, and stable error codes."
+        "Exercise Captain authentication boundaries, CAPTAIN_NOT_APPROVED, OTP_INVALID, CAPTAIN_ROLE_MISMATCH, and the challenge pending to captain session active decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for captain authentication."
+        "Render Captain authentication loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload captain authentication against PostgreSQL with tenant isolation."
+        "Verify captain role and approval session ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-AUTH-001."
+        "Validate verify captain OTP fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for captain authentication."
+        "Drive unauthenticated captain through Captain authentication and verify the resulting captain role and approval session projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing verify captain OTP.",
+        "Executable tests for CAP-AUTH-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, CAPTAIN_NOT_APPROVED, OTP_INVALID, CAPTAIN_ROLE_MISMATCH, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-006 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-CAP-AVAIL-001",
       "contractIds": ["CAP-AVAIL-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for online and offline availability.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts online and offline availability with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for online and offline availability is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-avail-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Online and offline availability request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["approved captain"],
+        "allowed": ["approved captain"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended approved captain",
+          "actor outside authenticated captain",
+          "actor presenting a resource outside authenticated captain"
         ]
       },
-      "databaseInvariant": "For online and offline availability, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "approved captain has a current server-verified identity authorized for authenticated captain.",
+        "captain offline is the authoritative starting state for captain availability state."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "approved captain invokes set availability with available, expectedVersion.",
+        "The producer authorizes authorize authenticated captain on the server before reading or changing captain availability state. and evaluates CAPTAIN_NOT_APPROVED, CAPTAIN_BUSY, AVAILABILITY_VERSION_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Change availability only when approved and not constrained by an active assignment.",
+        "CAPTAIN_NOT_APPROVED returns the standard error envelope and leaves captain availability state at its last committed version.",
+        "The observed state is captain available; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "captain offline",
+          "to": "captain available",
+          "trigger": "PUT /api/v1/captains/me/availability completes set availability"
+        }
+      ],
+      "requiredFixtures": [
+        "captain offline fixture for Online and offline availability",
+        "approved captain and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "set availability",
+        "method": "PUT",
+        "path": "/api/v1/captains/me/availability",
+        "fields": ["available", "expectedVersion"]
+      },
+      "apiResponse": {
+        "fields": ["available", "busy", "version"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["CAPTAIN_NOT_APPROVED", "CAPTAIN_BUSY", "AVAILABILITY_VERSION_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["approved captain"],
+        "denied": [
+          "revoked or suspended approved captain",
+          "actor outside authenticated captain",
+          "actor presenting a resource outside authenticated captain"
+        ],
+        "ownershipRules": [
+          "Authorize authenticated captain on the server before reading or changing captain availability state.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The captain offline to captain available transition, ownership checks, and audit or outbox record for captain availability state commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Online and offline availability can change captain availability state, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to approved captain, the operation, and the canonical request payload.",
+            "Return the original captain availability state result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Online and offline availability has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["version prevents racing availability changes"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Online and offline availability has an explicit connectivity and reconnect rule for captain availability state.",
+          "behavior": ["availability change requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Online and offline availability changes state or exercises privileged authority over captain availability state.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for captain availability state."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Online and offline availability has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and captain availability state status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Online and offline availability does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-AVAIL-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of captain availability state."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Change availability only when approved and not constrained by an active assignment.",
+        "Scope every captain availability state read or write to authenticated captain.",
+        "Online and offline availability exposes only available, busy, version after set availability."
       ],
       "requiredUnitTests": [
-        "Validate online and offline availability decisions, boundaries, and stable error codes."
+        "Exercise Online and offline availability boundaries, CAPTAIN_NOT_APPROVED, CAPTAIN_BUSY, AVAILABILITY_VERSION_STALE, and the captain offline to captain available decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for online and offline availability."
+        "Render Online and offline availability loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload online and offline availability against PostgreSQL with tenant isolation."
+        "Verify captain availability state ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-AVAIL-001."
+        "Validate set availability fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for online and offline availability."
+        "Drive approved captain through Online and offline availability and verify the resulting captain availability state projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing set availability.",
+        "Executable tests for CAP-AVAIL-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, CAPTAIN_NOT_APPROVED, CAPTAIN_BUSY, AVAILABILITY_VERSION_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-CAP-ASG-001",
       "contractIds": ["CAP-ASG-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for assignment reception ownership and expiry.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts assignment reception ownership and expiry with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for assignment reception ownership and expiry is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-asg-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Assignment reception ownership and expiry request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["approved available captain"],
+        "allowed": ["approved available captain"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended approved available captain",
+          "actor outside authenticated captain assignment",
+          "actor presenting a resource outside authenticated captain assignment"
         ]
       },
-      "databaseInvariant": "For assignment reception ownership and expiry, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "approved available captain has a current server-verified identity authorized for authenticated captain assignment.",
+        "no assignment is the authoritative starting state for captain dispatch offer."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "approved available captain invokes load active assignment with deviceId.",
+        "The producer authorizes authorize authenticated captain assignment on the server before reading or changing captain dispatch offer. and evaluates ASSIGNMENT_NOT_FOUND, ASSIGNMENT_EXPIRED, ASSIGNMENT_NOT_OWNED."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Return only the captain-owned unexpired offer or active delivery and never another captain assignment.",
+        "ASSIGNMENT_NOT_FOUND returns the standard error envelope and leaves captain dispatch offer at its last committed version.",
+        "The observed state is offer visible or active assignment restored; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "no assignment",
+          "to": "offer visible or active assignment restored",
+          "trigger": "GET /api/v1/captains/me/assignments/active completes load active assignment"
+        }
+      ],
+      "requiredFixtures": [
+        "no assignment fixture for Assignment reception ownership and expiry",
+        "approved available captain and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "load active assignment",
+        "method": "GET",
+        "path": "/api/v1/captains/me/assignments/active",
+        "fields": ["deviceId"]
+      },
+      "apiResponse": {
+        "fields": ["assignment", "expiresAt", "version"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["ASSIGNMENT_NOT_FOUND", "ASSIGNMENT_EXPIRED", "ASSIGNMENT_NOT_OWNED"],
+      "authorizationMatrix": {
+        "allowed": ["approved available captain"],
+        "denied": [
+          "revoked or suspended approved available captain",
+          "actor outside authenticated captain assignment",
+          "actor presenting a resource outside authenticated captain assignment"
+        ],
+        "ownershipRules": [
+          "Authorize authenticated captain assignment on the server before reading or changing captain dispatch offer.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "load active assignment does not mutate captain dispatch offer; it reads authenticated captain assignment from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Assignment reception ownership and expiry observes captain dispatch offer without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Assignment reception ownership and expiry must not combine incompatible versions of captain dispatch offer in one response.",
+          "behavior": ["dispatch offer version is authoritative"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Assignment reception ownership and expiry has an explicit connectivity and reconnect rule for captain dispatch offer.",
+          "behavior": ["cached offer cannot be accepted without revalidation"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Assignment reception ownership and expiry is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CAP-ASG-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Assignment reception ownership and expiry has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and captain dispatch offer status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Assignment reception ownership and expiry does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-ASG-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of captain dispatch offer."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Return only the captain-owned unexpired offer or active delivery and never another captain assignment.",
+        "Scope every captain dispatch offer read to authenticated captain assignment.",
+        "Assignment reception ownership and expiry exposes only assignment, expiresAt, version after load active assignment."
       ],
       "requiredUnitTests": [
-        "Validate assignment reception ownership and expiry decisions, boundaries, and stable error codes."
+        "Exercise Assignment reception ownership and expiry boundaries, ASSIGNMENT_NOT_FOUND, ASSIGNMENT_EXPIRED, ASSIGNMENT_NOT_OWNED, and the no assignment to offer visible or active assignment restored decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for assignment reception ownership and expiry."
+        "Render Assignment reception ownership and expiry loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload assignment reception ownership and expiry against PostgreSQL with tenant isolation."
+        "Verify captain dispatch offer ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-ASG-001."
+        "Validate load active assignment fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for assignment reception ownership and expiry."
+        "Drive approved available captain through Assignment reception ownership and expiry and verify the resulting captain dispatch offer projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing load active assignment.",
+        "Executable tests for CAP-ASG-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ASSIGNMENT_NOT_FOUND, ASSIGNMENT_EXPIRED, ASSIGNMENT_NOT_OWNED, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-CAP-CON-001",
       "contractIds": ["CAP-CON-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for accept and reject concurrency.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts accept and reject concurrency with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for accept and reject concurrency is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-con-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Accept and reject concurrency request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["offered captain"],
+        "allowed": ["offered captain"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended offered captain",
+          "actor outside offered captain",
+          "actor presenting a resource outside offered captain"
         ]
       },
-      "databaseInvariant": "For accept and reject concurrency, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "offered captain has a current server-verified identity authorized for offered captain.",
+        "offer pending is the authoritative starting state for dispatch offer decision."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "offered captain invokes decide dispatch offer with assignmentId, decision, offerVersion.",
+        "The producer authorizes authorize offered captain on the server before reading or changing dispatch offer decision. and evaluates ASSIGNMENT_EXPIRED, ASSIGNMENT_ALREADY_DECIDED, ASSIGNMENT_NOT_OWNED."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Accept or reject an owned unexpired offer with exactly one winning decision.",
+        "ASSIGNMENT_EXPIRED returns the standard error envelope and leaves dispatch offer decision at its last committed version.",
+        "The observed state is offer accepted or rejected; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "offer pending",
+          "to": "offer accepted or rejected",
+          "trigger": "POST /api/v1/captains/me/assignments/{assignmentId}/decisions completes decide dispatch offer"
+        }
+      ],
+      "requiredFixtures": [
+        "offer pending fixture for Accept and reject concurrency",
+        "offered captain and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "decide dispatch offer",
+        "method": "POST",
+        "path": "/api/v1/captains/me/assignments/{assignmentId}/decisions",
+        "fields": ["assignmentId", "decision", "offerVersion"]
+      },
+      "apiResponse": {
+        "fields": ["assignmentId", "status", "delivery"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["ASSIGNMENT_EXPIRED", "ASSIGNMENT_ALREADY_DECIDED", "ASSIGNMENT_NOT_OWNED"],
+      "authorizationMatrix": {
+        "allowed": ["offered captain"],
+        "denied": [
+          "revoked or suspended offered captain",
+          "actor outside offered captain",
+          "actor presenting a resource outside offered captain"
+        ],
+        "ownershipRules": [
+          "Authorize offered captain on the server before reading or changing dispatch offer decision.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The offer pending to offer accepted or rejected transition, ownership checks, and audit or outbox record for dispatch offer decision commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Accept and reject concurrency can change dispatch offer decision, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to offered captain, the operation, and the canonical request payload.",
+            "Return the original dispatch offer decision result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Accept and reject concurrency has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["compare-and-set offer version yields one winner"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Accept and reject concurrency has an explicit connectivity and reconnect rule for dispatch offer decision.",
+          "behavior": ["decision requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Accept and reject concurrency changes state or exercises privileged authority over dispatch offer decision.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for dispatch offer decision."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Accept and reject concurrency has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and dispatch offer decision status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Accept and reject concurrency does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-CON-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of dispatch offer decision."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Accept or reject an owned unexpired offer with exactly one winning decision.",
+        "Scope every dispatch offer decision read or write to offered captain.",
+        "Accept and reject concurrency exposes only assignmentId, status, delivery after decide dispatch offer."
       ],
       "requiredUnitTests": [
-        "Validate accept and reject concurrency decisions, boundaries, and stable error codes."
+        "Exercise Accept and reject concurrency boundaries, ASSIGNMENT_EXPIRED, ASSIGNMENT_ALREADY_DECIDED, ASSIGNMENT_NOT_OWNED, and the offer pending to offer accepted or rejected decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for accept and reject concurrency."
+        "Render Accept and reject concurrency loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload accept and reject concurrency against PostgreSQL with tenant isolation."
+        "Verify dispatch offer decision ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-CON-001."
+        "Validate decide dispatch offer fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for accept and reject concurrency."
+        "Drive offered captain through Accept and reject concurrency and verify the resulting dispatch offer decision projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing decide dispatch offer.",
+        "Executable tests for CAP-CON-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ASSIGNMENT_EXPIRED, ASSIGNMENT_ALREADY_DECIDED, ASSIGNMENT_NOT_OWNED, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-CAP-STATE-001",
       "contractIds": ["CAP-STATE-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for pickup and delivery state transitions.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts pickup and delivery state transitions with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for pickup and delivery state transitions is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-state-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Pickup and delivery state transitions request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["assigned captain"],
+        "allowed": ["assigned captain"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended assigned captain",
+          "actor outside assigned captain delivery",
+          "actor presenting a resource outside assigned captain delivery"
         ]
       },
-      "databaseInvariant": "For pickup and delivery state transitions, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "assigned captain has a current server-verified identity authorized for assigned captain delivery.",
+        "delivery assigned is the authoritative starting state for captain delivery lifecycle."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "assigned captain invokes advance delivery with deliveryId, action, expectedStatus, proofReference.",
+        "The producer authorizes authorize assigned captain delivery on the server before reading or changing captain delivery lifecycle. and evaluates DELIVERY_TRANSITION_INVALID, DELIVERY_NOT_OWNED, DELIVERY_VERSION_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Allow only the next owned pickup/delivery transition and publish customer/merchant history.",
+        "DELIVERY_TRANSITION_INVALID returns the standard error envelope and leaves captain delivery lifecycle at its last committed version.",
+        "The observed state is delivery advanced; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "delivery assigned",
+          "to": "delivery advanced",
+          "trigger": "POST /api/v1/captains/me/deliveries/{deliveryId}/transitions completes advance delivery"
+        }
+      ],
+      "requiredFixtures": [
+        "delivery assigned fixture for Pickup and delivery state transitions",
+        "assigned captain and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "advance delivery",
+        "method": "POST",
+        "path": "/api/v1/captains/me/deliveries/{deliveryId}/transitions",
+        "fields": ["deliveryId", "action", "expectedStatus", "proofReference"]
+      },
+      "apiResponse": {
+        "fields": ["deliveryId", "status", "version"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["DELIVERY_TRANSITION_INVALID", "DELIVERY_NOT_OWNED", "DELIVERY_VERSION_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["assigned captain"],
+        "denied": [
+          "revoked or suspended assigned captain",
+          "actor outside assigned captain delivery",
+          "actor presenting a resource outside assigned captain delivery"
+        ],
+        "ownershipRules": [
+          "Authorize assigned captain delivery on the server before reading or changing captain delivery lifecycle.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The delivery assigned to delivery advanced transition, ownership checks, and audit or outbox record for captain delivery lifecycle commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Pickup and delivery state transitions can change captain delivery lifecycle, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to assigned captain, the operation, and the canonical request payload.",
+            "Return the original captain delivery lifecycle result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Pickup and delivery state transitions has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["expected status and version yield one transition winner"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Pickup and delivery state transitions has an explicit connectivity and reconnect rule for captain delivery lifecycle.",
+          "behavior": [
+            "only explicitly permitted transition drafts may wait; server revalidates before apply"
+          ],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Pickup and delivery state transitions changes state or exercises privileged authority over captain delivery lifecycle.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for captain delivery lifecycle."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Pickup and delivery state transitions has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and captain delivery lifecycle status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Pickup and delivery state transitions does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-STATE-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of captain delivery lifecycle."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Allow only the next owned pickup/delivery transition and publish customer/merchant history.",
+        "Scope every captain delivery lifecycle read or write to assigned captain delivery.",
+        "Pickup and delivery state transitions exposes only deliveryId, status, version after advance delivery."
       ],
       "requiredUnitTests": [
-        "Validate pickup and delivery state transitions decisions, boundaries, and stable error codes."
+        "Exercise Pickup and delivery state transitions boundaries, DELIVERY_TRANSITION_INVALID, DELIVERY_NOT_OWNED, DELIVERY_VERSION_STALE, and the delivery assigned to delivery advanced decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for pickup and delivery state transitions."
+        "Render Pickup and delivery state transitions loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload pickup and delivery state transitions against PostgreSQL with tenant isolation."
+        "Verify captain delivery lifecycle ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-STATE-001."
+        "Validate advance delivery fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for pickup and delivery state transitions."
+        "Drive assigned captain through Pickup and delivery state transitions and verify the resulting captain delivery lifecycle projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing advance delivery.",
+        "Executable tests for CAP-STATE-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, DELIVERY_TRANSITION_INVALID, DELIVERY_NOT_OWNED, DELIVERY_VERSION_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-CAP-IDEMP-001",
       "contractIds": ["CAP-IDEMP-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for duplicate captain actions.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts duplicate captain actions with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for duplicate captain actions is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-idemp-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Duplicate captain actions request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["assigned captain"],
+        "allowed": ["assigned captain"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended assigned captain",
+          "actor outside captain and delivery command",
+          "actor presenting a resource outside captain and delivery command"
         ]
       },
-      "databaseInvariant": "For duplicate captain actions, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "assigned captain has a current server-verified identity authorized for captain and delivery command.",
+        "command unseen is the authoritative starting state for captain delivery command result."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "assigned captain invokes execute delivery command with deliveryId, commandType, idempotencyKey, expectedVersion.",
+        "The producer authorizes authorize captain and delivery command on the server before reading or changing captain delivery command result. and evaluates IDEMPOTENCY_KEY_REUSED, DELIVERY_COMMAND_CONFLICT."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Return the original result for a duplicate key and reject payload reuse.",
+        "IDEMPOTENCY_KEY_REUSED returns the standard error envelope and leaves captain delivery command result at its last committed version.",
+        "The observed state is command result recorded; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "command unseen",
+          "to": "command result recorded",
+          "trigger": "POST /api/v1/captains/me/deliveries/{deliveryId}/commands completes execute delivery command"
+        }
+      ],
+      "requiredFixtures": [
+        "command unseen fixture for Duplicate captain actions",
+        "assigned captain and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "execute delivery command",
+        "method": "POST",
+        "path": "/api/v1/captains/me/deliveries/{deliveryId}/commands",
+        "fields": ["deliveryId", "commandType", "idempotencyKey", "expectedVersion"]
+      },
+      "apiResponse": {
+        "fields": ["commandId", "deliveryStatus", "replayed"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["IDEMPOTENCY_KEY_REUSED", "DELIVERY_COMMAND_CONFLICT"],
+      "authorizationMatrix": {
+        "allowed": ["assigned captain"],
+        "denied": [
+          "revoked or suspended assigned captain",
+          "actor outside captain and delivery command",
+          "actor presenting a resource outside captain and delivery command"
+        ],
+        "ownershipRules": [
+          "Authorize captain and delivery command on the server before reading or changing captain delivery command result.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The command unseen to command result recorded transition, ownership checks, and audit or outbox record for captain delivery command result commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Duplicate captain actions can change captain delivery command result, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to assigned captain, the operation, and the canonical request payload.",
+            "Return the original captain delivery command result result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Duplicate captain actions has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["unique actor-operation-key serializes duplicates"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Duplicate captain actions has an explicit connectivity and reconnect rule for captain delivery command result.",
+          "behavior": ["queue-idempotent-command"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Duplicate captain actions changes state or exercises privileged authority over captain delivery command result.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for captain delivery command result."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Duplicate captain actions has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and captain delivery command result status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Duplicate captain actions does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-IDEMP-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of captain delivery command result."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Return the original result for a duplicate key and reject payload reuse.",
+        "Scope every captain delivery command result read or write to captain and delivery command.",
+        "Duplicate captain actions exposes only commandId, deliveryStatus, replayed after execute delivery command."
       ],
       "requiredUnitTests": [
-        "Validate duplicate captain actions decisions, boundaries, and stable error codes."
+        "Exercise Duplicate captain actions boundaries, IDEMPOTENCY_KEY_REUSED, DELIVERY_COMMAND_CONFLICT, and the command unseen to command result recorded decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for duplicate captain actions."
+        "Render Duplicate captain actions loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload duplicate captain actions against PostgreSQL with tenant isolation."
+        "Verify captain delivery command result ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-IDEMP-001."
+        "Validate execute delivery command fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for duplicate captain actions."
+        "Drive assigned captain through Duplicate captain actions and verify the resulting captain delivery command result projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing execute delivery command.",
+        "Executable tests for CAP-IDEMP-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, IDEMPOTENCY_KEY_REUSED, DELIVERY_COMMAND_CONFLICT, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-CAP-STALE-001",
       "contractIds": ["CAP-STALE-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for stale response handling.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts stale response handling with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for stale response handling is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-stale-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Stale response handling request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["authenticated captain client"],
+        "allowed": ["authenticated captain client"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended authenticated captain client",
+          "actor outside captain auth epoch",
+          "actor presenting a resource outside captain auth epoch"
         ]
       },
-      "databaseInvariant": "For stale response handling, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "authenticated captain client has a current server-verified identity authorized for captain auth epoch.",
+        "request in flight is the authoritative starting state for captain auth-epoch response guard."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "authenticated captain client invokes CaptainResponseGuard.accept with requestAuthEpoch, responseAssignmentVersion, currentState.",
+        "The producer authorizes authorize captain auth epoch on the server before reading or changing captain auth-epoch response guard. and evaluates AUTH_EPOCH_STALE, ASSIGNMENT_RESPONSE_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Discard responses from a prior account generation or older assignment version.",
+        "AUTH_EPOCH_STALE returns the standard error envelope and leaves captain auth-epoch response guard at its last committed version.",
+        "The observed state is response accepted or discarded; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "request in flight",
+          "to": "response accepted or discarded",
+          "trigger": "CaptainResponseGuard.accept completes CaptainResponseGuard.accept"
+        }
+      ],
+      "requiredFixtures": [
+        "request in flight fixture for Stale response handling",
+        "authenticated captain client and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "client",
+        "operation": "CaptainResponseGuard.accept",
+        "interface": "CaptainResponseGuard.accept",
+        "fields": ["requestAuthEpoch", "responseAssignmentVersion", "currentState"]
+      },
+      "apiResponse": {
+        "fields": ["accepted", "discardReason"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["AUTH_EPOCH_STALE", "ASSIGNMENT_RESPONSE_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated captain client"],
+        "denied": [
+          "revoked or suspended authenticated captain client",
+          "actor outside captain auth epoch",
+          "actor presenting a resource outside captain auth epoch"
+        ],
+        "ownershipRules": [
+          "Authorize captain auth epoch on the server before reading or changing captain auth-epoch response guard.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "CaptainResponseGuard.accept does not mutate captain auth-epoch response guard; it reads captain auth epoch from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Stale response handling observes captain auth-epoch response guard without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Stale response handling must not combine incompatible versions of captain auth-epoch response guard in one response.",
+          "behavior": ["newest auth epoch and assignment version win"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Stale response handling has an explicit connectivity and reconnect rule for captain auth-epoch response guard.",
+          "behavior": ["reconnect invalidates pre-disconnect in-flight responses"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Stale response handling is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CAP-STALE-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Stale response handling has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and captain auth-epoch response guard status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Stale response handling does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-STALE-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of captain auth-epoch response guard."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Discard responses from a prior account generation or older assignment version.",
+        "Scope every captain auth-epoch response guard read to captain auth epoch.",
+        "Stale response handling exposes only accepted, discardReason after CaptainResponseGuard.accept."
       ],
       "requiredUnitTests": [
-        "Validate stale response handling decisions, boundaries, and stable error codes."
+        "Exercise Stale response handling boundaries, AUTH_EPOCH_STALE, ASSIGNMENT_RESPONSE_STALE, and the request in flight to response accepted or discarded decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for stale response handling."
+        "Render Stale response handling loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload stale response handling against PostgreSQL with tenant isolation."
+        "Verify captain auth-epoch response guard ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-STALE-001."
+        "Validate CaptainResponseGuard.accept fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for stale response handling."
+        "Drive authenticated captain client through Stale response handling and verify the resulting captain auth-epoch response guard projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing CaptainResponseGuard.accept.",
+        "Executable tests for CAP-STALE-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, AUTH_EPOCH_STALE, ASSIGNMENT_RESPONSE_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-CAP-OFF-001",
       "contractIds": ["CAP-OFF-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for captain offline and reconnect.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts captain offline and reconnect with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for captain offline and reconnect is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-off-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Captain offline and reconnect request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["assigned captain"],
+        "allowed": ["assigned captain"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended assigned captain",
+          "actor outside captain installation and active delivery",
+          "actor presenting a resource outside captain installation and active delivery"
         ]
       },
-      "databaseInvariant": "For captain offline and reconnect, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "assigned captain has a current server-verified identity authorized for captain installation and active delivery.",
+        "captain disconnected is the authoritative starting state for captain durable command queue."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "assigned captain invokes CaptainOfflineCoordinator.reconcile with authEpoch, assignmentVersion, queuedCommands.",
+        "The producer authorizes authorize captain installation and active delivery on the server before reading or changing captain durable command queue. and evaluates NETWORK_UNAVAILABLE, OFFLINE_COMMAND_NOT_ALLOWED, ASSIGNMENT_OWNERSHIP_CHANGED."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Persist bounded commands, restore active delivery, and replay only after ownership and version revalidation.",
+        "NETWORK_UNAVAILABLE returns the standard error envelope and leaves captain durable command queue at its last committed version.",
+        "The observed state is captain reconciled; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "captain disconnected",
+          "to": "captain reconciled",
+          "trigger": "CaptainOfflineCoordinator.reconcile completes CaptainOfflineCoordinator.reconcile"
+        }
+      ],
+      "requiredFixtures": [
+        "captain disconnected fixture for Captain offline and reconnect",
+        "assigned captain and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "client",
+        "operation": "CaptainOfflineCoordinator.reconcile",
+        "interface": "CaptainOfflineCoordinator.reconcile",
+        "fields": ["authEpoch", "assignmentVersion", "queuedCommands"]
+      },
+      "apiResponse": {
+        "fields": ["outcomes", "conflicts", "activeDelivery"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "NETWORK_UNAVAILABLE",
+        "OFFLINE_COMMAND_NOT_ALLOWED",
+        "ASSIGNMENT_OWNERSHIP_CHANGED"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["assigned captain"],
+        "denied": [
+          "revoked or suspended assigned captain",
+          "actor outside captain installation and active delivery",
+          "actor presenting a resource outside captain installation and active delivery"
+        ],
+        "ownershipRules": [
+          "Authorize captain installation and active delivery on the server before reading or changing captain durable command queue.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The captain disconnected to captain reconciled transition, ownership checks, and audit or outbox record for captain durable command queue commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Captain offline and reconnect can change captain durable command queue, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to assigned captain, the operation, and the canonical request payload.",
+            "Return the original captain durable command queue result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Captain offline and reconnect has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one replay worker per installation"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Captain offline and reconnect has an explicit connectivity and reconnect rule for captain durable command queue.",
+          "behavior": ["core-purpose-offline-contract"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Captain offline and reconnect changes state or exercises privileged authority over captain durable command queue.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for captain durable command queue."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Captain offline and reconnect has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and captain durable command queue status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Captain offline and reconnect does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-OFF-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of captain durable command queue."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Persist bounded commands, restore active delivery, and replay only after ownership and version revalidation.",
+        "Scope every captain durable command queue read or write to captain installation and active delivery.",
+        "Captain offline and reconnect exposes only outcomes, conflicts, activeDelivery after CaptainOfflineCoordinator.reconcile."
       ],
       "requiredUnitTests": [
-        "Validate captain offline and reconnect decisions, boundaries, and stable error codes."
+        "Exercise Captain offline and reconnect boundaries, NETWORK_UNAVAILABLE, OFFLINE_COMMAND_NOT_ALLOWED, ASSIGNMENT_OWNERSHIP_CHANGED, and the captain disconnected to captain reconciled decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for captain offline and reconnect."
+        "Render Captain offline and reconnect loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload captain offline and reconnect against PostgreSQL with tenant isolation."
+        "Verify captain durable command queue ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-OFF-001."
+        "Validate CaptainOfflineCoordinator.reconcile fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for captain offline and reconnect."
+        "Drive assigned captain through Captain offline and reconnect and verify the resulting captain durable command queue projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing CaptainOfflineCoordinator.reconcile.",
+        "Executable tests for CAP-OFF-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, NETWORK_UNAVAILABLE, OFFLINE_COMMAND_NOT_ALLOWED, ASSIGNMENT_OWNERSHIP_CHANGED, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-CAP-NOT-001",
       "contractIds": ["CAP-NOT-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for captain push and deep links.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts captain push and deep links with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for captain push and deep links is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-not-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Captain push and deep links request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["authenticated captain"],
+        "allowed": ["authenticated captain"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended authenticated captain",
+          "actor outside captain recipient",
+          "actor presenting a resource outside captain recipient"
         ]
       },
-      "databaseInvariant": "For captain push and deep links, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "authenticated captain has a current server-verified identity authorized for captain recipient.",
+        "signal received is the authoritative starting state for captain notification signal."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "authenticated captain invokes list captain notifications with cursor.",
+        "The producer authorizes authorize captain recipient on the server before reading or changing captain notification signal. and evaluates NOTIFICATION_PERMISSION_DENIED, DEEPLINK_ASSIGNMENT_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Retain cold-start signals and deep-link only after active assignment revalidation.",
+        "NOTIFICATION_PERMISSION_DENIED returns the standard error envelope and leaves captain notification signal at its last committed version.",
+        "The observed state is authoritative target loaded; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "signal received",
+          "to": "authoritative target loaded",
+          "trigger": "GET /api/v1/captains/me/notifications completes list captain notifications"
+        }
+      ],
+      "requiredFixtures": [
+        "signal received fixture for Captain push and deep links",
+        "authenticated captain and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "list captain notifications",
+        "method": "GET",
+        "path": "/api/v1/captains/me/notifications",
+        "fields": ["cursor"]
+      },
+      "apiResponse": {
+        "fields": ["notifications", "nextCursor"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["NOTIFICATION_PERMISSION_DENIED", "DEEPLINK_ASSIGNMENT_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated captain"],
+        "denied": [
+          "revoked or suspended authenticated captain",
+          "actor outside captain recipient",
+          "actor presenting a resource outside captain recipient"
+        ],
+        "ownershipRules": [
+          "Authorize captain recipient on the server before reading or changing captain notification signal.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "list captain notifications does not mutate captain notification signal; it reads captain recipient from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Captain push and deep links observes captain notification signal without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Captain push and deep links must not combine incompatible versions of captain notification signal in one response.",
+          "behavior": ["duplicate notification IDs collapse"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Captain push and deep links has an explicit connectivity and reconnect rule for captain notification signal.",
+          "behavior": ["retain signal and retry revalidation on reconnect"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Captain push and deep links is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CAP-NOT-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Captain push and deep links has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and captain notification signal status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Captain push and deep links contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-010."
+          ],
+          "decisionRefs": ["BD-010"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-NOT-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of captain notification signal."
+      ],
+      "businessDecisionRefs": ["BD-010"],
+      "featureBehavior": [
+        "Retain cold-start signals and deep-link only after active assignment revalidation.",
+        "Scope every captain notification signal read to captain recipient.",
+        "Captain push and deep links exposes only notifications, nextCursor after list captain notifications."
       ],
       "requiredUnitTests": [
-        "Validate captain push and deep links decisions, boundaries, and stable error codes."
+        "Exercise Captain push and deep links boundaries, NOTIFICATION_PERMISSION_DENIED, DEEPLINK_ASSIGNMENT_STALE, and the signal received to authoritative target loaded decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for captain push and deep links."
+        "Render Captain push and deep links loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload captain push and deep links against PostgreSQL with tenant isolation."
+        "Verify captain notification signal ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-NOT-001."
+        "Validate list captain notifications fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for captain push and deep links."
+        "Drive authenticated captain through Captain push and deep links and verify the resulting captain notification signal projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing list captain notifications.",
+        "Executable tests for CAP-NOT-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, NOTIFICATION_PERMISSION_DENIED, DEEPLINK_ASSIGNMENT_STALE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-010 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-CAP-GPS-001",
       "contractIds": ["CAP-GPS-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for gps permissions and background tracking.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts gps permissions and background tracking with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for gps permissions and background tracking is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-gps-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "GPS permissions and background tracking request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["assigned captain with granted location permission"],
+        "allowed": ["assigned captain with granted location permission"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended assigned captain with granted location permission",
+          "actor outside captain active assignment",
+          "actor presenting a resource outside captain active assignment"
         ]
       },
-      "databaseInvariant": "For gps permissions and background tracking, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "assigned captain with granted location permission has a current server-verified identity authorized for captain active assignment.",
+        "location unknown is the authoritative starting state for captain location telemetry."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "assigned captain with granted location permission invokes publish location sample with latitude, longitude, accuracyMeters, capturedAt, assignmentId.",
+        "The producer authorizes authorize captain active assignment on the server before reading or changing captain location telemetry. and evaluates LOCATION_PERMISSION_DENIED, LOCATION_COORDINATES_INVALID, LOCATION_ASSIGNMENT_INACTIVE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Validate coordinates and attach samples only to an owned active assignment under the approved sampling policy.",
+        "LOCATION_PERMISSION_DENIED returns the standard error envelope and leaves captain location telemetry at its last committed version.",
+        "The observed state is location sample accepted; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "location unknown",
+          "to": "location sample accepted",
+          "trigger": "POST /api/v1/captains/me/location-samples completes publish location sample"
+        }
+      ],
+      "requiredFixtures": [
+        "location unknown fixture for GPS permissions and background tracking",
+        "assigned captain with granted location permission and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "publish location sample",
+        "method": "POST",
+        "path": "/api/v1/captains/me/location-samples",
+        "fields": ["latitude", "longitude", "accuracyMeters", "capturedAt", "assignmentId"]
+      },
+      "apiResponse": {
+        "fields": ["acceptedAt", "samplingPolicyVersion"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "LOCATION_PERMISSION_DENIED",
+        "LOCATION_COORDINATES_INVALID",
+        "LOCATION_ASSIGNMENT_INACTIVE"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["assigned captain with granted location permission"],
+        "denied": [
+          "revoked or suspended assigned captain with granted location permission",
+          "actor outside captain active assignment",
+          "actor presenting a resource outside captain active assignment"
+        ],
+        "ownershipRules": [
+          "Authorize captain active assignment on the server before reading or changing captain location telemetry.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The location unknown to location sample accepted transition, ownership checks, and audit or outbox record for captain location telemetry commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "GPS permissions and background tracking can change captain location telemetry, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to assigned captain with granted location permission, the operation, and the canonical request payload.",
+            "Return the original captain location telemetry result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "GPS permissions and background tracking has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["samples order by capturedAt and reject stale points"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "GPS permissions and background tracking has an explicit connectivity and reconnect rule for captain location telemetry.",
+          "behavior": ["bounded samples may queue with capture timestamps"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "GPS permissions and background tracking changes state or exercises privileged authority over captain location telemetry.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for captain location telemetry."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "GPS permissions and background tracking has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and captain location telemetry status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "GPS permissions and background tracking contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-007."
+          ],
+          "decisionRefs": ["BD-007"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-GPS-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of captain location telemetry."
+      ],
+      "businessDecisionRefs": ["BD-007"],
+      "featureBehavior": [
+        "Validate coordinates and attach samples only to an owned active assignment under the approved sampling policy.",
+        "Scope every captain location telemetry read or write to captain active assignment.",
+        "GPS permissions and background tracking exposes only acceptedAt, samplingPolicyVersion after publish location sample."
       ],
       "requiredUnitTests": [
-        "Validate gps permissions and background tracking decisions, boundaries, and stable error codes."
+        "Exercise GPS permissions and background tracking boundaries, LOCATION_PERMISSION_DENIED, LOCATION_COORDINATES_INVALID, LOCATION_ASSIGNMENT_INACTIVE, and the location unknown to location sample accepted decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for gps permissions and background tracking."
+        "Render GPS permissions and background tracking loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload gps permissions and background tracking against PostgreSQL with tenant isolation."
+        "Verify captain location telemetry ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-GPS-001."
+        "Validate publish location sample fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for gps permissions and background tracking."
+        "Drive assigned captain with granted location permission through GPS permissions and background tracking and verify the resulting captain location telemetry projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing publish location sample.",
+        "Executable tests for CAP-GPS-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, LOCATION_PERMISSION_DENIED, LOCATION_COORDINATES_INVALID, LOCATION_ASSIGNMENT_INACTIVE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-007 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-CAP-POD-001",
       "contractIds": ["CAP-POD-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for proof of delivery.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts proof of delivery with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for proof of delivery is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-pod-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Proof of delivery request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["assigned captain"],
+        "allowed": ["assigned captain"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended assigned captain",
+          "actor outside assigned captain delivery",
+          "actor presenting a resource outside assigned captain delivery"
         ]
       },
-      "databaseInvariant": "For proof of delivery, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "assigned captain has a current server-verified identity authorized for assigned captain delivery.",
+        "delivery ready for proof is the authoritative starting state for delivery proof record."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "assigned captain invokes submit proof of delivery with deliveryId, proofType, uploadReservationId, otp.",
+        "The producer authorizes authorize assigned captain delivery on the server before reading or changing delivery proof record. and evaluates DELIVERY_NOT_OWNED, PROOF_REQUIRED, PROOF_INVALID."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Attach required proof to an owned delivery using a reserved private upload or verified OTP.",
+        "DELIVERY_NOT_OWNED returns the standard error envelope and leaves delivery proof record at its last committed version.",
+        "The observed state is proof verified; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "delivery ready for proof",
+          "to": "proof verified",
+          "trigger": "POST /api/v1/captains/me/deliveries/{deliveryId}/proof completes submit proof of delivery"
+        }
+      ],
+      "requiredFixtures": [
+        "delivery ready for proof fixture for Proof of delivery",
+        "assigned captain and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "submit proof of delivery",
+        "method": "POST",
+        "path": "/api/v1/captains/me/deliveries/{deliveryId}/proof",
+        "fields": ["deliveryId", "proofType", "uploadReservationId", "otp"]
+      },
+      "apiResponse": {
+        "fields": ["proofId", "verifiedAt"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["DELIVERY_NOT_OWNED", "PROOF_REQUIRED", "PROOF_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["assigned captain"],
+        "denied": [
+          "revoked or suspended assigned captain",
+          "actor outside assigned captain delivery",
+          "actor presenting a resource outside assigned captain delivery"
+        ],
+        "ownershipRules": [
+          "Authorize assigned captain delivery on the server before reading or changing delivery proof record.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The delivery ready for proof to proof verified transition, ownership checks, and audit or outbox record for delivery proof record commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Proof of delivery can change delivery proof record, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to assigned captain, the operation, and the canonical request payload.",
+            "Return the original delivery proof record result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Proof of delivery has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one accepted proof record per required proof type"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Proof of delivery has an explicit connectivity and reconnect rule for delivery proof record.",
+          "behavior": ["proof upload and verification require connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Proof of delivery changes state or exercises privileged authority over delivery proof record.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for delivery proof record."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Proof of delivery has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and delivery proof record status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Proof of delivery does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-POD-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of delivery proof record."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Attach required proof to an owned delivery using a reserved private upload or verified OTP.",
+        "Scope every delivery proof record read or write to assigned captain delivery.",
+        "Proof of delivery exposes only proofId, verifiedAt after submit proof of delivery."
       ],
       "requiredUnitTests": [
-        "Validate proof of delivery decisions, boundaries, and stable error codes."
+        "Exercise Proof of delivery boundaries, DELIVERY_NOT_OWNED, PROOF_REQUIRED, PROOF_INVALID, and the delivery ready for proof to proof verified decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for proof of delivery."
+        "Render Proof of delivery loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload proof of delivery against PostgreSQL with tenant isolation."
+        "Verify delivery proof record ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-POD-001."
+        "Validate submit proof of delivery fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for proof of delivery."
+        "Drive assigned captain through Proof of delivery and verify the resulting delivery proof record projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing submit proof of delivery.",
+        "Executable tests for CAP-POD-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, DELIVERY_NOT_OWNED, PROOF_REQUIRED, PROOF_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-CAP-COD-001",
       "contractIds": ["CAP-COD-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for cash on delivery.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts cash on delivery with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for cash on delivery is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-cod-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Cash on delivery request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["assigned captain"],
+        "allowed": ["assigned captain"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended assigned captain",
+          "actor outside assigned captain delivery",
+          "actor presenting a resource outside assigned captain delivery"
         ]
       },
-      "databaseInvariant": "For cash on delivery, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "assigned captain has a current server-verified identity authorized for assigned captain delivery.",
+        "cash due is the authoritative starting state for captain COD collection record."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "assigned captain invokes record COD collection with deliveryId, amountPaise, proofReference.",
+        "The producer authorizes authorize assigned captain delivery on the server before reading or changing captain cod collection record. and evaluates COD_AMOUNT_MISMATCH, COD_PROOF_REQUIRED, DELIVERY_NOT_OWNED."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Record only the server-expected amount and block delivery completion until collection proof is accepted.",
+        "COD_AMOUNT_MISMATCH returns the standard error envelope and leaves captain COD collection record at its last committed version.",
+        "The observed state is cash collected pending settlement; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "cash due",
+          "to": "cash collected pending settlement",
+          "trigger": "POST /api/v1/captains/me/deliveries/{deliveryId}/cash-collections completes record COD collection"
+        }
+      ],
+      "requiredFixtures": [
+        "cash due fixture for Cash on delivery",
+        "assigned captain and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "record COD collection",
+        "method": "POST",
+        "path": "/api/v1/captains/me/deliveries/{deliveryId}/cash-collections",
+        "fields": ["deliveryId", "amountPaise", "proofReference"]
+      },
+      "apiResponse": {
+        "fields": ["collectionId", "status", "amountPaise"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["COD_AMOUNT_MISMATCH", "COD_PROOF_REQUIRED", "DELIVERY_NOT_OWNED"],
+      "authorizationMatrix": {
+        "allowed": ["assigned captain"],
+        "denied": [
+          "revoked or suspended assigned captain",
+          "actor outside assigned captain delivery",
+          "actor presenting a resource outside assigned captain delivery"
+        ],
+        "ownershipRules": [
+          "Authorize assigned captain delivery on the server before reading or changing captain COD collection record.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The cash due to cash collected pending settlement transition, ownership checks, and audit or outbox record for captain COD collection record commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Cash on delivery can change captain COD collection record, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to assigned captain, the operation, and the canonical request payload.",
+            "Return the original captain COD collection record result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Cash on delivery has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one collection per delivery"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Cash on delivery has an explicit connectivity and reconnect rule for captain COD collection record.",
+          "behavior": ["cash collection proof requires connectivity before completion"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Cash on delivery changes state or exercises privileged authority over captain COD collection record.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for captain COD collection record."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Cash on delivery has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and captain COD collection record status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Cash on delivery contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-005."
+          ],
+          "decisionRefs": ["BD-005"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-COD-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of captain COD collection record."
+      ],
+      "businessDecisionRefs": ["BD-005"],
+      "featureBehavior": [
+        "Record only the server-expected amount and block delivery completion until collection proof is accepted.",
+        "Scope every captain COD collection record read or write to assigned captain delivery.",
+        "Cash on delivery exposes only collectionId, status, amountPaise after record COD collection."
       ],
       "requiredUnitTests": [
-        "Validate cash on delivery decisions, boundaries, and stable error codes."
+        "Exercise Cash on delivery boundaries, COD_AMOUNT_MISMATCH, COD_PROOF_REQUIRED, DELIVERY_NOT_OWNED, and the cash due to cash collected pending settlement decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for cash on delivery."
+        "Render Cash on delivery loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload cash on delivery against PostgreSQL with tenant isolation."
+        "Verify captain COD collection record ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-COD-001."
+        "Validate record COD collection fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for cash on delivery."
+        "Drive assigned captain through Cash on delivery and verify the resulting captain COD collection record projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing record COD collection.",
+        "Executable tests for CAP-COD-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, COD_AMOUNT_MISMATCH, COD_PROOF_REQUIRED, DELIVERY_NOT_OWNED, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-005 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-CAP-CAN-001",
       "contractIds": ["CAP-CAN-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for delivery cancellation.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts delivery cancellation with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for delivery cancellation is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-can-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Delivery cancellation request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["assigned captain"],
+        "allowed": ["assigned captain"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended assigned captain",
+          "actor outside assigned captain delivery",
+          "actor presenting a resource outside assigned captain delivery"
         ]
       },
-      "databaseInvariant": "For delivery cancellation, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "assigned captain has a current server-verified identity authorized for assigned captain delivery.",
+        "delivery assigned or in pickup is the authoritative starting state for delivery cancellation request."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "assigned captain invokes request delivery cancellation with deliveryId, reasonCode, notes, expectedStatus.",
+        "The producer authorizes authorize assigned captain delivery on the server before reading or changing delivery cancellation request. and evaluates DELIVERY_NOT_CANCELLABLE, CANCELLATION_REASON_INVALID, DELIVERY_VERSION_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Accept only allowed reasons in cancellable states and preserve reassignment/audit consequences.",
+        "DELIVERY_NOT_CANCELLABLE returns the standard error envelope and leaves delivery cancellation request at its last committed version.",
+        "The observed state is delivery cancellation requested; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "delivery assigned or in pickup",
+          "to": "delivery cancellation requested",
+          "trigger": "POST /api/v1/captains/me/deliveries/{deliveryId}/cancellations completes request delivery cancellation"
+        }
+      ],
+      "requiredFixtures": [
+        "delivery assigned or in pickup fixture for Delivery cancellation",
+        "assigned captain and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "request delivery cancellation",
+        "method": "POST",
+        "path": "/api/v1/captains/me/deliveries/{deliveryId}/cancellations",
+        "fields": ["deliveryId", "reasonCode", "notes", "expectedStatus"]
+      },
+      "apiResponse": {
+        "fields": ["deliveryId", "status", "reassignmentRequired"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "DELIVERY_NOT_CANCELLABLE",
+        "CANCELLATION_REASON_INVALID",
+        "DELIVERY_VERSION_STALE"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["assigned captain"],
+        "denied": [
+          "revoked or suspended assigned captain",
+          "actor outside assigned captain delivery",
+          "actor presenting a resource outside assigned captain delivery"
+        ],
+        "ownershipRules": [
+          "Authorize assigned captain delivery on the server before reading or changing delivery cancellation request.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The delivery assigned or in pickup to delivery cancellation requested transition, ownership checks, and audit or outbox record for delivery cancellation request commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Delivery cancellation can change delivery cancellation request, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to assigned captain, the operation, and the canonical request payload.",
+            "Return the original delivery cancellation request result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Delivery cancellation has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["cancellation races with transition via expected status"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Delivery cancellation has an explicit connectivity and reconnect rule for delivery cancellation request.",
+          "behavior": ["cancellation requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Delivery cancellation changes state or exercises privileged authority over delivery cancellation request.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for delivery cancellation request."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Delivery cancellation has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and delivery cancellation request status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Delivery cancellation does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-CAN-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of delivery cancellation request."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Accept only allowed reasons in cancellable states and preserve reassignment/audit consequences.",
+        "Scope every delivery cancellation request read or write to assigned captain delivery.",
+        "Delivery cancellation exposes only deliveryId, status, reassignmentRequired after request delivery cancellation."
       ],
       "requiredUnitTests": [
-        "Validate delivery cancellation decisions, boundaries, and stable error codes."
+        "Exercise Delivery cancellation boundaries, DELIVERY_NOT_CANCELLABLE, CANCELLATION_REASON_INVALID, DELIVERY_VERSION_STALE, and the delivery assigned or in pickup to delivery cancellation requested decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for delivery cancellation."
+        "Render Delivery cancellation loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload delivery cancellation against PostgreSQL with tenant isolation."
+        "Verify delivery cancellation request ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-CAN-001."
+        "Validate request delivery cancellation fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for delivery cancellation."
+        "Drive assigned captain through Delivery cancellation and verify the resulting delivery cancellation request projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing request delivery cancellation.",
+        "Executable tests for CAP-CAN-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, DELIVERY_NOT_CANCELLABLE, CANCELLATION_REASON_INVALID, DELIVERY_VERSION_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-CAP-LIFE-001",
       "contractIds": ["CAP-LIFE-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for android lifecycle recovery.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts android lifecycle recovery with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for android lifecycle recovery is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-life-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Android lifecycle recovery request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["captain reopening the Android app"],
+        "allowed": ["captain reopening the Android app"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended captain reopening the Android app",
+          "actor outside captain installation",
+          "actor presenting a resource outside captain installation"
         ]
       },
-      "databaseInvariant": "For android lifecycle recovery, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "captain reopening the Android app has a current server-verified identity authorized for captain installation.",
+        "process terminated is the authoritative starting state for captain runtime session snapshot."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "captain reopening the Android app invokes CaptainLifecycle.restore with authEpoch, activeDeliveryId, queueCursor.",
+        "The producer authorizes authorize captain installation on the server before reading or changing captain runtime session snapshot. and evaluates SESSION_RESTORE_FAILED, ACTIVE_DELIVERY_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Restore safe identifiers only, then reload session, active delivery, and queue truth from the backend.",
+        "SESSION_RESTORE_FAILED returns the standard error envelope and leaves captain runtime session snapshot at its last committed version.",
+        "The observed state is runtime rehydrated; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "process terminated",
+          "to": "runtime rehydrated",
+          "trigger": "CaptainLifecycle.restore completes CaptainLifecycle.restore"
+        }
+      ],
+      "requiredFixtures": [
+        "process terminated fixture for Android lifecycle recovery",
+        "captain reopening the Android app and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "client",
+        "operation": "CaptainLifecycle.restore",
+        "interface": "CaptainLifecycle.restore",
+        "fields": ["authEpoch", "activeDeliveryId", "queueCursor"]
+      },
+      "apiResponse": {
+        "fields": ["restoredSession", "revalidationRequired"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["SESSION_RESTORE_FAILED", "ACTIVE_DELIVERY_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["captain reopening the Android app"],
+        "denied": [
+          "revoked or suspended captain reopening the Android app",
+          "actor outside captain installation",
+          "actor presenting a resource outside captain installation"
+        ],
+        "ownershipRules": [
+          "Authorize captain installation on the server before reading or changing captain runtime session snapshot.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "CaptainLifecycle.restore does not mutate captain runtime session snapshot; it reads captain installation from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Android lifecycle recovery observes captain runtime session snapshot without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Android lifecycle recovery must not combine incompatible versions of captain runtime session snapshot in one response.",
+          "behavior": ["new auth epoch invalidates prior snapshot"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Android lifecycle recovery has an explicit connectivity and reconnect rule for captain runtime session snapshot.",
+          "behavior": ["show explicit offline recovery until revalidation"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Android lifecycle recovery is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CAP-LIFE-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Android lifecycle recovery has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and captain runtime session snapshot status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Android lifecycle recovery does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-LIFE-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of captain runtime session snapshot."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Restore safe identifiers only, then reload session, active delivery, and queue truth from the backend.",
+        "Scope every captain runtime session snapshot read to captain installation.",
+        "Android lifecycle recovery exposes only restoredSession, revalidationRequired after CaptainLifecycle.restore."
       ],
       "requiredUnitTests": [
-        "Validate android lifecycle recovery decisions, boundaries, and stable error codes."
+        "Exercise Android lifecycle recovery boundaries, SESSION_RESTORE_FAILED, ACTIVE_DELIVERY_STALE, and the process terminated to runtime rehydrated decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for android lifecycle recovery."
+        "Render Android lifecycle recovery loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload android lifecycle recovery against PostgreSQL with tenant isolation."
+        "Verify captain runtime session snapshot ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-LIFE-001."
+        "Validate CaptainLifecycle.restore fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for android lifecycle recovery."
+        "Drive captain reopening the Android app through Android lifecycle recovery and verify the resulting captain runtime session snapshot projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing CaptainLifecycle.restore.",
+        "Executable tests for CAP-LIFE-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, SESSION_RESTORE_FAILED, ACTIVE_DELIVERY_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-CAP-A11Y-001",
       "contractIds": ["CAP-A11Y-001"],
       "priority": "P1",
-      "given": [
-        "Authenticated role and required fixture state exist for captain accessibility.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts captain accessibility with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for captain accessibility is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/cap-a11y-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Captain accessibility request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning Captain role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["captain using touch or assistive technology"],
+        "allowed": ["captain using touch or assistive technology"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended captain using touch or assistive technology",
+          "actor outside current captain UI",
+          "actor presenting a resource outside current captain UI"
         ]
       },
-      "databaseInvariant": "For captain accessibility, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "captain using touch or assistive technology has a current server-verified identity authorized for current captain UI.",
+        "delivery screen loading is the authoritative starting state for captain delivery UI semantics."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "captain using touch or assistive technology invokes CaptainAccessibility.describeDeliveryState with deliveryStatus, primaryAction, errors.",
+        "The producer authorizes authorize current captain ui on the server before reading or changing captain delivery ui semantics. and evaluates ACTION_LABEL_MISSING, STATUS_ANNOUNCEMENT_MISSING."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Expose high-risk actions, timers, offline state, and proof errors with large targets and confirmation.",
+        "ACTION_LABEL_MISSING returns the standard error envelope and leaves captain delivery UI semantics at its last committed version.",
+        "The observed state is delivery screen operable; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "delivery screen loading",
+          "to": "delivery screen operable",
+          "trigger": "CaptainAccessibility.describeDeliveryState completes CaptainAccessibility.describeDeliveryState"
+        }
+      ],
+      "requiredFixtures": [
+        "delivery screen loading fixture for Captain accessibility",
+        "captain using touch or assistive technology and denied cross-scope actor identities",
+        "deterministic captain clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "client",
+        "operation": "CaptainAccessibility.describeDeliveryState",
+        "interface": "CaptainAccessibility.describeDeliveryState",
+        "fields": ["deliveryStatus", "primaryAction", "errors"]
+      },
+      "apiResponse": {
+        "fields": ["labels", "focusTarget", "announcement"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["ACTION_LABEL_MISSING", "STATUS_ANNOUNCEMENT_MISSING"],
+      "authorizationMatrix": {
+        "allowed": ["captain using touch or assistive technology"],
+        "denied": [
+          "revoked or suspended captain using touch or assistive technology",
+          "actor outside current captain UI",
+          "actor presenting a resource outside current captain UI"
+        ],
+        "ownershipRules": [
+          "Authorize current captain UI on the server before reading or changing captain delivery UI semantics.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "CaptainAccessibility.describeDeliveryState does not mutate captain delivery UI semantics; it reads current captain UI from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Captain accessibility observes captain delivery UI semantics without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Captain accessibility must not combine incompatible versions of captain delivery UI semantics in one response.",
+          "behavior": ["announce each authoritative status once"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Captain accessibility has an explicit connectivity and reconnect rule for captain delivery UI semantics.",
+          "behavior": ["offline and queued states remain explicit"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Captain accessibility is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CAP-A11Y-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Captain accessibility has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and captain delivery UI semantics status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Captain accessibility does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CAP-A11Y-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of captain delivery UI semantics."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Expose high-risk actions, timers, offline state, and proof errors with large targets and confirmation.",
+        "Scope every captain delivery UI semantics read to current captain UI.",
+        "Captain accessibility exposes only labels, focusTarget, announcement after CaptainAccessibility.describeDeliveryState."
       ],
       "requiredUnitTests": [
-        "Validate captain accessibility decisions, boundaries, and stable error codes."
+        "Exercise Captain accessibility boundaries, ACTION_LABEL_MISSING, STATUS_ANNOUNCEMENT_MISSING, and the delivery screen loading to delivery screen operable decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for captain accessibility."
+        "Render Captain accessibility loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload captain accessibility against PostgreSQL with tenant isolation."
+        "Verify captain delivery UI semantics ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for CAP-A11Y-001."
+        "Validate CaptainAccessibility.describeDeliveryState fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for captain accessibility."
+        "Drive captain using touch or assistive technology through Captain accessibility and verify the resulting captain delivery UI semantics projection."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing CaptainAccessibility.describeDeliveryState.",
+        "Executable tests for CAP-A11Y-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ACTION_LABEL_MISSING, STATUS_ANNOUNCEMENT_MISSING, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     }
   ]

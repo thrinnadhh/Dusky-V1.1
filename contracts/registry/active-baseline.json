@@ -1,5 +1,6 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
+  "note": "Convenience snapshot only; pull-request protection compares the actual base SHA.",
   "activeContractIds": [
     "FOUND-APP-CUS-001",
     "FOUND-APP-MER-001",

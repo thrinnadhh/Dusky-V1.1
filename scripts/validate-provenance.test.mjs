@@ -20,6 +20,8 @@ const reciprocalFixture = () => ({
         sourceRepository: 'Mypetnew',
         sourceSha: '817c6487cdbf18fc282dc0a44538d83e7bc5ef8b',
         sourcePath: 'apps/customer-app/src/__tests__/catalog.test.ts',
+        sourceFileSha256: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        evidenceScope: 'pinned-public-ci-verifiable',
         disposition: 'mapped',
         dispositionEvidence: 'Catalog discovery behavior is retained.',
         targetDuskyContractIds: ['CUS-PROV-001'],
@@ -28,6 +30,14 @@ const reciprocalFixture = () => ({
   },
   manifest: {
     sourceSha: '817c6487cdbf18fc282dc0a44538d83e7bc5ef8b',
+    publicEvidence: {
+      files: [
+        {
+          path: 'apps/customer-app/src/__tests__/catalog.test.ts',
+          sha256: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        },
+      ],
+    },
     localEvidence: [],
   },
 });

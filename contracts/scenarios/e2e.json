@@ -1,845 +1,1407 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "application": "E2E",
   "scenarios": [
     {
       "scenarioId": "SCN-E2E-INV-001",
       "contractIds": ["E2E-INV-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for merchant inventory to customer availability.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts merchant inventory to customer availability with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for merchant inventory to customer availability is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/e2e-inv-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Merchant inventory to Customer availability request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning E2E role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["merchant inventory operator", "customer", "backend projection worker"],
+        "allowed": ["merchant inventory operator", "customer", "backend projection worker"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended merchant inventory operator",
+          "actor outside merchant outlet listing",
+          "actor presenting a resource outside merchant outlet listing"
         ]
       },
-      "databaseInvariant": "For merchant inventory to customer availability, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "merchant inventory operator has a current server-verified identity authorized for merchant outlet listing.",
+        "merchant balance at N is the authoritative starting state for inventory-to-catalog projection flow."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "merchant inventory operator invokes InventoryAvailabilityFlow.verify with merchantMovement, listingId.",
+        "The producer authorizes authorize merchant outlet listing on the server before reading or changing inventory-to-catalog projection flow. and evaluates INVENTORY_PROJECTION_STALE, LISTING_NOT_PUBLIC."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "After a committed movement, Customer sees the new available quantity and never an uncommitted balance.",
+        "INVENTORY_PROJECTION_STALE returns the standard error envelope and leaves inventory-to-catalog projection flow at its last committed version.",
+        "The observed state is customer projection at N+1; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "merchant balance at N",
+          "to": "customer projection at N+1",
+          "trigger": "InventoryAvailabilityFlow.verify completes InventoryAvailabilityFlow.verify"
+        }
+      ],
+      "requiredFixtures": [
+        "merchant balance at N fixture for Merchant inventory to Customer availability",
+        "merchant inventory operator and denied cross-scope actor identities",
+        "deterministic e2e clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "InventoryAvailabilityFlow.verify",
+        "interface": "InventoryAvailabilityFlow.verify",
+        "fields": ["merchantMovement", "listingId"]
+      },
+      "apiResponse": {
+        "fields": ["customerAvailability", "projectionSequence"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["INVENTORY_PROJECTION_STALE", "LISTING_NOT_PUBLIC"],
+      "authorizationMatrix": {
+        "allowed": ["merchant inventory operator", "customer", "backend projection worker"],
+        "denied": [
+          "revoked or suspended merchant inventory operator",
+          "actor outside merchant outlet listing",
+          "actor presenting a resource outside merchant outlet listing"
+        ],
+        "ownershipRules": [
+          "Authorize merchant outlet listing on the server before reading or changing inventory-to-catalog projection flow.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The merchant balance at N to customer projection at N+1 transition, ownership checks, and audit or outbox record for inventory-to-catalog projection flow commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Merchant inventory to Customer availability can change inventory-to-catalog projection flow, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to merchant inventory operator, the operation, and the canonical request payload.",
+            "Return the original inventory-to-catalog projection flow result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Merchant inventory to Customer availability has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["movement and projection sequences are monotonic"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Merchant inventory to Customer availability has an explicit connectivity and reconnect rule for inventory-to-catalog projection flow.",
+          "behavior": ["merchant replay publishes only after commit"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Merchant inventory to Customer availability changes state or exercises privileged authority over inventory-to-catalog projection flow.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for inventory-to-catalog projection flow."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Merchant inventory to Customer availability has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and inventory-to-catalog projection flow status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Merchant inventory to Customer availability does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit E2E-INV-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of inventory-to-catalog projection flow."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "After a committed movement, Customer sees the new available quantity and never an uncommitted balance.",
+        "Scope every inventory-to-catalog projection flow read or write to merchant outlet listing.",
+        "Merchant inventory to Customer availability exposes only customerAvailability, projectionSequence after InventoryAvailabilityFlow.verify."
       ],
       "requiredUnitTests": [
-        "Validate merchant inventory to customer availability decisions, boundaries, and stable error codes."
+        "Exercise Merchant inventory to Customer availability boundaries, INVENTORY_PROJECTION_STALE, LISTING_NOT_PUBLIC, and the merchant balance at N to customer projection at N+1 decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for merchant inventory to customer availability."
+        "Render Merchant inventory to Customer availability loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload merchant inventory to customer availability against PostgreSQL with tenant isolation."
+        "Verify inventory-to-catalog projection flow ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-INV-001."
+        "Validate InventoryAvailabilityFlow.verify fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for merchant inventory to customer availability."
+        "Drive merchant inventory operator, customer, backend projection worker through Merchant inventory to Customer availability and verify the authoritative result at every consumer."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing InventoryAvailabilityFlow.verify.",
+        "Executable tests for E2E-INV-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, INVENTORY_PROJECTION_STALE, LISTING_NOT_PUBLIC, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-E2E-ORDER-001",
       "contractIds": ["E2E-ORDER-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for customer order to merchant to captain to delivered history.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts customer order to merchant to captain to delivered history with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for customer order to merchant to captain to delivered history is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/e2e-order-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Customer order to Merchant to Captain to delivered history request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning E2E role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["customer", "merchant order operator", "assigned captain", "backend"],
+        "allowed": ["customer", "merchant order operator", "assigned captain", "backend"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended authenticated customer",
+          "actor outside customer order and fulfilment outlet",
+          "actor presenting a resource outside customer order and fulfilment outlet"
         ]
       },
-      "databaseInvariant": "For customer order to merchant to captain to delivered history, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for customer order and fulfilment outlet.",
+        "quote confirmed is the authoritative starting state for cross-role order fulfilment lifecycle."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "customer invokes OrderFulfilmentFlow.verify with customerOrder, merchantDecision, captainTransitions.",
+        "The producer authorizes authorize customer order and fulfilment outlet on the server before reading or changing cross-role order fulfilment lifecycle. and evaluates ORDER_TRANSITION_INVALID, ASSIGNMENT_NOT_OWNED, ORDER_HISTORY_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Propagate one order through merchant acceptance, captain delivery, and customer delivered history using authoritative states.",
+        "ORDER_TRANSITION_INVALID returns the standard error envelope and leaves cross-role order fulfilment lifecycle at its last committed version.",
+        "The observed state is delivered order visible to owner; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "quote confirmed",
+          "to": "delivered order visible to owner",
+          "trigger": "OrderFulfilmentFlow.verify completes OrderFulfilmentFlow.verify"
+        }
+      ],
+      "requiredFixtures": [
+        "quote confirmed fixture for Customer order to Merchant to Captain to delivered history",
+        "customer and denied cross-scope actor identities",
+        "deterministic e2e clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "OrderFulfilmentFlow.verify",
+        "interface": "OrderFulfilmentFlow.verify",
+        "fields": ["customerOrder", "merchantDecision", "captainTransitions"]
+      },
+      "apiResponse": {
+        "fields": ["customerHistory", "merchantQueue", "captainAssignment"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["ORDER_TRANSITION_INVALID", "ASSIGNMENT_NOT_OWNED", "ORDER_HISTORY_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["customer", "merchant order operator", "assigned captain", "backend"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer order and fulfilment outlet",
+          "actor presenting a resource outside customer order and fulfilment outlet"
+        ],
+        "ownershipRules": [
+          "Authorize customer order and fulfilment outlet on the server before reading or changing cross-role order fulfilment lifecycle.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The quote confirmed to delivered order visible to owner transition, ownership checks, and audit or outbox record for cross-role order fulfilment lifecycle commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Customer order to Merchant to Captain to delivered history can change cross-role order fulfilment lifecycle, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated customer, the operation, and the canonical request payload.",
+            "Return the original cross-role order fulfilment lifecycle result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Customer order to Merchant to Captain to delivered history has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["each lifecycle transition has one winner"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Customer order to Merchant to Captain to delivered history has an explicit connectivity and reconnect rule for cross-role order fulfilment lifecycle.",
+          "behavior": ["queued captain actions revalidate ownership"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Customer order to Merchant to Captain to delivered history changes state or exercises privileged authority over cross-role order fulfilment lifecycle.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for cross-role order fulfilment lifecycle."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Customer order to Merchant to Captain to delivered history has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and cross-role order fulfilment lifecycle status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Customer order to Merchant to Captain to delivered history contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-001, BD-005."
+          ],
+          "decisionRefs": ["BD-001", "BD-005"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit E2E-ORDER-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of cross-role order fulfilment lifecycle."
+      ],
+      "businessDecisionRefs": ["BD-001", "BD-005"],
+      "featureBehavior": [
+        "Propagate one order through merchant acceptance, captain delivery, and customer delivered history using authoritative states.",
+        "Scope every cross-role order fulfilment lifecycle read or write to customer order and fulfilment outlet.",
+        "Customer order to Merchant to Captain to delivered history exposes only customerHistory, merchantQueue, captainAssignment after OrderFulfilmentFlow.verify."
       ],
       "requiredUnitTests": [
-        "Validate customer order to merchant to captain to delivered history decisions, boundaries, and stable error codes."
+        "Exercise Customer order to Merchant to Captain to delivered history boundaries, ORDER_TRANSITION_INVALID, ASSIGNMENT_NOT_OWNED, ORDER_HISTORY_STALE, and the quote confirmed to delivered order visible to owner decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for customer order to merchant to captain to delivered history."
+        "Render Customer order to Merchant to Captain to delivered history loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload customer order to merchant to captain to delivered history against PostgreSQL with tenant isolation."
+        "Verify cross-role order fulfilment lifecycle ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-ORDER-001."
+        "Validate OrderFulfilmentFlow.verify fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for customer order to merchant to captain to delivered history."
+        "Drive customer, merchant order operator, assigned captain, backend through Customer order to Merchant to Captain to delivered history and verify the authoritative result at every consumer."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing OrderFulfilmentFlow.verify.",
+        "Executable tests for E2E-ORDER-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ORDER_TRANSITION_INVALID, ASSIGNMENT_NOT_OWNED, ORDER_HISTORY_STALE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-001, BD-005 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-E2E-APT-001",
       "contractIds": ["E2E-APT-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for customer appointment through merchant processing.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts customer appointment through merchant processing with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for customer appointment through merchant processing is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/e2e-apt-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Customer appointment through Merchant processing request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning E2E role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["customer", "merchant appointment operator", "backend"],
+        "allowed": ["customer", "merchant appointment operator", "backend"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended authenticated customer",
+          "actor outside customer appointment and provider outlet",
+          "actor presenting a resource outside customer appointment and provider outlet"
         ]
       },
-      "databaseInvariant": "For customer appointment through merchant processing, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for customer appointment and provider outlet.",
+        "slot available is the authoritative starting state for cross-role appointment lifecycle."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "customer invokes AppointmentFlow.verify with customerBooking, merchantTransitions.",
+        "The producer authorizes authorize customer appointment and provider outlet on the server before reading or changing cross-role appointment lifecycle. and evaluates SLOT_UNAVAILABLE, APPOINTMENT_TRANSITION_INVALID."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Reserve one slot and reflect provider lifecycle transitions in customer history.",
+        "SLOT_UNAVAILABLE returns the standard error envelope and leaves cross-role appointment lifecycle at its last committed version.",
+        "The observed state is appointment completed or terminal; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "slot available",
+          "to": "appointment completed or terminal",
+          "trigger": "AppointmentFlow.verify completes AppointmentFlow.verify"
+        }
+      ],
+      "requiredFixtures": [
+        "slot available fixture for Customer appointment through Merchant processing",
+        "customer and denied cross-scope actor identities",
+        "deterministic e2e clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "AppointmentFlow.verify",
+        "interface": "AppointmentFlow.verify",
+        "fields": ["customerBooking", "merchantTransitions"]
+      },
+      "apiResponse": {
+        "fields": ["customerHistory", "merchantQueue"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["SLOT_UNAVAILABLE", "APPOINTMENT_TRANSITION_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["customer", "merchant appointment operator", "backend"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer appointment and provider outlet",
+          "actor presenting a resource outside customer appointment and provider outlet"
+        ],
+        "ownershipRules": [
+          "Authorize customer appointment and provider outlet on the server before reading or changing cross-role appointment lifecycle.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The slot available to appointment completed or terminal transition, ownership checks, and audit or outbox record for cross-role appointment lifecycle commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Customer appointment through Merchant processing can change cross-role appointment lifecycle, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated customer, the operation, and the canonical request payload.",
+            "Return the original cross-role appointment lifecycle result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Customer appointment through Merchant processing has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["slot and status transitions have one winner"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Customer appointment through Merchant processing has an explicit connectivity and reconnect rule for cross-role appointment lifecycle.",
+          "behavior": ["booking and transitions require authoritative connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Customer appointment through Merchant processing changes state or exercises privileged authority over cross-role appointment lifecycle.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for cross-role appointment lifecycle."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Customer appointment through Merchant processing has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and cross-role appointment lifecycle status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Customer appointment through Merchant processing contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-004, BD-005."
+          ],
+          "decisionRefs": ["BD-004", "BD-005"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit E2E-APT-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of cross-role appointment lifecycle."
+      ],
+      "businessDecisionRefs": ["BD-004", "BD-005"],
+      "featureBehavior": [
+        "Reserve one slot and reflect provider lifecycle transitions in customer history.",
+        "Scope every cross-role appointment lifecycle read or write to customer appointment and provider outlet.",
+        "Customer appointment through Merchant processing exposes only customerHistory, merchantQueue after AppointmentFlow.verify."
       ],
       "requiredUnitTests": [
-        "Validate customer appointment through merchant processing decisions, boundaries, and stable error codes."
+        "Exercise Customer appointment through Merchant processing boundaries, SLOT_UNAVAILABLE, APPOINTMENT_TRANSITION_INVALID, and the slot available to appointment completed or terminal decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for customer appointment through merchant processing."
+        "Render Customer appointment through Merchant processing loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload customer appointment through merchant processing against PostgreSQL with tenant isolation."
+        "Verify cross-role appointment lifecycle ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-APT-001."
+        "Validate AppointmentFlow.verify fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for customer appointment through merchant processing."
+        "Drive customer, merchant appointment operator, backend through Customer appointment through Merchant processing and verify the authoritative result at every consumer."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing AppointmentFlow.verify.",
+        "Executable tests for E2E-APT-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, SLOT_UNAVAILABLE, APPOINTMENT_TRANSITION_INVALID, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-004, BD-005 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-E2E-POS-001",
       "contractIds": ["E2E-POS-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for merchant pos to inventory and loyalty.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts merchant pos to inventory and loyalty with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for merchant pos to inventory and loyalty is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/e2e-pos-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Merchant POS to inventory and loyalty request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning E2E role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["merchant cashier", "customer", "backend"],
+        "allowed": ["merchant cashier", "customer", "backend"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended merchant cashier",
+          "actor outside merchant outlet and optional customer",
+          "actor presenting a resource outside merchant outlet and optional customer"
         ]
       },
-      "databaseInvariant": "For merchant pos to inventory and loyalty, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "merchant cashier has a current server-verified identity authorized for merchant outlet and optional customer.",
+        "sale draft is the authoritative starting state for POS sale atomic side effects."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "merchant cashier invokes PosInventoryLoyaltyFlow.verify with saleLines, customerIdentity, payment.",
+        "The producer authorizes authorize merchant outlet and optional customer on the server before reading or changing pos sale atomic side effects. and evaluates POS_STOCK_INSUFFICIENT, LOYALTY_PROGRAM_UNAVAILABLE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Commit sale, inventory movements, and eligible loyalty issuance exactly once.",
+        "POS_STOCK_INSUFFICIENT returns the standard error envelope and leaves POS sale atomic side effects at its last committed version.",
+        "The observed state is sale, stock, and loyalty committed; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "sale draft",
+          "to": "sale, stock, and loyalty committed",
+          "trigger": "PosInventoryLoyaltyFlow.verify completes PosInventoryLoyaltyFlow.verify"
+        }
+      ],
+      "requiredFixtures": [
+        "sale draft fixture for Merchant POS to inventory and loyalty",
+        "merchant cashier and denied cross-scope actor identities",
+        "deterministic e2e clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "PosInventoryLoyaltyFlow.verify",
+        "interface": "PosInventoryLoyaltyFlow.verify",
+        "fields": ["saleLines", "customerIdentity", "payment"]
+      },
+      "apiResponse": {
+        "fields": ["sale", "movements", "loyaltyLedger"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["POS_STOCK_INSUFFICIENT", "LOYALTY_PROGRAM_UNAVAILABLE"],
+      "authorizationMatrix": {
+        "allowed": ["merchant cashier", "customer", "backend"],
+        "denied": [
+          "revoked or suspended merchant cashier",
+          "actor outside merchant outlet and optional customer",
+          "actor presenting a resource outside merchant outlet and optional customer"
+        ],
+        "ownershipRules": [
+          "Authorize merchant outlet and optional customer on the server before reading or changing POS sale atomic side effects.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The sale draft to sale, stock, and loyalty committed transition, ownership checks, and audit or outbox record for POS sale atomic side effects commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Merchant POS to inventory and loyalty can change POS sale atomic side effects, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to merchant cashier, the operation, and the canonical request payload.",
+            "Return the original POS sale atomic side effects result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Merchant POS to inventory and loyalty has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["transaction commits all side effects atomically"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Merchant POS to inventory and loyalty has an explicit connectivity and reconnect rule for POS sale atomic side effects.",
+          "behavior": ["finalization requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Merchant POS to inventory and loyalty changes state or exercises privileged authority over POS sale atomic side effects.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for POS sale atomic side effects."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Merchant POS to inventory and loyalty has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and POS sale atomic side effects status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Merchant POS to inventory and loyalty contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-003, BD-005."
+          ],
+          "decisionRefs": ["BD-003", "BD-005"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit E2E-POS-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of POS sale atomic side effects."
+      ],
+      "businessDecisionRefs": ["BD-003", "BD-005"],
+      "featureBehavior": [
+        "Commit sale, inventory movements, and eligible loyalty issuance exactly once.",
+        "Scope every POS sale atomic side effects read or write to merchant outlet and optional customer.",
+        "Merchant POS to inventory and loyalty exposes only sale, movements, loyaltyLedger after PosInventoryLoyaltyFlow.verify."
       ],
       "requiredUnitTests": [
-        "Validate merchant pos to inventory and loyalty decisions, boundaries, and stable error codes."
+        "Exercise Merchant POS to inventory and loyalty boundaries, POS_STOCK_INSUFFICIENT, LOYALTY_PROGRAM_UNAVAILABLE, and the sale draft to sale, stock, and loyalty committed decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for merchant pos to inventory and loyalty."
+        "Render Merchant POS to inventory and loyalty loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload merchant pos to inventory and loyalty against PostgreSQL with tenant isolation."
+        "Verify POS sale atomic side effects ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-POS-001."
+        "Validate PosInventoryLoyaltyFlow.verify fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for merchant pos to inventory and loyalty."
+        "Drive merchant cashier, customer, backend through Merchant POS to inventory and loyalty and verify the authoritative result at every consumer."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing PosInventoryLoyaltyFlow.verify.",
+        "Executable tests for E2E-POS-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, POS_STOCK_INSUFFICIENT, LOYALTY_PROGRAM_UNAVAILABLE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-003, BD-005 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-E2E-MOD-001",
       "contractIds": ["E2E-MOD-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for admin moderation visibility propagation.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts admin moderation visibility propagation with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for admin moderation visibility propagation is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/e2e-mod-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Admin moderation visibility propagation request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning E2E role with same tenant/outlet"],
+      "actors": {
+        "initiators": [
+          "admin catalog moderator",
+          "merchant catalog manager",
+          "customer",
+          "backend"
+        ],
+        "allowed": ["admin catalog moderator", "merchant catalog manager", "customer", "backend"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended catalog moderator",
+          "actor outside moderated listing and outlet",
+          "actor presenting a resource outside moderated listing and outlet"
         ]
       },
-      "databaseInvariant": "For admin moderation visibility propagation, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "catalog moderator has a current server-verified identity authorized for moderated listing and outlet.",
+        "listing pending or public is the authoritative starting state for moderation-to-public-catalog flow."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "admin catalog moderator invokes ModerationVisibilityFlow.verify with moderationDecision, listingVersion.",
+        "The producer authorizes authorize moderated listing and outlet on the server before reading or changing moderation-to-public-catalog flow. and evaluates MODERATION_DECISION_INVALID, VISIBILITY_PROJECTION_STALE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Publish approved listing visibility and remove rejected/hidden content without changing merchant inventory.",
+        "MODERATION_DECISION_INVALID returns the standard error envelope and leaves moderation-to-public-catalog flow at its last committed version.",
+        "The observed state is visibility matches moderation decision; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "listing pending or public",
+          "to": "visibility matches moderation decision",
+          "trigger": "ModerationVisibilityFlow.verify completes ModerationVisibilityFlow.verify"
+        }
+      ],
+      "requiredFixtures": [
+        "listing pending or public fixture for Admin moderation visibility propagation",
+        "admin catalog moderator and denied cross-scope actor identities",
+        "deterministic e2e clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "ModerationVisibilityFlow.verify",
+        "interface": "ModerationVisibilityFlow.verify",
+        "fields": ["moderationDecision", "listingVersion"]
+      },
+      "apiResponse": {
+        "fields": ["merchantStatus", "customerVisibility"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["MODERATION_DECISION_INVALID", "VISIBILITY_PROJECTION_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["admin catalog moderator", "merchant catalog manager", "customer", "backend"],
+        "denied": [
+          "revoked or suspended catalog moderator",
+          "actor outside moderated listing and outlet",
+          "actor presenting a resource outside moderated listing and outlet"
+        ],
+        "ownershipRules": [
+          "Authorize moderated listing and outlet on the server before reading or changing moderation-to-public-catalog flow.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The listing pending or public to visibility matches moderation decision transition, ownership checks, and audit or outbox record for moderation-to-public-catalog flow commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Admin moderation visibility propagation can change moderation-to-public-catalog flow, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to catalog moderator, the operation, and the canonical request payload.",
+            "Return the original moderation-to-public-catalog flow result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Admin moderation visibility propagation has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["listing version suppresses stale decisions"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Admin moderation visibility propagation has an explicit connectivity and reconnect rule for moderation-to-public-catalog flow.",
+          "behavior": ["moderation requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Admin moderation visibility propagation changes state or exercises privileged authority over moderation-to-public-catalog flow.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for moderation-to-public-catalog flow."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Admin moderation visibility propagation has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and moderation-to-public-catalog flow status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Admin moderation visibility propagation does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit E2E-MOD-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of moderation-to-public-catalog flow."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Publish approved listing visibility and remove rejected/hidden content without changing merchant inventory.",
+        "Scope every moderation-to-public-catalog flow read or write to moderated listing and outlet.",
+        "Admin moderation visibility propagation exposes only merchantStatus, customerVisibility after ModerationVisibilityFlow.verify."
       ],
       "requiredUnitTests": [
-        "Validate admin moderation visibility propagation decisions, boundaries, and stable error codes."
+        "Exercise Admin moderation visibility propagation boundaries, MODERATION_DECISION_INVALID, VISIBILITY_PROJECTION_STALE, and the listing pending or public to visibility matches moderation decision decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for admin moderation visibility propagation."
+        "Render Admin moderation visibility propagation loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload admin moderation visibility propagation against PostgreSQL with tenant isolation."
+        "Verify moderation-to-public-catalog flow ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-MOD-001."
+        "Validate ModerationVisibilityFlow.verify fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for admin moderation visibility propagation."
+        "Drive admin catalog moderator, merchant catalog manager, customer, backend through Admin moderation visibility propagation and verify the authoritative result at every consumer."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing ModerationVisibilityFlow.verify.",
+        "Executable tests for E2E-MOD-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, MODERATION_DECISION_INVALID, VISIBILITY_PROJECTION_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-E2E-OFF-001",
       "contractIds": ["E2E-OFF-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for offline replay and idempotent reconciliation.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts offline replay and idempotent reconciliation with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for offline replay and idempotent reconciliation is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/e2e-off-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Offline replay and idempotent reconciliation request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning E2E role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["customer", "merchant inventory operator", "captain", "backend"],
+        "allowed": ["customer", "merchant inventory operator", "captain", "backend"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended authenticated mobile user reconnecting",
+          "actor outside originating actor and resource",
+          "actor presenting a resource outside originating actor and resource"
         ]
       },
-      "databaseInvariant": "For offline replay and idempotent reconciliation, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "authenticated mobile user reconnecting has a current server-verified identity authorized for originating actor and resource.",
+        "commands queued offline is the authoritative starting state for cross-app offline command replay."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "customer invokes OfflineReplayFlow.verify with actor, authEpoch, commands.",
+        "The producer authorizes authorize originating actor and resource on the server before reading or changing cross-app offline command replay. and evaluates OFFLINE_COMMAND_NOT_ALLOWED, AUTH_EPOCH_STALE, VERSION_CONFLICT."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Replay only permitted idempotent commands and converge each client on authoritative state.",
+        "OFFLINE_COMMAND_NOT_ALLOWED returns the standard error envelope and leaves cross-app offline command replay at its last committed version.",
+        "The observed state is commands applied, rejected, or conflicted; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "commands queued offline",
+          "to": "commands applied, rejected, or conflicted",
+          "trigger": "OfflineReplayFlow.verify completes OfflineReplayFlow.verify"
+        }
+      ],
+      "requiredFixtures": [
+        "commands queued offline fixture for Offline replay and idempotent reconciliation",
+        "customer and denied cross-scope actor identities",
+        "deterministic e2e clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "OfflineReplayFlow.verify",
+        "interface": "OfflineReplayFlow.verify",
+        "fields": ["actor", "authEpoch", "commands"]
+      },
+      "apiResponse": {
+        "fields": ["outcomes", "conflicts", "authoritativeState"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["OFFLINE_COMMAND_NOT_ALLOWED", "AUTH_EPOCH_STALE", "VERSION_CONFLICT"],
+      "authorizationMatrix": {
+        "allowed": ["customer", "merchant inventory operator", "captain", "backend"],
+        "denied": [
+          "revoked or suspended authenticated mobile user reconnecting",
+          "actor outside originating actor and resource",
+          "actor presenting a resource outside originating actor and resource"
+        ],
+        "ownershipRules": [
+          "Authorize originating actor and resource on the server before reading or changing cross-app offline command replay.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The commands queued offline to commands applied, rejected, or conflicted transition, ownership checks, and audit or outbox record for cross-app offline command replay commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Offline replay and idempotent reconciliation can change cross-app offline command replay, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated mobile user reconnecting, the operation, and the canonical request payload.",
+            "Return the original cross-app offline command replay result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Offline replay and idempotent reconciliation has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["stable command IDs deduplicate replay"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Offline replay and idempotent reconciliation has an explicit connectivity and reconnect rule for cross-app offline command replay.",
+          "behavior": ["core-purpose-offline-contract"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Offline replay and idempotent reconciliation changes state or exercises privileged authority over cross-app offline command replay.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for cross-app offline command replay."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Offline replay and idempotent reconciliation has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and cross-app offline command replay status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Offline replay and idempotent reconciliation does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit E2E-OFF-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of cross-app offline command replay."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Replay only permitted idempotent commands and converge each client on authoritative state.",
+        "Scope every cross-app offline command replay read or write to originating actor and resource.",
+        "Offline replay and idempotent reconciliation exposes only outcomes, conflicts, authoritativeState after OfflineReplayFlow.verify."
       ],
       "requiredUnitTests": [
-        "Validate offline replay and idempotent reconciliation decisions, boundaries, and stable error codes."
+        "Exercise Offline replay and idempotent reconciliation boundaries, OFFLINE_COMMAND_NOT_ALLOWED, AUTH_EPOCH_STALE, VERSION_CONFLICT, and the commands queued offline to commands applied, rejected, or conflicted decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for offline replay and idempotent reconciliation."
+        "Render Offline replay and idempotent reconciliation loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload offline replay and idempotent reconciliation against PostgreSQL with tenant isolation."
+        "Verify cross-app offline command replay ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-OFF-001."
+        "Validate OfflineReplayFlow.verify fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for offline replay and idempotent reconciliation."
+        "Drive customer, merchant inventory operator, captain, backend through Offline replay and idempotent reconciliation and verify the authoritative result at every consumer."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing OfflineReplayFlow.verify.",
+        "Executable tests for E2E-OFF-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, OFFLINE_COMMAND_NOT_ALLOWED, AUTH_EPOCH_STALE, VERSION_CONFLICT, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-E2E-IDEMP-001",
       "contractIds": ["E2E-IDEMP-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for duplicate command produces one business result.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts duplicate command produces one business result with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for duplicate command produces one business result is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/e2e-idemp-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Duplicate command produces one business result request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning E2E role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["customer", "merchant operator", "captain", "payment provider", "backend"],
+        "allowed": ["customer", "merchant operator", "captain", "payment provider", "backend"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended authorized command actor",
+          "actor outside actor-operation key",
+          "actor presenting a resource outside actor-operation key"
         ]
       },
-      "databaseInvariant": "For duplicate command produces one business result, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "authorized command actor has a current server-verified identity authorized for actor-operation key.",
+        "command unseen is the authoritative starting state for cross-domain duplicate command result."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "customer invokes DuplicateCommandFlow.verify with actor, operation, idempotencyKey, payload.",
+        "The producer authorizes authorize actor-operation key on the server before reading or changing cross-domain duplicate command result. and evaluates IDEMPOTENCY_KEY_REUSED, IDEMPOTENCY_KEY_REQUIRED."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Produce one order, movement, payment attempt, or delivery transition for duplicate submissions.",
+        "IDEMPOTENCY_KEY_REUSED returns the standard error envelope and leaves cross-domain duplicate command result at its last committed version.",
+        "The observed state is one result persisted; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "command unseen",
+          "to": "one result persisted",
+          "trigger": "DuplicateCommandFlow.verify completes DuplicateCommandFlow.verify"
+        }
+      ],
+      "requiredFixtures": [
+        "command unseen fixture for Duplicate command produces one business result",
+        "customer and denied cross-scope actor identities",
+        "deterministic e2e clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "DuplicateCommandFlow.verify",
+        "interface": "DuplicateCommandFlow.verify",
+        "fields": ["actor", "operation", "idempotencyKey", "payload"]
+      },
+      "apiResponse": {
+        "fields": ["result", "replayed"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["IDEMPOTENCY_KEY_REUSED", "IDEMPOTENCY_KEY_REQUIRED"],
+      "authorizationMatrix": {
+        "allowed": ["customer", "merchant operator", "captain", "payment provider", "backend"],
+        "denied": [
+          "revoked or suspended authorized command actor",
+          "actor outside actor-operation key",
+          "actor presenting a resource outside actor-operation key"
+        ],
+        "ownershipRules": [
+          "Authorize actor-operation key on the server before reading or changing cross-domain duplicate command result.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The command unseen to one result persisted transition, ownership checks, and audit or outbox record for cross-domain duplicate command result commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Duplicate command produces one business result can change cross-domain duplicate command result, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authorized command actor, the operation, and the canonical request payload.",
+            "Return the original cross-domain duplicate command result result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Duplicate command produces one business result has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["unique key has one executor"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Duplicate command produces one business result has an explicit connectivity and reconnect rule for cross-domain duplicate command result.",
+          "behavior": ["supports permitted replay"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Duplicate command produces one business result changes state or exercises privileged authority over cross-domain duplicate command result.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for cross-domain duplicate command result."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Duplicate command produces one business result has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and cross-domain duplicate command result status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Duplicate command produces one business result does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit E2E-IDEMP-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of cross-domain duplicate command result."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Produce one order, movement, payment attempt, or delivery transition for duplicate submissions.",
+        "Scope every cross-domain duplicate command result read or write to actor-operation key.",
+        "Duplicate command produces one business result exposes only result, replayed after DuplicateCommandFlow.verify."
       ],
       "requiredUnitTests": [
-        "Validate duplicate command produces one business result decisions, boundaries, and stable error codes."
+        "Exercise Duplicate command produces one business result boundaries, IDEMPOTENCY_KEY_REUSED, IDEMPOTENCY_KEY_REQUIRED, and the command unseen to one result persisted decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for duplicate command produces one business result."
+        "Render Duplicate command produces one business result loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload duplicate command produces one business result against PostgreSQL with tenant isolation."
+        "Verify cross-domain duplicate command result ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-IDEMP-001."
+        "Validate DuplicateCommandFlow.verify fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for duplicate command produces one business result."
+        "Drive customer, merchant operator, captain, payment provider, backend through Duplicate command produces one business result and verify the authoritative result at every consumer."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing DuplicateCommandFlow.verify.",
+        "Executable tests for E2E-IDEMP-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, IDEMPOTENCY_KEY_REUSED, IDEMPOTENCY_KEY_REQUIRED, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-E2E-AUTH-001",
       "contractIds": ["E2E-AUTH-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for cross-role and cross-tenant rejection.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts cross-role and cross-tenant rejection with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for cross-role and cross-tenant rejection is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/e2e-auth-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Cross-role and cross-tenant rejection request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning E2E role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["customer", "merchant staff", "captain", "admin", "backend"],
+        "allowed": ["customer", "merchant staff", "captain", "admin", "backend"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended authenticated but unauthorized actor",
+          "actor outside role, tenant, outlet, and resource ownership",
+          "actor presenting a resource outside role, tenant, outlet, and resource ownership"
         ]
       },
-      "databaseInvariant": "For cross-role and cross-tenant rejection, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "authenticated but unauthorized actor has a current server-verified identity authorized for role, tenant, outlet, and resource ownership.",
+        "foreign resource exists is the authoritative starting state for cross-role authorization boundary."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "customer invokes AuthorizationIsolationFlow.verify with actor, action, foreignResourceId.",
+        "The producer authorizes authorize role, tenant, outlet, and resource ownership on the server before reading or changing cross-role authorization boundary. and evaluates RESOURCE_ACCESS_DENIED, RESOURCE_NOT_FOUND_MASKED."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Deny Customer, Merchant, Captain, and Admin access outside exact role, tenant, outlet, ownership, and permission.",
+        "RESOURCE_ACCESS_DENIED returns the standard error envelope and leaves cross-role authorization boundary at its last committed version.",
+        "The observed state is access denied without disclosure; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "foreign resource exists",
+          "to": "access denied without disclosure",
+          "trigger": "AuthorizationIsolationFlow.verify completes AuthorizationIsolationFlow.verify"
+        }
+      ],
+      "requiredFixtures": [
+        "foreign resource exists fixture for Cross-role and cross-tenant rejection",
+        "customer and denied cross-scope actor identities",
+        "deterministic e2e clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "AuthorizationIsolationFlow.verify",
+        "interface": "AuthorizationIsolationFlow.verify",
+        "fields": ["actor", "action", "foreignResourceId"]
+      },
+      "apiResponse": {
+        "fields": ["denied", "nonEnumeratingCode"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["RESOURCE_ACCESS_DENIED", "RESOURCE_NOT_FOUND_MASKED"],
+      "authorizationMatrix": {
+        "allowed": ["customer", "merchant staff", "captain", "admin", "backend"],
+        "denied": [
+          "revoked or suspended authenticated but unauthorized actor",
+          "actor outside role, tenant, outlet, and resource ownership",
+          "actor presenting a resource outside role, tenant, outlet, and resource ownership"
+        ],
+        "ownershipRules": [
+          "Authorize role, tenant, outlet, and resource ownership on the server before reading or changing cross-role authorization boundary.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "AuthorizationIsolationFlow.verify does not mutate cross-role authorization boundary; it reads role, tenant, outlet, and resource ownership from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Cross-role and cross-tenant rejection observes cross-role authorization boundary without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Cross-role and cross-tenant rejection must not combine incompatible versions of cross-role authorization boundary in one response.",
+          "behavior": ["authorization evaluates current membership"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Cross-role and cross-tenant rejection has an explicit connectivity and reconnect rule for cross-role authorization boundary.",
+          "behavior": ["server-only authority"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Cross-role and cross-tenant rejection is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for E2E-AUTH-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Cross-role and cross-tenant rejection has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and cross-role authorization boundary status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Cross-role and cross-tenant rejection does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit E2E-AUTH-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of cross-role authorization boundary."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Deny Customer, Merchant, Captain, and Admin access outside exact role, tenant, outlet, ownership, and permission.",
+        "Scope every cross-role authorization boundary read to role, tenant, outlet, and resource ownership.",
+        "Cross-role and cross-tenant rejection exposes only denied, nonEnumeratingCode after AuthorizationIsolationFlow.verify."
       ],
       "requiredUnitTests": [
-        "Validate cross-role and cross-tenant rejection decisions, boundaries, and stable error codes."
+        "Exercise Cross-role and cross-tenant rejection boundaries, RESOURCE_ACCESS_DENIED, RESOURCE_NOT_FOUND_MASKED, and the foreign resource exists to access denied without disclosure decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for cross-role and cross-tenant rejection."
+        "Render Cross-role and cross-tenant rejection loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload cross-role and cross-tenant rejection against PostgreSQL with tenant isolation."
+        "Verify cross-role authorization boundary ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-AUTH-001."
+        "Validate AuthorizationIsolationFlow.verify fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for cross-role and cross-tenant rejection."
+        "Drive customer, merchant staff, captain, admin, backend through Cross-role and cross-tenant rejection and verify the authoritative result at every consumer."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing AuthorizationIsolationFlow.verify.",
+        "Executable tests for E2E-AUTH-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, RESOURCE_ACCESS_DENIED, RESOURCE_NOT_FOUND_MASKED, state, retry, and concurrency evidence at the exact implementation SHA."
       ]
     },
     {
       "scenarioId": "SCN-E2E-PAY-001",
       "contractIds": ["E2E-PAY-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for payment webhook authority to customer history.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts payment webhook authority to customer history with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for payment webhook authority to customer history is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/e2e-pay-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Payment webhook authority to Customer history request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning E2E role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["payment provider", "backend", "customer"],
+        "allowed": ["payment provider", "backend", "customer"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended payment provider",
+          "actor outside customer-owned payment reference",
+          "actor presenting a resource outside customer-owned payment reference"
         ]
       },
-      "databaseInvariant": "For payment webhook authority to customer history, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "payment provider has a current server-verified identity authorized for customer-owned payment reference.",
+        "payment pending is the authoritative starting state for payment provider event to customer projection flow."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "payment provider invokes PaymentHistoryFlow.verify with providerEvent, paymentReference.",
+        "The producer authorizes authorize customer-owned payment reference on the server before reading or changing payment provider event to customer projection flow. and evaluates WEBHOOK_SIGNATURE_INVALID, PAYMENT_TRANSITION_INVALID, PAYMENT_EVENT_DUPLICATE."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Verify and deduplicate provider webhook before advancing payment and customer-visible history.",
+        "WEBHOOK_SIGNATURE_INVALID returns the standard error envelope and leaves payment provider event to customer projection flow at its last committed version.",
+        "The observed state is payment terminal state projected; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "payment pending",
+          "to": "payment terminal state projected",
+          "trigger": "PaymentHistoryFlow.verify completes PaymentHistoryFlow.verify"
+        }
+      ],
+      "requiredFixtures": [
+        "payment pending fixture for Payment webhook authority to Customer history",
+        "payment provider and denied cross-scope actor identities",
+        "deterministic e2e clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "PaymentHistoryFlow.verify",
+        "interface": "PaymentHistoryFlow.verify",
+        "fields": ["providerEvent", "paymentReference"]
+      },
+      "apiResponse": {
+        "fields": ["paymentStatus", "customerHistory"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "WEBHOOK_SIGNATURE_INVALID",
+        "PAYMENT_TRANSITION_INVALID",
+        "PAYMENT_EVENT_DUPLICATE"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["payment provider", "backend", "customer"],
+        "denied": [
+          "revoked or suspended payment provider",
+          "actor outside customer-owned payment reference",
+          "actor presenting a resource outside customer-owned payment reference"
+        ],
+        "ownershipRules": [
+          "Authorize customer-owned payment reference on the server before reading or changing payment provider event to customer projection flow.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The payment pending to payment terminal state projected transition, ownership checks, and audit or outbox record for payment provider event to customer projection flow commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Payment webhook authority to Customer history can change payment provider event to customer projection flow, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to payment provider, the operation, and the canonical request payload.",
+            "Return the original payment provider event to customer projection flow result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Payment webhook authority to Customer history has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["provider event and payment version serialize updates"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Payment webhook authority to Customer history has an explicit connectivity and reconnect rule for payment provider event to customer projection flow.",
+          "behavior": ["provider retries idempotently"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Payment webhook authority to Customer history changes state or exercises privileged authority over payment provider event to customer projection flow.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for payment provider event to customer projection flow."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Payment webhook authority to Customer history has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and payment provider event to customer projection flow status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Payment webhook authority to Customer history contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-005."
+          ],
+          "decisionRefs": ["BD-005"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit E2E-PAY-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of payment provider event to customer projection flow."
+      ],
+      "businessDecisionRefs": ["BD-005"],
+      "featureBehavior": [
+        "Verify and deduplicate provider webhook before advancing payment and customer-visible history.",
+        "Scope every payment provider event to customer projection flow read or write to customer-owned payment reference.",
+        "Payment webhook authority to Customer history exposes only paymentStatus, customerHistory after PaymentHistoryFlow.verify."
       ],
       "requiredUnitTests": [
-        "Validate payment webhook authority to customer history decisions, boundaries, and stable error codes."
+        "Exercise Payment webhook authority to Customer history boundaries, WEBHOOK_SIGNATURE_INVALID, PAYMENT_TRANSITION_INVALID, PAYMENT_EVENT_DUPLICATE, and the payment pending to payment terminal state projected decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for payment webhook authority to customer history."
+        "Render Payment webhook authority to Customer history loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload payment webhook authority to customer history against PostgreSQL with tenant isolation."
+        "Verify payment provider event to customer projection flow ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-PAY-001."
+        "Validate PaymentHistoryFlow.verify fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for payment webhook authority to customer history."
+        "Drive payment provider, backend, customer through Payment webhook authority to Customer history and verify the authoritative result at every consumer."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing PaymentHistoryFlow.verify.",
+        "Executable tests for E2E-PAY-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, WEBHOOK_SIGNATURE_INVALID, PAYMENT_TRANSITION_INVALID, PAYMENT_EVENT_DUPLICATE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-005 before the blocked policy portion is activated."
       ]
     },
     {
       "scenarioId": "SCN-E2E-NOT-001",
       "contractIds": ["E2E-NOT-001"],
       "priority": "P0-launch",
-      "given": [
-        "Authenticated role and required fixture state exist for notification deep link to authoritative state.",
-        "The request carries a trace ID and idempotency key when state-changing."
-      ],
-      "when": [
-        "The authorized actor attempts notification deep link to authoritative state with a versioned request.",
-        "The same operation is exercised once normally and once under retry or conflict."
-      ],
-      "then": [
-        "The authoritative result for notification deep link to authoritative state is persisted exactly once.",
-        "Invalid or stale input returns the standard error envelope without partial mutation.",
-        "No unauthorized, duplicate, or partial business result is visible."
-      ],
-      "requiredFixtures": [
-        "deterministic clock",
-        "deterministic UUID sequence",
-        "role and tenant identities",
-        "minimal authoritative database state"
-      ],
-      "apiRequest": {
-        "method": "POST",
-        "path": "/v1/contracts/e2e-not-001",
-        "headers": ["Authorization", "X-Trace-Id", "Idempotency-Key when mutating"],
-        "body": "Notification deep link to authoritative state request DTO with explicit version"
-      },
-      "apiResponse": {
-        "success": "Versioned authoritative resource/result DTO",
-        "failure": "{ error: { code, message, traceId, details? } }"
-      },
-      "errorCodes": ["VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "STALE_VERSION", "NOT_FOUND"],
-      "authorizationMatrix": {
-        "allowed": ["Owning E2E role with same tenant/outlet"],
+      "actors": {
+        "initiators": ["customer", "merchant staff", "captain", "backend notification worker"],
+        "allowed": ["customer", "merchant staff", "captain", "backend notification worker"],
         "denied": [
-          "anonymous unless explicitly public",
-          "different role",
-          "different tenant/outlet",
-          "revoked session"
+          "revoked or suspended notification recipient",
+          "actor outside recipient and target resource",
+          "actor presenting a resource outside recipient and target resource"
         ]
       },
-      "databaseInvariant": "For notification deep link to authoritative state, committed rows remain tenant-scoped, auditable, and represent one authoritative business result.",
-      "duplicateRetryExpectation": [
-        "The same actor, operation, and idempotency key produce one business result.",
-        "A reused key with a different payload is rejected."
+      "given": [
+        "notification recipient has a current server-verified identity authorized for recipient and target resource.",
+        "notification delivered is the authoritative starting state for notification-to-resource revalidation flow."
       ],
-      "concurrencyExpectation": [
-        "Concurrent conflicting commands have one deterministic winner.",
-        "Losers receive the current authoritative version."
+      "when": [
+        "customer invokes NotificationDeepLinkFlow.verify with recipient, notificationId, resourceId.",
+        "The producer authorizes authorize recipient and target resource on the server before reading or changing notification-to-resource revalidation flow. and evaluates NOTIFICATION_NOT_FOUND, DEEPLINK_TARGET_UNAVAILABLE, RESOURCE_ACCESS_DENIED."
       ],
-      "offlineReconnectExpectation": [
-        "Clients may queue only explicitly retryable commands.",
-        "Reconnect revalidates authorization and authoritative state before reconciliation."
+      "then": [
+        "Treat notification as a signal, reauthorize resource access, and show current state or safe fallback.",
+        "NOTIFICATION_NOT_FOUND returns the standard error envelope and leaves notification-to-resource revalidation flow at its last committed version.",
+        "The observed state is authoritative destination loaded or rejected; no cross-scope or partial result is visible."
       ],
-      "accessibilityExpectation": [
-        "Expose semantic names, roles, state, focus order, and non-color status cues.",
-        "Errors are announced and recovery remains keyboard/screen-reader operable."
+      "stateTransitions": [
+        {
+          "from": "notification delivered",
+          "to": "authoritative destination loaded or rejected",
+          "trigger": "NotificationDeepLinkFlow.verify completes NotificationDeepLinkFlow.verify"
+        }
+      ],
+      "requiredFixtures": [
+        "notification delivered fixture for Notification deep link to authoritative state",
+        "customer and denied cross-scope actor identities",
+        "deterministic e2e clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "NotificationDeepLinkFlow.verify",
+        "interface": "NotificationDeepLinkFlow.verify",
+        "fields": ["recipient", "notificationId", "resourceId"]
+      },
+      "apiResponse": {
+        "fields": ["authoritativeResource", "navigationOutcome"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "NOTIFICATION_NOT_FOUND",
+        "DEEPLINK_TARGET_UNAVAILABLE",
+        "RESOURCE_ACCESS_DENIED"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["customer", "merchant staff", "captain", "backend notification worker"],
+        "denied": [
+          "revoked or suspended notification recipient",
+          "actor outside recipient and target resource",
+          "actor presenting a resource outside recipient and target resource"
+        ],
+        "ownershipRules": [
+          "Authorize recipient and target resource on the server before reading or changing notification-to-resource revalidation flow.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "NotificationDeepLinkFlow.verify does not mutate notification-to-resource revalidation flow; it reads recipient and target resource from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Notification deep link to authoritative state observes notification-to-resource revalidation flow without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Notification deep link to authoritative state must not combine incompatible versions of notification-to-resource revalidation flow in one response.",
+          "behavior": ["latest resource version wins over payload snapshot"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Notification deep link to authoritative state has an explicit connectivity and reconnect rule for notification-to-resource revalidation flow.",
+          "behavior": ["retain signal and retry after reconnect"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Notification deep link to authoritative state is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for E2E-NOT-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Notification deep link to authoritative state has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and notification-to-resource revalidation flow status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Notification deep link to authoritative state contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-010."
+          ],
+          "decisionRefs": ["BD-010"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit E2E-NOT-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of notification-to-resource revalidation flow."
+      ],
+      "businessDecisionRefs": ["BD-010"],
+      "featureBehavior": [
+        "Treat notification as a signal, reauthorize resource access, and show current state or safe fallback.",
+        "Scope every notification-to-resource revalidation flow read to recipient and target resource.",
+        "Notification deep link to authoritative state exposes only authoritativeResource, navigationOutcome after NotificationDeepLinkFlow.verify."
       ],
       "requiredUnitTests": [
-        "Validate notification deep link to authoritative state decisions, boundaries, and stable error codes."
+        "Exercise Notification deep link to authoritative state boundaries, NOTIFICATION_NOT_FOUND, DEEPLINK_TARGET_UNAVAILABLE, RESOURCE_ACCESS_DENIED, and the notification delivered to authoritative destination loaded or rejected decision."
       ],
       "requiredComponentTests": [
-        "Render success, loading, empty, denied, stale, offline, and retry states for notification deep link to authoritative state."
+        "Render Notification deep link to authoritative state loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
       ],
       "requiredIntegrationTests": [
-        "Persist and reload notification deep link to authoritative state against PostgreSQL with tenant isolation."
+        "Verify notification-to-resource revalidation flow ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
       ],
       "requiredContractTests": [
-        "Validate request, response, error envelope, authorization, idempotency, and version semantics for E2E-NOT-001."
+        "Validate NotificationDeepLinkFlow.verify fields, stable errors, authorization, and applicability rules."
       ],
       "requiredE2ETests": [
-        "Exercise the owning-role journey and authoritative cross-app visibility for notification deep link to authoritative state."
+        "Drive customer, merchant staff, captain, backend notification worker through Notification deep link to authoritative state and verify the authoritative result at every consumer."
       ],
       "evidenceRequiredToActivate": [
-        "production implementation paths",
-        "executable test paths",
-        "focused validation output",
-        "full CI result at exact SHA",
-        "coverage and migration evidence",
-        "no unresolved launch-critical decision"
+        "Production paths implementing NotificationDeepLinkFlow.verify.",
+        "Executable tests for E2E-NOT-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, NOTIFICATION_NOT_FOUND, DEEPLINK_TARGET_UNAVAILABLE, RESOURCE_ACCESS_DENIED, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-010 before the blocked policy portion is activated."
       ]
     }
   ]
