@@ -146,14 +146,14 @@ test('generic accept and reject words do not imply assignment', () => {
 });
 
 test('rejects a real unresolved overlap instead of choosing the first rule', () => {
-  const result = classify(
-    'apps/customer-app/src/__tests__/misc.test.ts',
-    'checkout payment and reward recovery',
+  assert.throws(
+    () =>
+      classify(
+        'apps/customer-app/src/__tests__/misc.test.ts',
+        'checkout payment and reward recovery',
+      ),
+    /incompatible.*CUS-PAYMENT.*CUS-CHECKOUT-PRICE/i,
   );
-  assert.equal(result.mappingRuleId, 'MANUAL-REVIEW-AMBIGUOUS');
-  assert.equal(result.disposition, 'requires-business-decision');
-  assert.deepEqual(result.targetDuskyContractIds, []);
-  assert.match(result.mappingResolutionReason, /incompatible.*CUS-PAYMENT.*CUS-CHECKOUT-PRICE/i);
 });
 
 test('records an auditable resolution reason for every automatic mapping', () => {
