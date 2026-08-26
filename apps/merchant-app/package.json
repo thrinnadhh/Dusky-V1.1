@@ -1,0 +1,29 @@
+{
+  "name": "@dusky/merchant-app",
+  "version": "0.0.0",
+  "private": true,
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --reporter=default --reporter=junit --outputFile.junit=reports/junit.xml",
+    "test:coverage": "vitest run --coverage.enabled true --coverage.provider v8 --coverage.thresholds.lines 80 --reporter=default --reporter=junit --outputFile.junit=reports/junit.xml",
+    "config:validate": "node ../../scripts/validate-app-config.mjs merchant-app",
+    "build": "expo export --platform web --output-dir dist"
+  },
+  "dependencies": {
+    "@dusky/contracts": "workspace:*",
+    "expo": "57.0.16",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-web": "0.21.2"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.4",
+    "@types/react-dom": "19.2.3",
+    "@vitest/coverage-v8": "3.2.4"
+  }
+}

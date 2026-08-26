@@ -1,0 +1,2483 @@
+{
+  "schemaVersion": "2.0.0",
+  "application": "Backend",
+  "scenarios": [
+    {
+      "scenarioId": "SCN-BE-AUTH-001",
+      "contractIds": ["BE-AUTH-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["API client presenting a bearer token"],
+        "allowed": ["API client presenting a bearer token"],
+        "denied": [
+          "revoked or suspended API client presenting a bearer token",
+          "actor outside principal identity",
+          "actor presenting a resource outside principal identity"
+        ]
+      },
+      "given": [
+        "API client presenting a bearer token has a current server-verified identity authorized for principal identity.",
+        "request unauthenticated is the authoritative starting state for API principal and role decision."
+      ],
+      "when": [
+        "API client presenting a bearer token invokes ApiAuthenticationFilter.authenticate with bearerToken, requestPath.",
+        "The producer authorizes authorize principal identity on the server before reading or changing api principal and role decision. and evaluates AUTH_TOKEN_INVALID, AUTH_TOKEN_EXPIRED, AUTH_ROLE_INVALID."
+      ],
+      "then": [
+        "Authenticate issuer, audience, expiry, revocation, and server-fixed role before controller execution.",
+        "AUTH_TOKEN_INVALID returns the standard error envelope and leaves API principal and role decision at its last committed version.",
+        "The observed state is principal authenticated; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "request unauthenticated",
+          "to": "principal authenticated",
+          "trigger": "ApiAuthenticationFilter.authenticate completes ApiAuthenticationFilter.authenticate"
+        }
+      ],
+      "requiredFixtures": [
+        "request unauthenticated fixture for Authentication and authorization",
+        "API client presenting a bearer token and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "ApiAuthenticationFilter.authenticate",
+        "interface": "ApiAuthenticationFilter.authenticate",
+        "fields": ["bearerToken", "requestPath"]
+      },
+      "apiResponse": {
+        "fields": ["principalId", "role", "authEpoch"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["AUTH_TOKEN_INVALID", "AUTH_TOKEN_EXPIRED", "AUTH_ROLE_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["API client presenting a bearer token"],
+        "denied": [
+          "revoked or suspended API client presenting a bearer token",
+          "actor outside principal identity",
+          "actor presenting a resource outside principal identity"
+        ],
+        "ownershipRules": [
+          "Authorize principal identity on the server before reading or changing API principal and role decision.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "ApiAuthenticationFilter.authenticate does not mutate API principal and role decision; it reads principal identity from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Authentication and authorization observes API principal and role decision without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Authentication and authorization must not combine incompatible versions of API principal and role decision in one response.",
+          "behavior": ["revocation/auth epoch checked per request"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Authentication and authorization has an explicit connectivity and reconnect rule for API principal and role decision.",
+          "behavior": ["backend rejects unverifiable credentials"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Authentication and authorization is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for BE-AUTH-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Authentication and authorization is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Authentication and authorization does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-AUTH-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of API principal and role decision."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Authenticate issuer, audience, expiry, revocation, and server-fixed role before controller execution.",
+        "Scope every API principal and role decision read to principal identity.",
+        "Authentication and authorization exposes only principalId, role, authEpoch after ApiAuthenticationFilter.authenticate."
+      ],
+      "requiredUnitTests": [
+        "Exercise Authentication and authorization boundaries, AUTH_TOKEN_INVALID, AUTH_TOKEN_EXPIRED, AUTH_ROLE_INVALID, and the request unauthenticated to principal authenticated decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the ApiAuthenticationFilter.authenticate service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify API principal and role decision ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate ApiAuthenticationFilter.authenticate fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive API client presenting a bearer token through Authentication and authorization and verify the resulting API principal and role decision projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing ApiAuthenticationFilter.authenticate.",
+        "Executable tests for BE-AUTH-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, AUTH_TOKEN_INVALID, AUTH_TOKEN_EXPIRED, AUTH_ROLE_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-OBJ-001",
+      "contractIds": ["BE-OBJ-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated API principal"],
+        "allowed": ["authenticated API principal"],
+        "denied": [
+          "revoked or suspended authenticated API principal",
+          "actor outside principal-resource relationship",
+          "actor presenting a resource outside principal-resource relationship"
+        ]
+      },
+      "given": [
+        "authenticated API principal has a current server-verified identity authorized for principal-resource relationship.",
+        "resource access undecided is the authoritative starting state for resource ownership decision."
+      ],
+      "when": [
+        "authenticated API principal invokes ObjectAuthorizationPolicy.authorize with principal, action, resourceType, resourceId.",
+        "The producer authorizes authorize principal-resource relationship on the server before reading or changing resource ownership decision. and evaluates RESOURCE_ACCESS_DENIED, RESOURCE_NOT_FOUND_MASKED."
+      ],
+      "then": [
+        "Authorize action, role, ownership, tenant, outlet, and resource state without existence leakage.",
+        "RESOURCE_ACCESS_DENIED returns the standard error envelope and leaves resource ownership decision at its last committed version.",
+        "The observed state is access allowed or denied; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "resource access undecided",
+          "to": "access allowed or denied",
+          "trigger": "ObjectAuthorizationPolicy.authorize completes ObjectAuthorizationPolicy.authorize"
+        }
+      ],
+      "requiredFixtures": [
+        "resource access undecided fixture for Object-level authorization",
+        "authenticated API principal and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "ObjectAuthorizationPolicy.authorize",
+        "interface": "ObjectAuthorizationPolicy.authorize",
+        "fields": ["principal", "action", "resourceType", "resourceId"]
+      },
+      "apiResponse": {
+        "fields": ["allowed", "denialCode"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["RESOURCE_ACCESS_DENIED", "RESOURCE_NOT_FOUND_MASKED"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated API principal"],
+        "denied": [
+          "revoked or suspended authenticated API principal",
+          "actor outside principal-resource relationship",
+          "actor presenting a resource outside principal-resource relationship"
+        ],
+        "ownershipRules": [
+          "Authorize principal-resource relationship on the server before reading or changing resource ownership decision.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "ObjectAuthorizationPolicy.authorize does not mutate resource ownership decision; it reads principal-resource relationship from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Object-level authorization observes resource ownership decision without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Object-level authorization must not combine incompatible versions of resource ownership decision in one response.",
+          "behavior": ["authorization uses the transaction-visible resource version"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Object-level authorization has an explicit connectivity and reconnect rule for resource ownership decision.",
+          "behavior": ["server-only decision"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Object-level authorization is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for BE-OBJ-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Object-level authorization is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Object-level authorization does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-OBJ-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of resource ownership decision."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Authorize action, role, ownership, tenant, outlet, and resource state without existence leakage.",
+        "Scope every resource ownership decision read to principal-resource relationship.",
+        "Object-level authorization exposes only allowed, denialCode after ObjectAuthorizationPolicy.authorize."
+      ],
+      "requiredUnitTests": [
+        "Exercise Object-level authorization boundaries, RESOURCE_ACCESS_DENIED, RESOURCE_NOT_FOUND_MASKED, and the resource access undecided to access allowed or denied decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the ObjectAuthorizationPolicy.authorize service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify resource ownership decision ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate ObjectAuthorizationPolicy.authorize fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated API principal through Object-level authorization and verify the resulting resource ownership decision projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing ObjectAuthorizationPolicy.authorize.",
+        "Executable tests for BE-OBJ-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, RESOURCE_ACCESS_DENIED, RESOURCE_NOT_FOUND_MASKED, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-TENANT-001",
+      "contractIds": ["BE-TENANT-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated merchant or admin principal"],
+        "allowed": ["authenticated merchant or admin principal"],
+        "denied": [
+          "revoked or suspended authenticated merchant or admin principal",
+          "actor outside tenant and outlet",
+          "actor presenting a resource outside tenant and outlet"
+        ]
+      },
+      "given": [
+        "authenticated merchant or admin principal has a current server-verified identity authorized for tenant and outlet.",
+        "query unscoped is the authoritative starting state for tenant-scoped repository query."
+      ],
+      "when": [
+        "authenticated merchant or admin principal invokes TenantScope.requireOutlet with principalId, merchantId, outletId.",
+        "The producer authorizes authorize tenant and outlet on the server before reading or changing tenant-scoped repository query. and evaluates TENANT_SCOPE_REQUIRED, OUTLET_SCOPE_DENIED."
+      ],
+      "then": [
+        "Bind every merchant read/write query to an authorized tenant and outlet predicate.",
+        "TENANT_SCOPE_REQUIRED returns the standard error envelope and leaves tenant-scoped repository query at its last committed version.",
+        "The observed state is query tenant-scoped; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "query unscoped",
+          "to": "query tenant-scoped",
+          "trigger": "TenantScope.requireOutlet completes TenantScope.requireOutlet"
+        }
+      ],
+      "requiredFixtures": [
+        "query unscoped fixture for Tenant and outlet isolation",
+        "authenticated merchant or admin principal and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "TenantScope.requireOutlet",
+        "interface": "TenantScope.requireOutlet",
+        "fields": ["principalId", "merchantId", "outletId"]
+      },
+      "apiResponse": {
+        "fields": ["tenantScope"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["TENANT_SCOPE_REQUIRED", "OUTLET_SCOPE_DENIED"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated merchant or admin principal"],
+        "denied": [
+          "revoked or suspended authenticated merchant or admin principal",
+          "actor outside tenant and outlet",
+          "actor presenting a resource outside tenant and outlet"
+        ],
+        "ownershipRules": [
+          "Authorize tenant and outlet on the server before reading or changing tenant-scoped repository query.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "TenantScope.requireOutlet does not mutate tenant-scoped repository query; it reads tenant and outlet from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Tenant and outlet isolation observes tenant-scoped repository query without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Tenant and outlet isolation must not combine incompatible versions of tenant-scoped repository query in one response.",
+          "behavior": ["scope remains immutable within transaction"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Tenant and outlet isolation has an explicit connectivity and reconnect rule for tenant-scoped repository query.",
+          "behavior": ["server-only decision"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Tenant and outlet isolation is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for BE-TENANT-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Tenant and outlet isolation is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Tenant and outlet isolation does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-TENANT-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of tenant-scoped repository query."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Bind every merchant read/write query to an authorized tenant and outlet predicate.",
+        "Scope every tenant-scoped repository query read to tenant and outlet.",
+        "Tenant and outlet isolation exposes only tenantScope after TenantScope.requireOutlet."
+      ],
+      "requiredUnitTests": [
+        "Exercise Tenant and outlet isolation boundaries, TENANT_SCOPE_REQUIRED, OUTLET_SCOPE_DENIED, and the query unscoped to query tenant-scoped decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the TenantScope.requireOutlet service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify tenant-scoped repository query ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate TenantScope.requireOutlet fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated merchant or admin principal through Tenant and outlet isolation and verify the resulting tenant-scoped repository query projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing TenantScope.requireOutlet.",
+        "Executable tests for BE-TENANT-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, TENANT_SCOPE_REQUIRED, OUTLET_SCOPE_DENIED, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-VALID-001",
+      "contractIds": ["BE-VALID-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["API client"],
+        "allowed": ["API client"],
+        "denied": [
+          "revoked or suspended API client",
+          "actor outside request principal where authorization follows",
+          "actor presenting a resource outside request principal where authorization follows"
+        ]
+      },
+      "given": [
+        "API client has a current server-verified identity authorized for request principal where authorization follows.",
+        "request unvalidated is the authoritative starting state for validated API command/query DTO."
+      ],
+      "when": [
+        "API client invokes RequestValidator.validate with contractId, requestDto.",
+        "The producer authorizes authorize request principal where authorization follows on the server before reading or changing validated api command/query dto. and evaluates VALIDATION_ERROR, UNKNOWN_FIELD, VALUE_OUT_OF_RANGE."
+      ],
+      "then": [
+        "Reject malformed, unknown, unsafe, or out-of-range fields using the standard error envelope.",
+        "VALIDATION_ERROR returns the standard error envelope and leaves validated API command/query DTO at its last committed version.",
+        "The observed state is request validated or rejected; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "request unvalidated",
+          "to": "request validated or rejected",
+          "trigger": "RequestValidator.validate completes RequestValidator.validate"
+        }
+      ],
+      "requiredFixtures": [
+        "request unvalidated fixture for Request validation",
+        "API client and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "RequestValidator.validate",
+        "interface": "RequestValidator.validate",
+        "fields": ["contractId", "requestDto"]
+      },
+      "apiResponse": {
+        "fields": ["validatedDto", "fieldErrors"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VALIDATION_ERROR", "UNKNOWN_FIELD", "VALUE_OUT_OF_RANGE"],
+      "authorizationMatrix": {
+        "allowed": ["API client"],
+        "denied": [
+          "revoked or suspended API client",
+          "actor outside request principal where authorization follows",
+          "actor presenting a resource outside request principal where authorization follows"
+        ],
+        "ownershipRules": [
+          "Authorize request principal where authorization follows on the server before reading or changing validated API command/query DTO.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "RequestValidator.validate does not mutate validated API command/query DTO; it reads request principal where authorization follows from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Request validation observes validated API command/query DTO without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Request validation must not combine incompatible versions of validated API command/query DTO in one response.",
+          "behavior": ["validation is pure"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Request validation has an explicit connectivity and reconnect rule for validated API command/query DTO.",
+          "behavior": ["server-only validation"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Request validation is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for BE-VALID-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Request validation is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Request validation does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-VALID-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of validated API command/query DTO."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Reject malformed, unknown, unsafe, or out-of-range fields using the standard error envelope.",
+        "Scope every validated API command/query DTO read to request principal where authorization follows.",
+        "Request validation exposes only validatedDto, fieldErrors after RequestValidator.validate."
+      ],
+      "requiredUnitTests": [
+        "Exercise Request validation boundaries, VALIDATION_ERROR, UNKNOWN_FIELD, VALUE_OUT_OF_RANGE, and the request unvalidated to request validated or rejected decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the RequestValidator.validate service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify validated API command/query DTO ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate RequestValidator.validate fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive API client through Request validation and verify the resulting validated API command/query DTO projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing RequestValidator.validate.",
+        "Executable tests for BE-VALID-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, VALIDATION_ERROR, UNKNOWN_FIELD, VALUE_OUT_OF_RANGE, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-PAGE-001",
+      "contractIds": ["BE-PAGE-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authorized API client"],
+        "allowed": ["authorized API client"],
+        "denied": [
+          "revoked or suspended authorized API client",
+          "actor outside principal and normalized query",
+          "actor presenting a resource outside principal and normalized query"
+        ]
+      },
+      "given": [
+        "authorized API client has a current server-verified identity authorized for principal and normalized query.",
+        "rows unchanged is the authoritative starting state for opaque cursor page."
+      ],
+      "when": [
+        "authorized API client invokes CursorPage.decodeAndQuery with cursor, limit, sort.",
+        "The producer authorizes authorize principal and normalized query on the server before reading or changing opaque cursor page. and evaluates CURSOR_INVALID, PAGE_LIMIT_INVALID, CURSOR_SCOPE_MISMATCH."
+      ],
+      "then": [
+        "Return deterministic bounded pages and reject cursors for a different query or principal.",
+        "CURSOR_INVALID returns the standard error envelope and leaves opaque cursor page at its last committed version.",
+        "The observed state is rows unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "rows unchanged",
+          "to": "rows unchanged",
+          "trigger": "CursorPage.decodeAndQuery completes CursorPage.decodeAndQuery"
+        }
+      ],
+      "requiredFixtures": [
+        "rows unchanged fixture for Pagination",
+        "authorized API client and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "CursorPage.decodeAndQuery",
+        "interface": "CursorPage.decodeAndQuery",
+        "fields": ["cursor", "limit", "sort"]
+      },
+      "apiResponse": {
+        "fields": ["items", "nextCursor"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["CURSOR_INVALID", "PAGE_LIMIT_INVALID", "CURSOR_SCOPE_MISMATCH"],
+      "authorizationMatrix": {
+        "allowed": ["authorized API client"],
+        "denied": [
+          "revoked or suspended authorized API client",
+          "actor outside principal and normalized query",
+          "actor presenting a resource outside principal and normalized query"
+        ],
+        "ownershipRules": [
+          "Authorize principal and normalized query on the server before reading or changing opaque cursor page.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "CursorPage.decodeAndQuery does not mutate opaque cursor page; it reads principal and normalized query from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Pagination observes opaque cursor page without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Pagination must not combine incompatible versions of opaque cursor page in one response.",
+          "behavior": ["cursor pins sort key and snapshot boundary"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Pagination has an explicit connectivity and reconnect rule for opaque cursor page.",
+          "behavior": ["client may retry safe page read"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Pagination is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for BE-PAGE-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Pagination is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Pagination does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-PAGE-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of opaque cursor page."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Return deterministic bounded pages and reject cursors for a different query or principal.",
+        "Scope every opaque cursor page read to principal and normalized query.",
+        "Pagination exposes only items, nextCursor after CursorPage.decodeAndQuery."
+      ],
+      "requiredUnitTests": [
+        "Exercise Pagination boundaries, CURSOR_INVALID, PAGE_LIMIT_INVALID, CURSOR_SCOPE_MISMATCH, and the rows unchanged to rows unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the CursorPage.decodeAndQuery service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify opaque cursor page ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate CursorPage.decodeAndQuery fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authorized API client through Pagination and verify the resulting opaque cursor page projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing CursorPage.decodeAndQuery.",
+        "Executable tests for BE-PAGE-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, CURSOR_INVALID, PAGE_LIMIT_INVALID, CURSOR_SCOPE_MISMATCH, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-REPR-001",
+      "contractIds": ["BE-REPR-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["API producer or consumer"],
+        "allowed": ["API producer or consumer"],
+        "denied": [
+          "revoked or suspended API producer or consumer",
+          "actor outside not tenant-specific",
+          "actor presenting a resource outside not tenant-specific"
+        ]
+      },
+      "given": [
+        "API producer or consumer has a current server-verified identity authorized for not tenant-specific.",
+        "value internal is the authoritative starting state for canonical API scalar representation."
+      ],
+      "when": [
+        "API producer or consumer invokes CanonicalRepresentation.encode with uuid, amountPaise, instant.",
+        "The producer authorizes authorize not tenant-specific on the server before reading or changing canonical api scalar representation. and evaluates UUID_INVALID, MONEY_RANGE_INVALID, TIMESTAMP_INVALID."
+      ],
+      "then": [
+        "Use UUID strings, safe integer paise, ISO currency, and RFC3339 UTC timestamps without floating money.",
+        "UUID_INVALID returns the standard error envelope and leaves canonical API scalar representation at its last committed version.",
+        "The observed state is value canonically encoded; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "value internal",
+          "to": "value canonically encoded",
+          "trigger": "CanonicalRepresentation.encode completes CanonicalRepresentation.encode"
+        }
+      ],
+      "requiredFixtures": [
+        "value internal fixture for UUID money and time representation",
+        "API producer or consumer and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "CanonicalRepresentation.encode",
+        "interface": "CanonicalRepresentation.encode",
+        "fields": ["uuid", "amountPaise", "instant"]
+      },
+      "apiResponse": {
+        "fields": ["uuidString", "integerPaise", "rfc3339Utc"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["UUID_INVALID", "MONEY_RANGE_INVALID", "TIMESTAMP_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["API producer or consumer"],
+        "denied": [
+          "revoked or suspended API producer or consumer",
+          "actor outside not tenant-specific",
+          "actor presenting a resource outside not tenant-specific"
+        ],
+        "ownershipRules": [
+          "Authorize not tenant-specific on the server before reading or changing canonical API scalar representation.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "CanonicalRepresentation.encode does not mutate canonical API scalar representation; it reads not tenant-specific from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "UUID money and time representation observes canonical API scalar representation without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "UUID money and time representation must not combine incompatible versions of canonical API scalar representation in one response.",
+          "behavior": ["pure conversion"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "UUID money and time representation has an explicit connectivity and reconnect rule for canonical API scalar representation.",
+          "behavior": ["same representation applies offline"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "UUID money and time representation is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for BE-REPR-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "UUID money and time representation is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "UUID money and time representation does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-REPR-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of canonical API scalar representation."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Use UUID strings, safe integer paise, ISO currency, and RFC3339 UTC timestamps without floating money.",
+        "Scope every canonical API scalar representation read to not tenant-specific.",
+        "UUID money and time representation exposes only uuidString, integerPaise, rfc3339Utc after CanonicalRepresentation.encode."
+      ],
+      "requiredUnitTests": [
+        "Exercise UUID money and time representation boundaries, UUID_INVALID, MONEY_RANGE_INVALID, TIMESTAMP_INVALID, and the value internal to value canonically encoded decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the CanonicalRepresentation.encode service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify canonical API scalar representation ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate CanonicalRepresentation.encode fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive API producer or consumer through UUID money and time representation and verify the resulting canonical API scalar representation projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing CanonicalRepresentation.encode.",
+        "Executable tests for BE-REPR-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, UUID_INVALID, MONEY_RANGE_INVALID, TIMESTAMP_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-IDEMP-001",
+      "contractIds": ["BE-IDEMP-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated command caller"],
+        "allowed": ["authenticated command caller"],
+        "denied": [
+          "revoked or suspended authenticated command caller",
+          "actor outside actor and operation",
+          "actor presenting a resource outside actor and operation"
+        ]
+      },
+      "given": [
+        "authenticated command caller has a current server-verified identity authorized for actor and operation.",
+        "key unseen is the authoritative starting state for idempotency record and command result."
+      ],
+      "when": [
+        "authenticated command caller invokes IdempotencyService.execute with actorId, operation, key, payloadHash.",
+        "The producer authorizes authorize actor and operation on the server before reading or changing idempotency record and command result. and evaluates IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_REUSED."
+      ],
+      "then": [
+        "Persist one result per actor-operation-key and reject reuse with a different payload hash.",
+        "IDEMPOTENCY_KEY_REQUIRED returns the standard error envelope and leaves idempotency record and command result at its last committed version.",
+        "The observed state is result recorded; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "key unseen",
+          "to": "result recorded",
+          "trigger": "IdempotencyService.execute completes IdempotencyService.execute"
+        }
+      ],
+      "requiredFixtures": [
+        "key unseen fixture for Idempotent commands",
+        "authenticated command caller and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "IdempotencyService.execute",
+        "interface": "IdempotencyService.execute",
+        "fields": ["actorId", "operation", "key", "payloadHash"]
+      },
+      "apiResponse": {
+        "fields": ["result", "replayed"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["IDEMPOTENCY_KEY_REQUIRED", "IDEMPOTENCY_KEY_REUSED"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated command caller"],
+        "denied": [
+          "revoked or suspended authenticated command caller",
+          "actor outside actor and operation",
+          "actor presenting a resource outside actor and operation"
+        ],
+        "ownershipRules": [
+          "Authorize actor and operation on the server before reading or changing idempotency record and command result.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The key unseen to result recorded transition, ownership checks, and audit or outbox record for idempotency record and command result commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Idempotent commands can change idempotency record and command result, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated command caller, the operation, and the canonical request payload.",
+            "Return the original idempotency record and command result result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Idempotent commands has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["unique constraint yields one executor"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Idempotent commands has an explicit connectivity and reconnect rule for idempotency record and command result.",
+          "behavior": ["supports explicitly retryable queued commands"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Idempotent commands changes state or exercises privileged authority over idempotency record and command result.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for idempotency record and command result."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Idempotent commands is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Idempotent commands does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-IDEMP-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of idempotency record and command result."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Persist one result per actor-operation-key and reject reuse with a different payload hash.",
+        "Scope every idempotency record and command result read or write to actor and operation.",
+        "Idempotent commands exposes only result, replayed after IdempotencyService.execute."
+      ],
+      "requiredUnitTests": [
+        "Exercise Idempotent commands boundaries, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_REUSED, and the key unseen to result recorded decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the IdempotencyService.execute service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify idempotency record and command result ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate IdempotencyService.execute fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated command caller through Idempotent commands and verify the resulting idempotency record and command result projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing IdempotencyService.execute.",
+        "Executable tests for BE-IDEMP-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_REUSED, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-CON-001",
+      "contractIds": ["BE-CON-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authorized command handler"],
+        "allowed": ["authorized command handler"],
+        "denied": [
+          "revoked or suspended authorized command handler",
+          "actor outside authorized aggregate",
+          "actor presenting a resource outside authorized aggregate"
+        ]
+      },
+      "given": [
+        "authorized command handler has a current server-verified identity authorized for authorized aggregate.",
+        "aggregate version N is the authoritative starting state for versioned aggregate mutation."
+      ],
+      "when": [
+        "authorized command handler invokes VersionedAggregateRepository.compareAndSet with aggregateId, expectedVersion, mutation.",
+        "The producer authorizes authorize authorized aggregate on the server before reading or changing versioned aggregate mutation. and evaluates VERSION_CONFLICT, CONCURRENT_TRANSITION_REJECTED."
+      ],
+      "then": [
+        "Commit one valid transition at the expected version and return authoritative state to losers.",
+        "VERSION_CONFLICT returns the standard error envelope and leaves versioned aggregate mutation at its last committed version.",
+        "The observed state is aggregate version N+1; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "aggregate version N",
+          "to": "aggregate version N+1",
+          "trigger": "VersionedAggregateRepository.compareAndSet completes VersionedAggregateRepository.compareAndSet"
+        }
+      ],
+      "requiredFixtures": [
+        "aggregate version N fixture for Concurrency control",
+        "authorized command handler and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "VersionedAggregateRepository.compareAndSet",
+        "interface": "VersionedAggregateRepository.compareAndSet",
+        "fields": ["aggregateId", "expectedVersion", "mutation"]
+      },
+      "apiResponse": {
+        "fields": ["newVersion", "outcome"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["VERSION_CONFLICT", "CONCURRENT_TRANSITION_REJECTED"],
+      "authorizationMatrix": {
+        "allowed": ["authorized command handler"],
+        "denied": [
+          "revoked or suspended authorized command handler",
+          "actor outside authorized aggregate",
+          "actor presenting a resource outside authorized aggregate"
+        ],
+        "ownershipRules": [
+          "Authorize authorized aggregate on the server before reading or changing versioned aggregate mutation.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The aggregate version N to aggregate version N+1 transition, ownership checks, and audit or outbox record for versioned aggregate mutation commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Concurrency control can change versioned aggregate mutation, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authorized command handler, the operation, and the canonical request payload.",
+            "Return the original versioned aggregate mutation result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Concurrency control has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["core-purpose-concurrency-contract"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Concurrency control has an explicit connectivity and reconnect rule for versioned aggregate mutation.",
+          "behavior": ["replayed mutation must revalidate expected version"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Concurrency control changes state or exercises privileged authority over versioned aggregate mutation.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for versioned aggregate mutation."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Concurrency control is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Concurrency control does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-CON-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of versioned aggregate mutation."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Commit one valid transition at the expected version and return authoritative state to losers.",
+        "Scope every versioned aggregate mutation read or write to authorized aggregate.",
+        "Concurrency control exposes only newVersion, outcome after VersionedAggregateRepository.compareAndSet."
+      ],
+      "requiredUnitTests": [
+        "Exercise Concurrency control boundaries, VERSION_CONFLICT, CONCURRENT_TRANSITION_REJECTED, and the aggregate version N to aggregate version N+1 decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the VersionedAggregateRepository.compareAndSet service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify versioned aggregate mutation ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate VersionedAggregateRepository.compareAndSet fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authorized command handler through Concurrency control and verify the resulting versioned aggregate mutation projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing VersionedAggregateRepository.compareAndSet.",
+        "Executable tests for BE-CON-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, VERSION_CONFLICT, CONCURRENT_TRANSITION_REJECTED, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-STATE-001",
+      "contractIds": ["BE-STATE-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authorized domain actor"],
+        "allowed": ["authorized domain actor"],
+        "denied": [
+          "revoked or suspended authorized domain actor",
+          "actor outside aggregate owner/tenant",
+          "actor presenting a resource outside aggregate owner/tenant"
+        ]
+      },
+      "given": [
+        "authorized domain actor has a current server-verified identity authorized for aggregate owner/tenant.",
+        "domain state current is the authoritative starting state for domain aggregate lifecycle."
+      ],
+      "when": [
+        "authorized domain actor invokes DomainStateMachine.transition with aggregateType, currentState, action, actor.",
+        "The producer authorizes authorize aggregate owner/tenant on the server before reading or changing domain aggregate lifecycle. and evaluates STATE_TRANSITION_INVALID, STATE_ACTION_FORBIDDEN."
+      ],
+      "then": [
+        "Allow only enumerated transitions and emit events from the committed next state.",
+        "STATE_TRANSITION_INVALID returns the standard error envelope and leaves domain aggregate lifecycle at its last committed version.",
+        "The observed state is domain state transitioned; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "domain state current",
+          "to": "domain state transitioned",
+          "trigger": "DomainStateMachine.transition completes DomainStateMachine.transition"
+        }
+      ],
+      "requiredFixtures": [
+        "domain state current fixture for Authoritative state machines",
+        "authorized domain actor and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "DomainStateMachine.transition",
+        "interface": "DomainStateMachine.transition",
+        "fields": ["aggregateType", "currentState", "action", "actor"]
+      },
+      "apiResponse": {
+        "fields": ["nextState", "events"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["STATE_TRANSITION_INVALID", "STATE_ACTION_FORBIDDEN"],
+      "authorizationMatrix": {
+        "allowed": ["authorized domain actor"],
+        "denied": [
+          "revoked or suspended authorized domain actor",
+          "actor outside aggregate owner/tenant",
+          "actor presenting a resource outside aggregate owner/tenant"
+        ],
+        "ownershipRules": [
+          "Authorize aggregate owner/tenant on the server before reading or changing domain aggregate lifecycle.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The domain state current to domain state transitioned transition, ownership checks, and audit or outbox record for domain aggregate lifecycle commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Authoritative state machines can change domain aggregate lifecycle, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authorized domain actor, the operation, and the canonical request payload.",
+            "Return the original domain aggregate lifecycle result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Authoritative state machines has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["transition executes with aggregate version"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Authoritative state machines has an explicit connectivity and reconnect rule for domain aggregate lifecycle.",
+          "behavior": ["queued action revalidates current state"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Authoritative state machines changes state or exercises privileged authority over domain aggregate lifecycle.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for domain aggregate lifecycle."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Authoritative state machines is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Authoritative state machines does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-STATE-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of domain aggregate lifecycle."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Allow only enumerated transitions and emit events from the committed next state.",
+        "Scope every domain aggregate lifecycle read or write to aggregate owner/tenant.",
+        "Authoritative state machines exposes only nextState, events after DomainStateMachine.transition."
+      ],
+      "requiredUnitTests": [
+        "Exercise Authoritative state machines boundaries, STATE_TRANSITION_INVALID, STATE_ACTION_FORBIDDEN, and the domain state current to domain state transitioned decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the DomainStateMachine.transition service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify domain aggregate lifecycle ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate DomainStateMachine.transition fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authorized domain actor through Authoritative state machines and verify the resulting domain aggregate lifecycle projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing DomainStateMachine.transition.",
+        "Executable tests for BE-STATE-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, STATE_TRANSITION_INVALID, STATE_ACTION_FORBIDDEN, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-INV-001",
+      "contractIds": ["BE-INV-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authorized inventory command handler"],
+        "allowed": ["authorized inventory command handler"],
+        "denied": [
+          "revoked or suspended authorized inventory command handler",
+          "actor outside merchant outlet listing",
+          "actor presenting a resource outside merchant outlet listing"
+        ]
+      },
+      "given": [
+        "authorized inventory command handler has a current server-verified identity authorized for merchant outlet listing.",
+        "inventory sequence N is the authoritative starting state for inventory movement transaction."
+      ],
+      "when": [
+        "authorized inventory command handler invokes InventoryLedger.append with outletId, listingId, movementType, quantity, expectedSequence.",
+        "The producer authorizes authorize merchant outlet listing on the server before reading or changing inventory movement transaction. and evaluates INVENTORY_SEQUENCE_CONFLICT, INVENTORY_NEGATIVE_FORBIDDEN."
+      ],
+      "then": [
+        "Append movements, prevent invalid negative balances, and project availability after commit.",
+        "INVENTORY_SEQUENCE_CONFLICT returns the standard error envelope and leaves inventory movement transaction at its last committed version.",
+        "The observed state is inventory sequence N+1; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "inventory sequence N",
+          "to": "inventory sequence N+1",
+          "trigger": "InventoryLedger.append completes InventoryLedger.append"
+        }
+      ],
+      "requiredFixtures": [
+        "inventory sequence N fixture for Inventory authority",
+        "authorized inventory command handler and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "database",
+        "operation": "InventoryLedger.append",
+        "interface": "InventoryLedger.append",
+        "fields": ["outletId", "listingId", "movementType", "quantity", "expectedSequence"]
+      },
+      "apiResponse": {
+        "fields": ["movementId", "balance", "sequence"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["INVENTORY_SEQUENCE_CONFLICT", "INVENTORY_NEGATIVE_FORBIDDEN"],
+      "authorizationMatrix": {
+        "allowed": ["authorized inventory command handler"],
+        "denied": [
+          "revoked or suspended authorized inventory command handler",
+          "actor outside merchant outlet listing",
+          "actor presenting a resource outside merchant outlet listing"
+        ],
+        "ownershipRules": [
+          "Authorize merchant outlet listing on the server before reading or changing inventory movement transaction.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The inventory sequence N to inventory sequence N+1 transition, ownership checks, and audit or outbox record for inventory movement transaction commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Inventory authority can change inventory movement transaction, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authorized inventory command handler, the operation, and the canonical request payload.",
+            "Return the original inventory movement transaction result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Inventory authority has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["movement sequence serializes balance changes"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Inventory authority has an explicit connectivity and reconnect rule for inventory movement transaction.",
+          "behavior": ["idempotent movement commands may replay"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Inventory authority changes state or exercises privileged authority over inventory movement transaction.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for inventory movement transaction."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Inventory authority is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Inventory authority does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-INV-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of inventory movement transaction."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Append movements, prevent invalid negative balances, and project availability after commit.",
+        "Scope every inventory movement transaction read or write to merchant outlet listing.",
+        "Inventory authority exposes only movementId, balance, sequence after InventoryLedger.append."
+      ],
+      "requiredUnitTests": [
+        "Exercise Inventory authority boundaries, INVENTORY_SEQUENCE_CONFLICT, INVENTORY_NEGATIVE_FORBIDDEN, and the inventory sequence N to inventory sequence N+1 decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the InventoryLedger.append service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify inventory movement transaction ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate InventoryLedger.append fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authorized inventory command handler through Inventory authority and verify the resulting inventory movement transaction projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing InventoryLedger.append.",
+        "Executable tests for BE-INV-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, INVENTORY_SEQUENCE_CONFLICT, INVENTORY_NEGATIVE_FORBIDDEN, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-PAY-001",
+      "contractIds": ["BE-PAY-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["payment provider"],
+        "allowed": ["payment provider"],
+        "denied": [
+          "revoked or suspended payment provider",
+          "actor outside provider payment reference",
+          "actor presenting a resource outside provider payment reference"
+        ]
+      },
+      "given": [
+        "payment provider has a current server-verified identity authorized for provider payment reference.",
+        "payment pending is the authoritative starting state for payment attempt and provider event."
+      ],
+      "when": [
+        "payment provider invokes process payment webhook with providerEventId, signature, providerOrderId, status, occurredAt.",
+        "The producer authorizes authorize provider payment reference on the server before reading or changing payment attempt and provider event. and evaluates WEBHOOK_SIGNATURE_INVALID, PAYMENT_EVENT_DUPLICATE, PAYMENT_TRANSITION_INVALID."
+      ],
+      "then": [
+        "Verify signature, deduplicate provider event, and advance payment state monotonically; client callback never authorizes capture.",
+        "WEBHOOK_SIGNATURE_INVALID returns the standard error envelope and leaves payment attempt and provider event at its last committed version.",
+        "The observed state is payment status advanced; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "payment pending",
+          "to": "payment status advanced",
+          "trigger": "POST /api/v1/webhooks/payments/{provider} completes process payment webhook"
+        }
+      ],
+      "requiredFixtures": [
+        "payment pending fixture for Payment and webhook authority",
+        "payment provider and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "process payment webhook",
+        "method": "POST",
+        "path": "/api/v1/webhooks/payments/{provider}",
+        "fields": ["providerEventId", "signature", "providerOrderId", "status", "occurredAt"]
+      },
+      "apiResponse": {
+        "fields": ["accepted", "paymentStatus"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "WEBHOOK_SIGNATURE_INVALID",
+        "PAYMENT_EVENT_DUPLICATE",
+        "PAYMENT_TRANSITION_INVALID"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["payment provider"],
+        "denied": [
+          "revoked or suspended payment provider",
+          "actor outside provider payment reference",
+          "actor presenting a resource outside provider payment reference"
+        ],
+        "ownershipRules": [
+          "Authorize provider payment reference on the server before reading or changing payment attempt and provider event.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The payment pending to payment status advanced transition, ownership checks, and audit or outbox record for payment attempt and provider event commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Payment and webhook authority can change payment attempt and provider event, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to payment provider, the operation, and the canonical request payload.",
+            "Return the original payment attempt and provider event result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Payment and webhook authority has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["provider event ID and payment version serialize updates"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Payment and webhook authority has an explicit connectivity and reconnect rule for payment attempt and provider event.",
+          "behavior": ["provider retries are idempotent"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Payment and webhook authority changes state or exercises privileged authority over payment attempt and provider event.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for payment attempt and provider event."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Payment and webhook authority is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Payment and webhook authority contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-005."
+          ],
+          "decisionRefs": ["BD-005"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-PAY-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of payment attempt and provider event."
+      ],
+      "businessDecisionRefs": ["BD-005"],
+      "featureBehavior": [
+        "Verify signature, deduplicate provider event, and advance payment state monotonically; client callback never authorizes capture.",
+        "Scope every payment attempt and provider event read or write to provider payment reference.",
+        "Payment and webhook authority exposes only accepted, paymentStatus after process payment webhook."
+      ],
+      "requiredUnitTests": [
+        "Exercise Payment and webhook authority boundaries, WEBHOOK_SIGNATURE_INVALID, PAYMENT_EVENT_DUPLICATE, PAYMENT_TRANSITION_INVALID, and the payment pending to payment status advanced decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the process payment webhook service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify payment attempt and provider event ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate process payment webhook fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive payment provider through Payment and webhook authority and verify the resulting payment attempt and provider event projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing process payment webhook.",
+        "Executable tests for BE-PAY-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, WEBHOOK_SIGNATURE_INVALID, PAYMENT_EVENT_DUPLICATE, PAYMENT_TRANSITION_INVALID, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-005 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-OTP-001",
+      "contractIds": ["BE-OTP-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["unauthenticated OTP requester"],
+        "allowed": ["unauthenticated OTP requester"],
+        "denied": [
+          "revoked or suspended unauthenticated OTP requester",
+          "actor outside hashed phone and purpose",
+          "actor presenting a resource outside hashed phone and purpose"
+        ]
+      },
+      "given": [
+        "unauthenticated OTP requester supplies the required input; no authenticated session is assumed.",
+        "counter window current is the authoritative starting state for OTP attempt and lockout counters."
+      ],
+      "when": [
+        "unauthenticated OTP requester invokes OtpAbusePolicy.evaluate with phoneHash, purpose, attemptType, timestamp.",
+        "The producer authorizes authorize hashed phone and purpose on the server before reading or changing otp attempt and lockout counters. and evaluates OTP_RATE_LIMITED, OTP_LOCKED, OTP_ATTEMPTS_EXHAUSTED."
+      ],
+      "then": [
+        "Enforce request, resend, verification, and lockout limits without logging raw OTP or phone.",
+        "OTP_RATE_LIMITED returns the standard error envelope and leaves OTP attempt and lockout counters at its last committed version.",
+        "The observed state is attempt allowed or blocked; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "counter window current",
+          "to": "attempt allowed or blocked",
+          "trigger": "OtpAbusePolicy.evaluate completes OtpAbusePolicy.evaluate"
+        }
+      ],
+      "requiredFixtures": [
+        "counter window current fixture for OTP abuse protection",
+        "unauthenticated OTP requester and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "OtpAbusePolicy.evaluate",
+        "interface": "OtpAbusePolicy.evaluate",
+        "fields": ["phoneHash", "purpose", "attemptType", "timestamp"]
+      },
+      "apiResponse": {
+        "fields": ["allowed", "retryAfter", "lockoutUntil"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["OTP_RATE_LIMITED", "OTP_LOCKED", "OTP_ATTEMPTS_EXHAUSTED"],
+      "authorizationMatrix": {
+        "allowed": ["unauthenticated OTP requester"],
+        "denied": [
+          "revoked or suspended unauthenticated OTP requester",
+          "actor outside hashed phone and purpose",
+          "actor presenting a resource outside hashed phone and purpose"
+        ],
+        "ownershipRules": [
+          "Authorize hashed phone and purpose on the server before reading or changing OTP attempt and lockout counters.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The counter window current to attempt allowed or blocked transition, ownership checks, and audit or outbox record for OTP attempt and lockout counters commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "OTP abuse protection can change OTP attempt and lockout counters, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to unauthenticated OTP requester, the operation, and the canonical request payload.",
+            "Return the original OTP attempt and lockout counters result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "OTP abuse protection has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["atomic counters prevent parallel bypass"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "OTP abuse protection has an explicit connectivity and reconnect rule for OTP attempt and lockout counters.",
+          "behavior": ["server-only decision"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "OTP abuse protection changes state or exercises privileged authority over OTP attempt and lockout counters.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for OTP attempt and lockout counters."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "OTP abuse protection is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "OTP abuse protection contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-006."
+          ],
+          "decisionRefs": ["BD-006"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-OTP-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of OTP attempt and lockout counters."
+      ],
+      "businessDecisionRefs": ["BD-006"],
+      "featureBehavior": [
+        "Enforce request, resend, verification, and lockout limits without logging raw OTP or phone.",
+        "Scope every OTP attempt and lockout counters read or write to hashed phone and purpose.",
+        "OTP abuse protection exposes only allowed, retryAfter, lockoutUntil after OtpAbusePolicy.evaluate."
+      ],
+      "requiredUnitTests": [
+        "Exercise OTP abuse protection boundaries, OTP_RATE_LIMITED, OTP_LOCKED, OTP_ATTEMPTS_EXHAUSTED, and the counter window current to attempt allowed or blocked decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the OtpAbusePolicy.evaluate service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify OTP attempt and lockout counters ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate OtpAbusePolicy.evaluate fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive unauthenticated OTP requester through OTP abuse protection and verify the resulting OTP attempt and lockout counters projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing OtpAbusePolicy.evaluate.",
+        "Executable tests for BE-OTP-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, OTP_RATE_LIMITED, OTP_LOCKED, OTP_ATTEMPTS_EXHAUSTED, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-006 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-NOT-001",
+      "contractIds": ["BE-NOT-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["domain event handler"],
+        "allowed": ["domain event handler"],
+        "denied": [
+          "revoked or suspended domain event handler",
+          "actor outside event recipient",
+          "actor presenting a resource outside event recipient"
+        ]
+      },
+      "given": [
+        "domain event handler has a current server-verified identity authorized for event recipient.",
+        "domain event committed is the authoritative starting state for versioned notification and deep-link payload."
+      ],
+      "when": [
+        "domain event handler invokes NotificationPublisher.publish with recipientId, eventType, resourceType, resourceId, dedupeKey.",
+        "The producer authorizes authorize event recipient on the server before reading or changing versioned notification and deep-link payload. and evaluates NOTIFICATION_RECIPIENT_INVALID, NOTIFICATION_PAYLOAD_INVALID."
+      ],
+      "then": [
+        "Publish minimal recipient-scoped payloads and require clients to reload authoritative state.",
+        "NOTIFICATION_RECIPIENT_INVALID returns the standard error envelope and leaves versioned notification and deep-link payload at its last committed version.",
+        "The observed state is notification queued; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "domain event committed",
+          "to": "notification queued",
+          "trigger": "NotificationPublisher.publish completes NotificationPublisher.publish"
+        }
+      ],
+      "requiredFixtures": [
+        "domain event committed fixture for Notification payloads",
+        "domain event handler and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "NotificationPublisher.publish",
+        "interface": "NotificationPublisher.publish",
+        "fields": ["recipientId", "eventType", "resourceType", "resourceId", "dedupeKey"]
+      },
+      "apiResponse": {
+        "fields": ["notificationId", "payloadVersion"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["NOTIFICATION_RECIPIENT_INVALID", "NOTIFICATION_PAYLOAD_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["domain event handler"],
+        "denied": [
+          "revoked or suspended domain event handler",
+          "actor outside event recipient",
+          "actor presenting a resource outside event recipient"
+        ],
+        "ownershipRules": [
+          "Authorize event recipient on the server before reading or changing versioned notification and deep-link payload.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The domain event committed to notification queued transition, ownership checks, and audit or outbox record for versioned notification and deep-link payload commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Notification payloads can change versioned notification and deep-link payload, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to domain event handler, the operation, and the canonical request payload.",
+            "Return the original versioned notification and deep-link payload result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Notification payloads has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["dedupe key suppresses duplicate publication"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Notification payloads has an explicit connectivity and reconnect rule for versioned notification and deep-link payload.",
+          "behavior": ["delivery worker retries durably"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Notification payloads changes state or exercises privileged authority over versioned notification and deep-link payload.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for versioned notification and deep-link payload."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Notification payloads is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Notification payloads contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-010."
+          ],
+          "decisionRefs": ["BD-010"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-NOT-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of versioned notification and deep-link payload."
+      ],
+      "businessDecisionRefs": ["BD-010"],
+      "featureBehavior": [
+        "Publish minimal recipient-scoped payloads and require clients to reload authoritative state.",
+        "Scope every versioned notification and deep-link payload read or write to event recipient.",
+        "Notification payloads exposes only notificationId, payloadVersion after NotificationPublisher.publish."
+      ],
+      "requiredUnitTests": [
+        "Exercise Notification payloads boundaries, NOTIFICATION_RECIPIENT_INVALID, NOTIFICATION_PAYLOAD_INVALID, and the domain event committed to notification queued decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the NotificationPublisher.publish service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify versioned notification and deep-link payload ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate NotificationPublisher.publish fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive domain event handler through Notification payloads and verify the resulting versioned notification and deep-link payload projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing NotificationPublisher.publish.",
+        "Executable tests for BE-NOT-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, NOTIFICATION_RECIPIENT_INVALID, NOTIFICATION_PAYLOAD_INVALID, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-010 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-AUD-001",
+      "contractIds": ["BE-AUD-001"],
+      "priority": "P1",
+      "actors": {
+        "initiators": ["privileged or state-changing command handler"],
+        "allowed": ["privileged or state-changing command handler"],
+        "denied": [
+          "revoked or suspended privileged or state-changing command handler",
+          "actor outside audited resource tenant",
+          "actor presenting a resource outside audited resource tenant"
+        ]
+      },
+      "given": [
+        "privileged or state-changing command handler has a current server-verified identity authorized for audited resource tenant.",
+        "no audit event is the authoritative starting state for immutable audit event."
+      ],
+      "when": [
+        "privileged or state-changing command handler invokes AuditWriter.append with actorId, action, resourceType, resourceId, outcome, traceId.",
+        "The producer authorizes authorize audited resource tenant on the server before reading or changing immutable audit event. and evaluates AUDIT_CONTEXT_MISSING, AUDIT_WRITE_FAILED."
+      ],
+      "then": [
+        "Append redacted before/after/outcome evidence in the same transaction boundary as the audited result.",
+        "AUDIT_CONTEXT_MISSING returns the standard error envelope and leaves immutable audit event at its last committed version.",
+        "The observed state is audit event appended; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "no audit event",
+          "to": "audit event appended",
+          "trigger": "AuditWriter.append completes AuditWriter.append"
+        }
+      ],
+      "requiredFixtures": [
+        "no audit event fixture for Audit records",
+        "privileged or state-changing command handler and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "database",
+        "operation": "AuditWriter.append",
+        "interface": "AuditWriter.append",
+        "fields": ["actorId", "action", "resourceType", "resourceId", "outcome", "traceId"]
+      },
+      "apiResponse": {
+        "fields": ["auditEventId", "recordedAt"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["AUDIT_CONTEXT_MISSING", "AUDIT_WRITE_FAILED"],
+      "authorizationMatrix": {
+        "allowed": ["privileged or state-changing command handler"],
+        "denied": [
+          "revoked or suspended privileged or state-changing command handler",
+          "actor outside audited resource tenant",
+          "actor presenting a resource outside audited resource tenant"
+        ],
+        "ownershipRules": [
+          "Authorize audited resource tenant on the server before reading or changing immutable audit event.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The no audit event to audit event appended transition, ownership checks, and audit or outbox record for immutable audit event commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Audit records can change immutable audit event, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to privileged or state-changing command handler, the operation, and the canonical request payload.",
+            "Return the original immutable audit event result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Audit records has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["audit event ID is unique and append-only"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Audit records has an explicit connectivity and reconnect rule for immutable audit event.",
+          "behavior": ["server writes audit on replayed command"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Audit records changes state or exercises privileged authority over immutable audit event.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for immutable audit event."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Audit records is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Audit records contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-009."
+          ],
+          "decisionRefs": ["BD-009"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-AUD-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of immutable audit event."
+      ],
+      "businessDecisionRefs": ["BD-009"],
+      "featureBehavior": [
+        "Append redacted before/after/outcome evidence in the same transaction boundary as the audited result.",
+        "Scope every immutable audit event read or write to audited resource tenant.",
+        "Audit records exposes only auditEventId, recordedAt after AuditWriter.append."
+      ],
+      "requiredUnitTests": [
+        "Exercise Audit records boundaries, AUDIT_CONTEXT_MISSING, AUDIT_WRITE_FAILED, and the no audit event to audit event appended decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the AuditWriter.append service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify immutable audit event ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate AuditWriter.append fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive privileged or state-changing command handler through Audit records and verify the resulting immutable audit event projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing AuditWriter.append.",
+        "Executable tests for BE-AUD-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, AUDIT_CONTEXT_MISSING, AUDIT_WRITE_FAILED, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-009 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-MIG-001",
+      "contractIds": ["BE-MIG-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["deployment or CI migration runner"],
+        "allowed": ["deployment or CI migration runner"],
+        "denied": [
+          "revoked or suspended deployment or CI migration runner",
+          "actor outside database instance",
+          "actor presenting a resource outside database instance"
+        ]
+      },
+      "given": [
+        "deployment or CI migration runner has a current server-verified identity authorized for database instance.",
+        "schema at version N is the authoritative starting state for Flyway schema history."
+      ],
+      "when": [
+        "deployment or CI migration runner invokes Flyway.migrate with migrationFiles, databaseVersion.",
+        "The producer authorizes authorize database instance on the server before reading or changing flyway schema history. and evaluates MIGRATION_CHECKSUM_MISMATCH, MIGRATION_FAILED."
+      ],
+      "then": [
+        "Apply immutable ordered migrations to PostgreSQL 17 and fail checksum drift or out-of-order changes.",
+        "MIGRATION_CHECKSUM_MISMATCH returns the standard error envelope and leaves Flyway schema history at its last committed version.",
+        "The observed state is schema at latest version; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "schema at version N",
+          "to": "schema at latest version",
+          "trigger": "Flyway.migrate completes Flyway.migrate"
+        }
+      ],
+      "requiredFixtures": [
+        "schema at version N fixture for Versioned PostgreSQL migrations",
+        "deployment or CI migration runner and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "database",
+        "operation": "Flyway.migrate",
+        "interface": "Flyway.migrate",
+        "fields": ["migrationFiles", "databaseVersion"]
+      },
+      "apiResponse": {
+        "fields": ["appliedVersions", "schemaVersion"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["MIGRATION_CHECKSUM_MISMATCH", "MIGRATION_FAILED"],
+      "authorizationMatrix": {
+        "allowed": ["deployment or CI migration runner"],
+        "denied": [
+          "revoked or suspended deployment or CI migration runner",
+          "actor outside database instance",
+          "actor presenting a resource outside database instance"
+        ],
+        "ownershipRules": [
+          "Authorize database instance on the server before reading or changing Flyway schema history.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The schema at version N to schema at latest version transition, ownership checks, and audit or outbox record for Flyway schema history commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Versioned PostgreSQL migrations can change Flyway schema history, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to deployment or CI migration runner, the operation, and the canonical request payload.",
+            "Return the original Flyway schema history result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Versioned PostgreSQL migrations has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["Flyway schema-history lock serializes migration"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Versioned PostgreSQL migrations has an explicit connectivity and reconnect rule for Flyway schema history.",
+          "behavior": ["not applicable to client offline behavior"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Versioned PostgreSQL migrations changes state or exercises privileged authority over Flyway schema history.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for Flyway schema history."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Versioned PostgreSQL migrations is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Versioned PostgreSQL migrations does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-MIG-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of Flyway schema history."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Apply immutable ordered migrations to PostgreSQL 17 and fail checksum drift or out-of-order changes.",
+        "Scope every Flyway schema history read or write to database instance.",
+        "Versioned PostgreSQL migrations exposes only appliedVersions, schemaVersion after Flyway.migrate."
+      ],
+      "requiredUnitTests": [
+        "Exercise Versioned PostgreSQL migrations boundaries, MIGRATION_CHECKSUM_MISMATCH, MIGRATION_FAILED, and the schema at version N to schema at latest version decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the Flyway.migrate service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify Flyway schema history ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate Flyway.migrate fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive deployment or CI migration runner through Versioned PostgreSQL migrations and verify the resulting Flyway schema history projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing Flyway.migrate.",
+        "Executable tests for BE-MIG-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, MIGRATION_CHECKSUM_MISMATCH, MIGRATION_FAILED, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-CORS-001",
+      "contractIds": ["BE-CORS-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["browser API client"],
+        "allowed": ["browser API client"],
+        "denied": [
+          "revoked or suspended browser API client",
+          "actor outside environment origin allow-list",
+          "actor presenting a resource outside environment origin allow-list"
+        ]
+      },
+      "given": [
+        "browser API client has a current server-verified identity authorized for environment origin allow-list.",
+        "request origin untrusted is the authoritative starting state for approved browser origin decision."
+      ],
+      "when": [
+        "browser API client invokes CorsPolicy.evaluate with origin, method, headers.",
+        "The producer authorizes authorize environment origin allow-list on the server before reading or changing approved browser origin decision. and evaluates CORS_ORIGIN_DENIED, CORS_METHOD_DENIED."
+      ],
+      "then": [
+        "Allow only configured admin origins and never reflect arbitrary credentialed origins.",
+        "CORS_ORIGIN_DENIED returns the standard error envelope and leaves approved browser origin decision at its last committed version.",
+        "The observed state is request allowed or rejected; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "request origin untrusted",
+          "to": "request allowed or rejected",
+          "trigger": "CorsPolicy.evaluate completes CorsPolicy.evaluate"
+        }
+      ],
+      "requiredFixtures": [
+        "request origin untrusted fixture for CORS policy",
+        "browser API client and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "CorsPolicy.evaluate",
+        "interface": "CorsPolicy.evaluate",
+        "fields": ["origin", "method", "headers"]
+      },
+      "apiResponse": {
+        "fields": ["allowedOrigin", "allowedMethods", "allowedHeaders"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["CORS_ORIGIN_DENIED", "CORS_METHOD_DENIED"],
+      "authorizationMatrix": {
+        "allowed": ["browser API client"],
+        "denied": [
+          "revoked or suspended browser API client",
+          "actor outside environment origin allow-list",
+          "actor presenting a resource outside environment origin allow-list"
+        ],
+        "ownershipRules": [
+          "Authorize environment origin allow-list on the server before reading or changing approved browser origin decision.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "CorsPolicy.evaluate does not mutate approved browser origin decision; it reads environment origin allow-list from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "CORS policy observes approved browser origin decision without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "CORS policy must not combine incompatible versions of approved browser origin decision in one response.",
+          "behavior": ["configuration snapshot is immutable per request"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "CORS policy has an explicit connectivity and reconnect rule for approved browser origin decision.",
+          "behavior": ["server-only decision"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "CORS policy is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for BE-CORS-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "CORS policy is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "CORS policy does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-CORS-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of approved browser origin decision."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Allow only configured admin origins and never reflect arbitrary credentialed origins.",
+        "Scope every approved browser origin decision read to environment origin allow-list.",
+        "CORS policy exposes only allowedOrigin, allowedMethods, allowedHeaders after CorsPolicy.evaluate."
+      ],
+      "requiredUnitTests": [
+        "Exercise CORS policy boundaries, CORS_ORIGIN_DENIED, CORS_METHOD_DENIED, and the request origin untrusted to request allowed or rejected decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the CorsPolicy.evaluate service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify approved browser origin decision ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate CorsPolicy.evaluate fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive browser API client through CORS policy and verify the resulting approved browser origin decision projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing CorsPolicy.evaluate.",
+        "Executable tests for BE-CORS-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, CORS_ORIGIN_DENIED, CORS_METHOD_DENIED, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-RATE-001",
+      "contractIds": ["BE-RATE-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["API caller"],
+        "allowed": ["API caller"],
+        "denied": [
+          "revoked or suspended API caller",
+          "actor outside principal or privacy-safe IP key",
+          "actor presenting a resource outside principal or privacy-safe IP key"
+        ]
+      },
+      "given": [
+        "API caller has a current server-verified identity authorized for principal or privacy-safe IP key.",
+        "bucket has capacity is the authoritative starting state for principal/route rate-limit bucket."
+      ],
+      "when": [
+        "API caller invokes RateLimitPolicy.consume with principalOrIp, routeClass, cost.",
+        "The producer authorizes authorize principal or privacy-safe ip key on the server before reading or changing principal/route rate-limit bucket. and evaluates RATE_LIMITED, RATE_LIMIT_CONFIGURATION_MISSING."
+      ],
+      "then": [
+        "Consume the correct route bucket atomically and return Retry-After without revealing other callers.",
+        "RATE_LIMITED returns the standard error envelope and leaves principal/route rate-limit bucket at its last committed version.",
+        "The observed state is capacity consumed or request limited; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "bucket has capacity",
+          "to": "capacity consumed or request limited",
+          "trigger": "RateLimitPolicy.consume completes RateLimitPolicy.consume"
+        }
+      ],
+      "requiredFixtures": [
+        "bucket has capacity fixture for Rate limits",
+        "API caller and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "RateLimitPolicy.consume",
+        "interface": "RateLimitPolicy.consume",
+        "fields": ["principalOrIp", "routeClass", "cost"]
+      },
+      "apiResponse": {
+        "fields": ["allowed", "remaining", "retryAfter"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["RATE_LIMITED", "RATE_LIMIT_CONFIGURATION_MISSING"],
+      "authorizationMatrix": {
+        "allowed": ["API caller"],
+        "denied": [
+          "revoked or suspended API caller",
+          "actor outside principal or privacy-safe IP key",
+          "actor presenting a resource outside principal or privacy-safe IP key"
+        ],
+        "ownershipRules": [
+          "Authorize principal or privacy-safe IP key on the server before reading or changing principal/route rate-limit bucket.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The bucket has capacity to capacity consumed or request limited transition, ownership checks, and audit or outbox record for principal/route rate-limit bucket commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Rate limits can change principal/route rate-limit bucket, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to API caller, the operation, and the canonical request payload.",
+            "Return the original principal/route rate-limit bucket result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Rate limits has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["atomic bucket prevents parallel bypass"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Rate limits has an explicit connectivity and reconnect rule for principal/route rate-limit bucket.",
+          "behavior": ["server-only decision"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Rate limits changes state or exercises privileged authority over principal/route rate-limit bucket.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for principal/route rate-limit bucket."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Rate limits is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Rate limits does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-RATE-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of principal/route rate-limit bucket."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Consume the correct route bucket atomically and return Retry-After without revealing other callers.",
+        "Scope every principal/route rate-limit bucket read or write to principal or privacy-safe IP key.",
+        "Rate limits exposes only allowed, remaining, retryAfter after RateLimitPolicy.consume."
+      ],
+      "requiredUnitTests": [
+        "Exercise Rate limits boundaries, RATE_LIMITED, RATE_LIMIT_CONFIGURATION_MISSING, and the bucket has capacity to capacity consumed or request limited decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the RateLimitPolicy.consume service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify principal/route rate-limit bucket ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate RateLimitPolicy.consume fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive API caller through Rate limits and verify the resulting principal/route rate-limit bucket projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing RateLimitPolicy.consume.",
+        "Executable tests for BE-RATE-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, RATE_LIMITED, RATE_LIMIT_CONFIGURATION_MISSING, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-BE-LOG-001",
+      "contractIds": ["BE-LOG-001"],
+      "priority": "P1",
+      "actors": {
+        "initiators": ["backend component"],
+        "allowed": ["backend component"],
+        "denied": [
+          "revoked or suspended backend component",
+          "actor outside not a business-data access path",
+          "actor presenting a resource outside not a business-data access path"
+        ]
+      },
+      "given": [
+        "backend component has a current server-verified identity authorized for not a business-data access path.",
+        "operation observed is the authoritative starting state for redacted operational event."
+      ],
+      "when": [
+        "backend component invokes StructuredLogger.emit with level, eventName, traceId, contractId, outcome, fields.",
+        "The producer authorizes authorize not a business-data access path on the server before reading or changing redacted operational event. and evaluates LOG_FIELD_FORBIDDEN, TRACE_CONTEXT_MISSING."
+      ],
+      "then": [
+        "Emit queryable JSON with trace/contract/outcome while redacting credentials, OTP, payment, and personal data.",
+        "LOG_FIELD_FORBIDDEN returns the standard error envelope and leaves redacted operational event at its last committed version.",
+        "The observed state is redacted event emitted; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "operation observed",
+          "to": "redacted event emitted",
+          "trigger": "StructuredLogger.emit completes StructuredLogger.emit"
+        }
+      ],
+      "requiredFixtures": [
+        "operation observed fixture for Structured logging",
+        "backend component and denied cross-scope actor identities",
+        "deterministic backend clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "StructuredLogger.emit",
+        "interface": "StructuredLogger.emit",
+        "fields": ["level", "eventName", "traceId", "contractId", "outcome", "fields"]
+      },
+      "apiResponse": {
+        "fields": ["accepted"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["LOG_FIELD_FORBIDDEN", "TRACE_CONTEXT_MISSING"],
+      "authorizationMatrix": {
+        "allowed": ["backend component"],
+        "denied": [
+          "revoked or suspended backend component",
+          "actor outside not a business-data access path",
+          "actor presenting a resource outside not a business-data access path"
+        ],
+        "ownershipRules": [
+          "Authorize not a business-data access path on the server before reading or changing redacted operational event.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "StructuredLogger.emit does not mutate redacted operational event; it reads not a business-data access path from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Structured logging observes redacted operational event without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Structured logging must not combine incompatible versions of redacted operational event in one response.",
+          "behavior": ["logger preserves per-event atomicity"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Structured logging has an explicit connectivity and reconnect rule for redacted operational event.",
+          "behavior": ["server-only diagnostics"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Structured logging is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for BE-LOG-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "not-applicable",
+          "reason": "Structured logging is backend-only; visual and assistive-technology interaction is owned by consuming clients.",
+          "behavior": [
+            "Expose stable fields, errors, correlation IDs, and operational diagnostics that clients can present accessibly."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Structured logging does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit BE-LOG-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of redacted operational event."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Emit queryable JSON with trace/contract/outcome while redacting credentials, OTP, payment, and personal data.",
+        "Scope every redacted operational event read to not a business-data access path.",
+        "Structured logging exposes only accepted after StructuredLogger.emit."
+      ],
+      "requiredUnitTests": [
+        "Exercise Structured logging boundaries, LOG_FIELD_FORBIDDEN, TRACE_CONTEXT_MISSING, and the operation observed to redacted event emitted decision."
+      ],
+      "requiredComponentTests": [
+        "Exercise the StructuredLogger.emit service component with authorized, denied, stale, and failure inputs."
+      ],
+      "requiredIntegrationTests": [
+        "Verify redacted operational event ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate StructuredLogger.emit fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive backend component through Structured logging and verify the resulting redacted operational event projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing StructuredLogger.emit.",
+        "Executable tests for BE-LOG-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, LOG_FIELD_FORBIDDEN, TRACE_CONTEXT_MISSING, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    }
+  ]
+}

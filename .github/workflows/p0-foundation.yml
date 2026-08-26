@@ -1,0 +1,292 @@
+name: p0-foundation
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'p0/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: 'true'
+  EXPECTED_DUSKY_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  repository-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with: { node-version: '22', package-manager-cache: false }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm validate:repository && pnpm validate:test-integrity
+
+  legacy-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: thrinnadhh/Mypetnew
+          ref: 817c6487cdbf18fc282dc0a44538d83e7bc5ef8b
+          path: .reference/mypetnew
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with: { node-version: '22', package-manager-cache: false }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: MYPETNEW_PATH=.reference/mypetnew pnpm validate:legacy
+
+  contract-registry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with: { node-version: '22', package-manager-cache: false }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - if: github.event_name == 'pull_request'
+        run: pnpm validate:contracts --base-sha "${{ github.event.pull_request.base.sha }}"
+      - if: github.event_name != 'pull_request'
+        run: pnpm validate:contracts
+      - run: pnpm validate:scenarios
+      - run: node --test scripts/*.test.mjs
+      - run: pnpm --filter @dusky/contracts test:coverage && pnpm --filter @dusky/test-kit test:coverage
+
+  customer-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with: { node-version: '22', package-manager-cache: false }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm --filter @dusky/customer-app format:check && pnpm --filter @dusky/customer-app lint && pnpm --filter @dusky/customer-app typecheck && pnpm --filter @dusky/customer-app test:coverage && pnpm --filter @dusky/customer-app config:validate
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: customer-foundation-${{ env.EXPECTED_DUSKY_SHA }}
+          path: |
+            apps/customer-app/reports
+            apps/customer-app/coverage
+          if-no-files-found: error
+
+  merchant-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with: { node-version: '22', package-manager-cache: false }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm --filter @dusky/merchant-app format:check && pnpm --filter @dusky/merchant-app lint && pnpm --filter @dusky/merchant-app typecheck && pnpm --filter @dusky/merchant-app test:coverage && pnpm --filter @dusky/merchant-app config:validate
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: merchant-foundation-${{ env.EXPECTED_DUSKY_SHA }}
+          path: |
+            apps/merchant-app/reports
+            apps/merchant-app/coverage
+          if-no-files-found: error
+
+  captain-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with: { node-version: '22', package-manager-cache: false }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm --filter @dusky/captain-app format:check && pnpm --filter @dusky/captain-app lint && pnpm --filter @dusky/captain-app typecheck && pnpm --filter @dusky/captain-app test:coverage && pnpm --filter @dusky/captain-app config:validate
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: captain-foundation-${{ env.EXPECTED_DUSKY_SHA }}
+          path: |
+            apps/captain-app/reports
+            apps/captain-app/coverage
+          if-no-files-found: error
+
+  admin-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with: { node-version: '22', package-manager-cache: false }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm --filter @dusky/admin-web format:check && pnpm --filter @dusky/admin-web lint && pnpm --filter @dusky/admin-web typecheck && pnpm --filter @dusky/admin-web test:coverage && pnpm --filter @dusky/admin-web config:validate && pnpm --filter @dusky/admin-web build
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: admin-foundation-${{ env.EXPECTED_DUSKY_SHA }}
+          path: |
+            apps/admin-web/reports
+            apps/admin-web/coverage
+          if-no-files-found: error
+
+  backend-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with: { distribution: temurin, java-version: '21' }
+      - uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2
+      - run: ./gradlew :backend:test :backend:postgresTest :backend:jacocoTestCoverageVerification --no-daemon
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: backend-foundation-${{ env.EXPECTED_DUSKY_SHA }}
+          if-no-files-found: error
+          path: backend/build/reports
+
+  cross-app-scenarios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with: { node-version: '22', package-manager-cache: false }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm validate:scenarios && node -e "const c=require('./contracts/scenarios/e2e.json'); if(c.scenarios.length!==10) process.exit(1)"
+
+  build-readiness:
+    needs:
+      [
+        repository-policy,
+        legacy-inventory,
+        contract-registry,
+        customer-foundation,
+        merchant-foundation,
+        captain-foundation,
+        admin-foundation,
+        backend-foundation,
+        cross-app-scenarios,
+      ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with: { node-version: '22', package-manager-cache: false }
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with: { distribution: temurin, java-version: '21' }
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm --filter @dusky/customer-app build && pnpm --filter @dusky/merchant-app build && pnpm --filter @dusky/captain-app build && pnpm --filter @dusky/admin-web build && ./gradlew :backend:bootJar --no-daemon

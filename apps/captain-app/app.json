@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "Dusky Captain",
+    "slug": "dusky-captain",
+    "scheme": "dusky-captain",
+    "version": "0.0.1",
+    "platforms": ["android", "ios", "web"],
+    "android": { "package": "in.dusky.captain" },
+    "ios": { "bundleIdentifier": "in.dusky.captain" }
+  }
+}

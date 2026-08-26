@@ -1,0 +1,3165 @@
+{
+  "schemaVersion": "2.0.0",
+  "application": "Customer",
+  "scenarios": [
+    {
+      "scenarioId": "SCN-CUS-DISC-001",
+      "contractIds": ["CUS-DISC-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["guest customer"],
+        "allowed": ["guest customer"],
+        "denied": [
+          "revoked or suspended guest customer",
+          "actor outside service region and listing outlet",
+          "actor presenting a resource outside service region and listing outlet"
+        ]
+      },
+      "given": [
+        "A service region and at least one publication state are defined.",
+        "catalog unchanged is the authoritative starting state for published home catalog projection."
+      ],
+      "when": [
+        "guest customer invokes browse home catalog with postalCode, locale.",
+        "The producer authorizes authorize service region and listing outlet on the server before reading or changing published home catalog projection. and evaluates POSTAL_CODE_INVALID, CATALOG_UNAVAILABLE."
+      ],
+      "then": [
+        "Return only published, serviceable listings and resilient media without creating customer state.",
+        "POSTAL_CODE_INVALID returns the standard error envelope and leaves published home catalog projection at its last committed version.",
+        "The observed state is catalog unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "catalog unchanged",
+          "to": "catalog unchanged",
+          "trigger": "GET /api/v1/catalog/home completes browse home catalog"
+        }
+      ],
+      "requiredFixtures": [
+        "catalog unchanged fixture for Guest browsing",
+        "guest customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "browse home catalog",
+        "method": "GET",
+        "path": "/api/v1/catalog/home",
+        "fields": ["postalCode", "locale"]
+      },
+      "apiResponse": {
+        "fields": ["sections", "providers", "listings", "nextCursor"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["POSTAL_CODE_INVALID", "CATALOG_UNAVAILABLE"],
+      "authorizationMatrix": {
+        "allowed": ["guest customer"],
+        "denied": [
+          "revoked or suspended guest customer",
+          "actor outside service region and listing outlet",
+          "actor presenting a resource outside service region and listing outlet"
+        ],
+        "ownershipRules": [
+          "Authorize service region and listing outlet on the server before reading or changing published home catalog projection.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "browse home catalog does not mutate published home catalog projection; it reads service region and listing outlet from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Guest browsing observes published home catalog projection without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Guest browsing must not combine incompatible versions of published home catalog projection in one response.",
+          "behavior": [
+            "Read published home catalog projection from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Guest browsing has an explicit connectivity and reconnect rule for published home catalog projection.",
+          "behavior": ["safe-read-cache"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Guest browsing is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CUS-DISC-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Guest browsing has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and published home catalog projection status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Guest browsing does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-DISC-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of published home catalog projection."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Return only published, serviceable listings and resilient media without creating customer state.",
+        "Scope every published home catalog projection read to service region and listing outlet.",
+        "Guest browsing exposes only sections, providers, listings, nextCursor after browse home catalog."
+      ],
+      "requiredUnitTests": [
+        "Exercise Guest browsing boundaries, POSTAL_CODE_INVALID, CATALOG_UNAVAILABLE, and the catalog unchanged to catalog unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Render Guest browsing loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify published home catalog projection ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate browse home catalog fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive guest customer through Guest browsing and verify the resulting published home catalog projection projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing browse home catalog.",
+        "Executable tests for CUS-DISC-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, POSTAL_CODE_INVALID, CATALOG_UNAVAILABLE, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-AUTH-001",
+      "contractIds": ["CUS-AUTH-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["unauthenticated customer"],
+        "allowed": ["unauthenticated customer"],
+        "denied": [
+          "revoked or suspended unauthenticated customer",
+          "actor outside phone-number challenge owner",
+          "actor presenting a resource outside phone-number challenge owner"
+        ]
+      },
+      "given": [
+        "unauthenticated customer supplies the required input; no authenticated session is assumed.",
+        "no challenge is the authoritative starting state for OTP challenge and verified customer session."
+      ],
+      "when": [
+        "unauthenticated customer invokes request OTP challenge with phoneNumber, purpose.",
+        "The producer authorizes authorize phone-number challenge owner on the server before reading or changing otp challenge and verified customer session. and evaluates PHONE_NUMBER_INVALID, OTP_RATE_LIMITED, OTP_INVALID, OTP_EXPIRED."
+      ],
+      "then": [
+        "Issue a rate-limited challenge and create a customer session only after a matching, unexpired verification.",
+        "PHONE_NUMBER_INVALID returns the standard error envelope and leaves OTP challenge and verified customer session at its last committed version.",
+        "The observed state is challenge pending; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "no challenge",
+          "to": "challenge pending",
+          "trigger": "POST /api/v1/auth/otp/requests completes request OTP challenge"
+        },
+        {
+          "from": "challenge pending",
+          "to": "customer session active",
+          "trigger": "POST /api/v1/auth/otp/verifications completes verify OTP challenge"
+        }
+      ],
+      "requiredFixtures": [
+        "no challenge fixture for Mobile authentication and OTP",
+        "unauthenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "request OTP challenge",
+        "method": "POST",
+        "path": "/api/v1/auth/otp/requests",
+        "fields": ["phoneNumber", "purpose"]
+      },
+      "apiResponse": {
+        "fields": ["challengeId", "expiresAt", "resendAfter"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["PHONE_NUMBER_INVALID", "OTP_RATE_LIMITED", "OTP_INVALID", "OTP_EXPIRED"],
+      "authorizationMatrix": {
+        "allowed": ["unauthenticated customer"],
+        "denied": [
+          "revoked or suspended unauthenticated customer",
+          "actor outside phone-number challenge owner",
+          "actor presenting a resource outside phone-number challenge owner"
+        ],
+        "ownershipRules": [
+          "Authorize phone-number challenge owner on the server before reading or changing OTP challenge and verified customer session.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The no challenge to challenge pending transition, ownership checks, and audit or outbox record for OTP challenge and verified customer session commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Mobile authentication and OTP can change OTP challenge and verified customer session, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to unauthenticated customer, the operation, and the canonical request payload.",
+            "Return the original OTP challenge and verified customer session result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Mobile authentication and OTP has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one active challenge window per phone and purpose"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Mobile authentication and OTP has an explicit connectivity and reconnect rule for OTP challenge and verified customer session.",
+          "behavior": [
+            "Do not assume an offline mutation; retry only after reloading OTP challenge and verified customer session."
+          ],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Mobile authentication and OTP changes state or exercises privileged authority over OTP challenge and verified customer session.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for OTP challenge and verified customer session."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Mobile authentication and OTP has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and OTP challenge and verified customer session status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Mobile authentication and OTP contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-006."
+          ],
+          "decisionRefs": ["BD-006"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-AUTH-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of OTP challenge and verified customer session."
+      ],
+      "businessDecisionRefs": ["BD-006"],
+      "featureBehavior": [
+        "Issue a rate-limited challenge and create a customer session only after a matching, unexpired verification.",
+        "Scope every OTP challenge and verified customer session read or write to phone-number challenge owner.",
+        "Mobile authentication and OTP exposes only challengeId, expiresAt, resendAfter after request OTP challenge."
+      ],
+      "requiredUnitTests": [
+        "Exercise Mobile authentication and OTP boundaries, PHONE_NUMBER_INVALID, OTP_RATE_LIMITED, OTP_INVALID, OTP_EXPIRED, and the no challenge to challenge pending decision."
+      ],
+      "requiredComponentTests": [
+        "Render Mobile authentication and OTP loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify OTP challenge and verified customer session ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate request OTP challenge and verify OTP challenge fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive unauthenticated customer through Mobile authentication and OTP and verify the resulting OTP challenge and verified customer session projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing request OTP challenge and verify OTP challenge.",
+        "Executable tests for CUS-AUTH-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, PHONE_NUMBER_INVALID, OTP_RATE_LIMITED, OTP_INVALID, OTP_EXPIRED, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-006 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-SES-001",
+      "contractIds": ["CUS-SES-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["returning customer"],
+        "allowed": ["returning customer"],
+        "denied": [
+          "revoked or suspended returning customer",
+          "actor outside customer identity and auth epoch",
+          "actor presenting a resource outside customer identity and auth epoch"
+        ]
+      },
+      "given": [
+        "returning customer has a current server-verified identity authorized for customer identity and auth epoch.",
+        "refresh session active is the authoritative starting state for customer access and refresh session."
+      ],
+      "when": [
+        "returning customer invokes restore session with refreshToken.",
+        "The producer authorizes authorize customer identity and auth epoch on the server before reading or changing customer access and refresh session. and evaluates SESSION_REVOKED, REFRESH_TOKEN_INVALID, AUTH_EPOCH_STALE."
+      ],
+      "then": [
+        "Restore only the current account generation and revoke refresh credentials on logout.",
+        "SESSION_REVOKED returns the standard error envelope and leaves customer access and refresh session at its last committed version.",
+        "The observed state is access session restored; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "refresh session active",
+          "to": "access session restored",
+          "trigger": "GET /api/v1/auth/session completes restore session"
+        },
+        {
+          "from": "access or refresh session active",
+          "to": "session revoked",
+          "trigger": "DELETE /api/v1/auth/session completes logout current session"
+        }
+      ],
+      "requiredFixtures": [
+        "refresh session active fixture for Session restoration and logout",
+        "returning customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "restore session",
+        "method": "GET",
+        "path": "/api/v1/auth/session",
+        "fields": ["refreshToken"]
+      },
+      "apiResponse": {
+        "fields": ["customer", "accessToken", "expiresAt"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["SESSION_REVOKED", "REFRESH_TOKEN_INVALID", "AUTH_EPOCH_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["returning customer"],
+        "denied": [
+          "revoked or suspended returning customer",
+          "actor outside customer identity and auth epoch",
+          "actor presenting a resource outside customer identity and auth epoch"
+        ],
+        "ownershipRules": [
+          "Authorize customer identity and auth epoch on the server before reading or changing customer access and refresh session.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "restore session does not mutate customer access and refresh session; it reads customer identity and auth epoch from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Session restoration and logout can change customer access and refresh session, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to returning customer, the operation, and the canonical request payload.",
+            "Return the original customer access and refresh session result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Session restoration and logout has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": [
+            "one refresh operation per auth generation; stale completions are discarded"
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Session restoration and logout has an explicit connectivity and reconnect rule for customer access and refresh session.",
+          "behavior": [
+            "credentials may be read locally but restoration requires server verification"
+          ],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Session restoration and logout changes state or exercises privileged authority over customer access and refresh session.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for customer access and refresh session."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Session restoration and logout has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer access and refresh session status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Session restoration and logout does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-SES-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer access and refresh session."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Restore only the current account generation and revoke refresh credentials on logout.",
+        "Scope every customer access and refresh session read or write to customer identity and auth epoch.",
+        "Session restoration and logout exposes only customer, accessToken, expiresAt after restore session."
+      ],
+      "requiredUnitTests": [
+        "Exercise Session restoration and logout boundaries, SESSION_REVOKED, REFRESH_TOKEN_INVALID, AUTH_EPOCH_STALE, and the refresh session active to access session restored decision."
+      ],
+      "requiredComponentTests": [
+        "Render Session restoration and logout loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify customer access and refresh session ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate restore session and logout current session fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive returning customer through Session restoration and logout and verify the resulting customer access and refresh session projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing restore session and logout current session.",
+        "Executable tests for CUS-SES-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, SESSION_REVOKED, REFRESH_TOKEN_INVALID, AUTH_EPOCH_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-PROV-001",
+      "contractIds": ["CUS-PROV-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["guest customer", "authenticated customer"],
+        "allowed": ["guest customer", "authenticated customer"],
+        "denied": [
+          "revoked or suspended guest or authenticated customer",
+          "actor outside service region and public outlet",
+          "actor presenting a resource outside service region and public outlet"
+        ]
+      },
+      "given": [
+        "guest or authenticated customer supplies the required input; no authenticated session is assumed.",
+        "provider data unchanged is the authoritative starting state for provider and listing search projection."
+      ],
+      "when": [
+        "guest customer invokes discover providers with postalCode, category, cursor.",
+        "The producer authorizes authorize service region and public outlet on the server before reading or changing provider and listing search projection. and evaluates SERVICE_REGION_UNAVAILABLE, CATALOG_CURSOR_INVALID."
+      ],
+      "then": [
+        "Return canonical provider capabilities and listing availability without fabricated ratings, distance, or stock.",
+        "SERVICE_REGION_UNAVAILABLE returns the standard error envelope and leaves provider and listing search projection at its last committed version.",
+        "The observed state is provider data unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "provider data unchanged",
+          "to": "provider data unchanged",
+          "trigger": "GET /api/v1/providers completes discover providers"
+        }
+      ],
+      "requiredFixtures": [
+        "provider data unchanged fixture for Provider and catalog discovery",
+        "guest customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "discover providers",
+        "method": "GET",
+        "path": "/api/v1/providers",
+        "fields": ["postalCode", "category", "cursor"]
+      },
+      "apiResponse": {
+        "fields": ["providers", "listings", "nextCursor"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["SERVICE_REGION_UNAVAILABLE", "CATALOG_CURSOR_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["guest customer", "authenticated customer"],
+        "denied": [
+          "revoked or suspended guest or authenticated customer",
+          "actor outside service region and public outlet",
+          "actor presenting a resource outside service region and public outlet"
+        ],
+        "ownershipRules": [
+          "Authorize service region and public outlet on the server before reading or changing provider and listing search projection.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "discover providers does not mutate provider and listing search projection; it reads service region and public outlet from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Provider and catalog discovery observes provider and listing search projection without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Provider and catalog discovery must not combine incompatible versions of provider and listing search projection in one response.",
+          "behavior": [
+            "Read provider and listing search projection from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Provider and catalog discovery has an explicit connectivity and reconnect rule for provider and listing search projection.",
+          "behavior": ["safe-read-cache"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Provider and catalog discovery is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CUS-PROV-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Provider and catalog discovery has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and provider and listing search projection status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Provider and catalog discovery does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-PROV-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of provider and listing search projection."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Return canonical provider capabilities and listing availability without fabricated ratings, distance, or stock.",
+        "Scope every provider and listing search projection read to service region and public outlet.",
+        "Provider and catalog discovery exposes only providers, listings, nextCursor after discover providers."
+      ],
+      "requiredUnitTests": [
+        "Exercise Provider and catalog discovery boundaries, SERVICE_REGION_UNAVAILABLE, CATALOG_CURSOR_INVALID, and the provider data unchanged to provider data unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Render Provider and catalog discovery loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify provider and listing search projection ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate discover providers fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive guest or authenticated customer through Provider and catalog discovery and verify the resulting provider and listing search projection projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing discover providers.",
+        "Executable tests for CUS-PROV-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, SERVICE_REGION_UNAVAILABLE, CATALOG_CURSOR_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-SVC-001",
+      "contractIds": ["CUS-SVC-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["guest customer", "authenticated customer"],
+        "allowed": ["guest customer", "authenticated customer"],
+        "denied": [
+          "revoked or suspended guest or authenticated customer",
+          "actor outside active service region",
+          "actor presenting a resource outside active service region"
+        ]
+      },
+      "given": [
+        "guest or authenticated customer supplies the required input; no authenticated session is assumed.",
+        "service regions unchanged is the authoritative starting state for postal-code serviceability decision."
+      ],
+      "when": [
+        "guest customer invokes check serviceability with postalCode.",
+        "The producer authorizes authorize active service region on the server before reading or changing postal-code serviceability decision. and evaluates POSTAL_CODE_INVALID, SERVICE_REGION_NOT_FOUND."
+      ],
+      "then": [
+        "Validate exactly six digits and return only active region fulfilment modes.",
+        "POSTAL_CODE_INVALID returns the standard error envelope and leaves postal-code serviceability decision at its last committed version.",
+        "The observed state is service regions unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "service regions unchanged",
+          "to": "service regions unchanged",
+          "trigger": "GET /api/v1/serviceability/{postalCode} completes check serviceability"
+        }
+      ],
+      "requiredFixtures": [
+        "service regions unchanged fixture for Six-digit PIN serviceability",
+        "guest customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "check serviceability",
+        "method": "GET",
+        "path": "/api/v1/serviceability/{postalCode}",
+        "fields": ["postalCode"]
+      },
+      "apiResponse": {
+        "fields": ["serviceable", "regionId", "fulfilmentModes"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["POSTAL_CODE_INVALID", "SERVICE_REGION_NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["guest customer", "authenticated customer"],
+        "denied": [
+          "revoked or suspended guest or authenticated customer",
+          "actor outside active service region",
+          "actor presenting a resource outside active service region"
+        ],
+        "ownershipRules": [
+          "Authorize active service region on the server before reading or changing postal-code serviceability decision.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "check serviceability does not mutate postal-code serviceability decision; it reads active service region from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Six-digit PIN serviceability observes postal-code serviceability decision without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Six-digit PIN serviceability must not combine incompatible versions of postal-code serviceability decision in one response.",
+          "behavior": [
+            "Read postal-code serviceability decision from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Six-digit PIN serviceability has an explicit connectivity and reconnect rule for postal-code serviceability decision.",
+          "behavior": ["safe-read-cache"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Six-digit PIN serviceability is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CUS-SVC-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Six-digit PIN serviceability has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and postal-code serviceability decision status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Six-digit PIN serviceability does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-SVC-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of postal-code serviceability decision."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Validate exactly six digits and return only active region fulfilment modes.",
+        "Scope every postal-code serviceability decision read to active service region.",
+        "Six-digit PIN serviceability exposes only serviceable, regionId, fulfilmentModes after check serviceability."
+      ],
+      "requiredUnitTests": [
+        "Exercise Six-digit PIN serviceability boundaries, POSTAL_CODE_INVALID, SERVICE_REGION_NOT_FOUND, and the service regions unchanged to service regions unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Render Six-digit PIN serviceability loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify postal-code serviceability decision ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate check serviceability fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive guest or authenticated customer through Six-digit PIN serviceability and verify the resulting postal-code serviceability decision projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing check serviceability.",
+        "Executable tests for CUS-SVC-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, POSTAL_CODE_INVALID, SERVICE_REGION_NOT_FOUND, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-SEARCH-001",
+      "contractIds": ["CUS-SEARCH-001"],
+      "priority": "P1",
+      "actors": {
+        "initiators": ["guest customer", "authenticated customer"],
+        "allowed": ["guest customer", "authenticated customer"],
+        "denied": [
+          "revoked or suspended guest or authenticated customer",
+          "actor outside public listing and provider outlet",
+          "actor presenting a resource outside public listing and provider outlet"
+        ]
+      },
+      "given": [
+        "guest or authenticated customer supplies the required input; no authenticated session is assumed.",
+        "catalog unchanged is the authoritative starting state for catalog search result page."
+      ],
+      "when": [
+        "guest customer invokes search catalog with query, category, providerId, onlyNewArrivals, cursor.",
+        "The producer authorizes authorize public listing and provider outlet on the server before reading or changing catalog search result page. and evaluates SEARCH_QUERY_INVALID, CATALOG_CURSOR_INVALID."
+      ],
+      "then": [
+        "Apply only supported filters, stable ordering, and cursor pagination to public listings.",
+        "SEARCH_QUERY_INVALID returns the standard error envelope and leaves catalog search result page at its last committed version.",
+        "The observed state is catalog unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "catalog unchanged",
+          "to": "catalog unchanged",
+          "trigger": "GET /api/v1/catalog/search completes search catalog"
+        }
+      ],
+      "requiredFixtures": [
+        "catalog unchanged fixture for Search and filtering",
+        "guest customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "search catalog",
+        "method": "GET",
+        "path": "/api/v1/catalog/search",
+        "fields": ["query", "category", "providerId", "onlyNewArrivals", "cursor"]
+      },
+      "apiResponse": {
+        "fields": ["items", "appliedFilters", "nextCursor"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["SEARCH_QUERY_INVALID", "CATALOG_CURSOR_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["guest customer", "authenticated customer"],
+        "denied": [
+          "revoked or suspended guest or authenticated customer",
+          "actor outside public listing and provider outlet",
+          "actor presenting a resource outside public listing and provider outlet"
+        ],
+        "ownershipRules": [
+          "Authorize public listing and provider outlet on the server before reading or changing catalog search result page.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "search catalog does not mutate catalog search result page; it reads public listing and provider outlet from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Search and filtering observes catalog search result page without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Search and filtering must not combine incompatible versions of catalog search result page in one response.",
+          "behavior": [
+            "Read catalog search result page from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Search and filtering has an explicit connectivity and reconnect rule for catalog search result page.",
+          "behavior": ["safe-read-cache"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Search and filtering is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CUS-SEARCH-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Search and filtering has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and catalog search result page status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Search and filtering does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-SEARCH-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of catalog search result page."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Apply only supported filters, stable ordering, and cursor pagination to public listings.",
+        "Scope every catalog search result page read to public listing and provider outlet.",
+        "Search and filtering exposes only items, appliedFilters, nextCursor after search catalog."
+      ],
+      "requiredUnitTests": [
+        "Exercise Search and filtering boundaries, SEARCH_QUERY_INVALID, CATALOG_CURSOR_INVALID, and the catalog unchanged to catalog unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Render Search and filtering loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify catalog search result page ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate search catalog fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive guest or authenticated customer through Search and filtering and verify the resulting catalog search result page projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing search catalog.",
+        "Executable tests for CUS-SEARCH-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, SEARCH_QUERY_INVALID, CATALOG_CURSOR_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-PDP-001",
+      "contractIds": ["CUS-PDP-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["guest customer", "authenticated customer"],
+        "allowed": ["guest customer", "authenticated customer"],
+        "denied": [
+          "revoked or suspended guest or authenticated customer",
+          "actor outside public product outlet",
+          "actor presenting a resource outside public product outlet"
+        ]
+      },
+      "given": [
+        "guest or authenticated customer supplies the required input; no authenticated session is assumed.",
+        "product unchanged is the authoritative starting state for canonical product and variant detail."
+      ],
+      "when": [
+        "guest customer invokes load product detail with productId, postalCode.",
+        "The producer authorizes authorize public product outlet on the server before reading or changing canonical product and variant detail. and evaluates PRODUCT_NOT_FOUND, PRODUCT_NOT_SERVICEABLE, PRODUCT_NOT_PUBLIC."
+      ],
+      "then": [
+        "Return current canonical price, stock, commerce mode, gallery, and serviceability for one public product.",
+        "PRODUCT_NOT_FOUND returns the standard error envelope and leaves canonical product and variant detail at its last committed version.",
+        "The observed state is product unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "product unchanged",
+          "to": "product unchanged",
+          "trigger": "GET /api/v1/catalog/products/{productId} completes load product detail"
+        }
+      ],
+      "requiredFixtures": [
+        "product unchanged fixture for Product detail",
+        "guest customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "load product detail",
+        "method": "GET",
+        "path": "/api/v1/catalog/products/{productId}",
+        "fields": ["productId", "postalCode"]
+      },
+      "apiResponse": {
+        "fields": ["product", "variants", "availability", "media", "commerceMode"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["PRODUCT_NOT_FOUND", "PRODUCT_NOT_SERVICEABLE", "PRODUCT_NOT_PUBLIC"],
+      "authorizationMatrix": {
+        "allowed": ["guest customer", "authenticated customer"],
+        "denied": [
+          "revoked or suspended guest or authenticated customer",
+          "actor outside public product outlet",
+          "actor presenting a resource outside public product outlet"
+        ],
+        "ownershipRules": [
+          "Authorize public product outlet on the server before reading or changing canonical product and variant detail.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "load product detail does not mutate canonical product and variant detail; it reads public product outlet from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Product detail observes canonical product and variant detail without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Product detail must not combine incompatible versions of canonical product and variant detail in one response.",
+          "behavior": [
+            "Read canonical product and variant detail from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Product detail has an explicit connectivity and reconnect rule for canonical product and variant detail.",
+          "behavior": ["safe-read-cache"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Product detail is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CUS-PDP-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Product detail has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and canonical product and variant detail status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Product detail does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-PDP-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of canonical product and variant detail."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Return current canonical price, stock, commerce mode, gallery, and serviceability for one public product.",
+        "Scope every canonical product and variant detail read to public product outlet.",
+        "Product detail exposes only product, variants, availability, media, commerceMode after load product detail."
+      ],
+      "requiredUnitTests": [
+        "Exercise Product detail boundaries, PRODUCT_NOT_FOUND, PRODUCT_NOT_SERVICEABLE, PRODUCT_NOT_PUBLIC, and the product unchanged to product unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Render Product detail loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify canonical product and variant detail ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate load product detail fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive guest or authenticated customer through Product detail and verify the resulting canonical product and variant detail projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing load product detail.",
+        "Executable tests for CUS-PDP-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, PRODUCT_NOT_FOUND, PRODUCT_NOT_SERVICEABLE, PRODUCT_NOT_PUBLIC, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-FAV-001",
+      "contractIds": ["CUS-FAV-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated customer"],
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside authenticated customer owner",
+          "actor presenting a resource outside authenticated customer owner"
+        ]
+      },
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for authenticated customer owner.",
+        "not favourite is the authoritative starting state for customer-owned favourite product set."
+      ],
+      "when": [
+        "authenticated customer invokes add favourite with productId.",
+        "The producer authorizes authorize authenticated customer owner on the server before reading or changing customer-owned favourite product set. and evaluates PRODUCT_NOT_FOUND, FAVOURITE_FORBIDDEN."
+      ],
+      "then": [
+        "Add an eligible product once and expose the same customer-owned set on subsequent reads.",
+        "PRODUCT_NOT_FOUND returns the standard error envelope and leaves customer-owned favourite product set at its last committed version.",
+        "The observed state is favourite; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "not favourite",
+          "to": "favourite",
+          "trigger": "PUT /api/v1/customers/me/favourites/{productId} completes add favourite"
+        },
+        {
+          "from": "favourite",
+          "to": "not favourite",
+          "trigger": "DELETE /api/v1/customers/me/favourites/{productId} completes remove favourite"
+        }
+      ],
+      "requiredFixtures": [
+        "not favourite fixture for Favourites",
+        "authenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "add favourite",
+        "method": "PUT",
+        "path": "/api/v1/customers/me/favourites/{productId}",
+        "fields": ["productId"]
+      },
+      "apiResponse": {
+        "fields": ["productId", "favouritedAt"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["PRODUCT_NOT_FOUND", "FAVOURITE_FORBIDDEN"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside authenticated customer owner",
+          "actor presenting a resource outside authenticated customer owner"
+        ],
+        "ownershipRules": [
+          "Authorize authenticated customer owner on the server before reading or changing customer-owned favourite product set.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The not favourite to favourite transition, ownership checks, and audit or outbox record for customer-owned favourite product set commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Favourites can change customer-owned favourite product set, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated customer, the operation, and the canonical request payload.",
+            "Return the original customer-owned favourite product set result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Favourites has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["unique customer-product constraint makes concurrent adds converge"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Favourites has an explicit connectivity and reconnect rule for customer-owned favourite product set.",
+          "behavior": ["queue-idempotent-command"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Favourites changes state or exercises privileged authority over customer-owned favourite product set.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for customer-owned favourite product set."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Favourites has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer-owned favourite product set status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Favourites does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-FAV-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer-owned favourite product set."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Add an eligible product once and expose the same customer-owned set on subsequent reads.",
+        "Scope every customer-owned favourite product set read or write to authenticated customer owner.",
+        "Favourites exposes only productId, favouritedAt after add favourite."
+      ],
+      "requiredUnitTests": [
+        "Exercise Favourites boundaries, PRODUCT_NOT_FOUND, FAVOURITE_FORBIDDEN, and the not favourite to favourite decision."
+      ],
+      "requiredComponentTests": [
+        "Render Favourites loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify customer-owned favourite product set ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate add favourite and remove favourite fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated customer through Favourites and verify the resulting customer-owned favourite product set projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing add favourite and remove favourite.",
+        "Executable tests for CUS-FAV-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, PRODUCT_NOT_FOUND, FAVOURITE_FORBIDDEN, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-CART-001",
+      "contractIds": ["CUS-CART-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["guest customer", "authenticated customer"],
+        "allowed": ["guest customer", "authenticated customer"],
+        "denied": [
+          "revoked or suspended guest or authenticated customer",
+          "actor outside customer or anonymous installation cart owner",
+          "actor presenting a resource outside customer or anonymous installation cart owner"
+        ]
+      },
+      "given": [
+        "guest or authenticated customer supplies the required input; no authenticated session is assumed.",
+        "cart empty or one-outlet is the authoritative starting state for customer cart containing transactional lines from one outlet."
+      ],
+      "when": [
+        "guest customer invokes upsert cart line with cartId, variantId, quantity, expectedOutletId, installationToken.",
+        "The producer authorizes authorize customer or anonymous installation cart owner on the server before reading or changing customer cart containing transactional lines from one outlet. and evaluates CART_OUTLET_CONFLICT, CART_QUANTITY_INVALID, VARIANT_NOT_TRANSACTIONAL."
+      ],
+      "then": [
+        "Persist only finite quantities for transactional variants and reject a second outlet without corrupting the existing cart.",
+        "CART_OUTLET_CONFLICT returns the standard error envelope and leaves customer cart containing transactional lines from one outlet at its last committed version.",
+        "The observed state is cart one-outlet with validated line; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "cart empty or one-outlet",
+          "to": "cart one-outlet with validated line",
+          "trigger": "PUT /api/v1/carts/{cartId}/lines/{variantId} completes upsert cart line"
+        }
+      ],
+      "requiredFixtures": [
+        "cart empty or one-outlet fixture for One-outlet cart totals and persistence",
+        "guest customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "upsert cart line",
+        "method": "PUT",
+        "path": "/api/v1/carts/{cartId}/lines/{variantId}",
+        "fields": ["cartId", "variantId", "quantity", "expectedOutletId", "installationToken"]
+      },
+      "apiResponse": {
+        "fields": ["cartId", "outletId", "lines", "subtotalPaise", "version"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["CART_OUTLET_CONFLICT", "CART_QUANTITY_INVALID", "VARIANT_NOT_TRANSACTIONAL"],
+      "authorizationMatrix": {
+        "allowed": ["guest customer", "authenticated customer"],
+        "denied": [
+          "revoked or suspended guest or authenticated customer",
+          "actor outside customer or anonymous installation cart owner",
+          "actor presenting a resource outside customer or anonymous installation cart owner"
+        ],
+        "ownershipRules": [
+          "Authorize customer or anonymous installation cart owner on the server before reading or changing customer cart containing transactional lines from one outlet.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The cart empty or one-outlet to cart one-outlet with validated line transition, ownership checks, and audit or outbox record for customer cart containing transactional lines from one outlet commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "One-outlet cart totals and persistence can change customer cart containing transactional lines from one outlet, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to guest or authenticated customer, the operation, and the canonical request payload.",
+            "Return the original customer cart containing transactional lines from one outlet result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "One-outlet cart totals and persistence has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["optimistic cart version prevents lost line updates"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "One-outlet cart totals and persistence has an explicit connectivity and reconnect rule for customer cart containing transactional lines from one outlet.",
+          "behavior": ["queue-idempotent-command"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "One-outlet cart totals and persistence changes state or exercises privileged authority over customer cart containing transactional lines from one outlet.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for customer cart containing transactional lines from one outlet."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "One-outlet cart totals and persistence has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer cart containing transactional lines from one outlet status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "One-outlet cart totals and persistence does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-CART-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer cart containing transactional lines from one outlet."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Persist only finite quantities for transactional variants and reject a second outlet without corrupting the existing cart.",
+        "Scope every customer cart containing transactional lines from one outlet read or write to customer or anonymous installation cart owner.",
+        "One-outlet cart totals and persistence exposes only cartId, outletId, lines, subtotalPaise, version after upsert cart line."
+      ],
+      "requiredUnitTests": [
+        "Exercise One-outlet cart totals and persistence boundaries, CART_OUTLET_CONFLICT, CART_QUANTITY_INVALID, VARIANT_NOT_TRANSACTIONAL, and the cart empty or one-outlet to cart one-outlet with validated line decision."
+      ],
+      "requiredComponentTests": [
+        "Render One-outlet cart totals and persistence loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify customer cart containing transactional lines from one outlet ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate upsert cart line fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive guest or authenticated customer through One-outlet cart totals and persistence and verify the resulting customer cart containing transactional lines from one outlet projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing upsert cart line.",
+        "Executable tests for CUS-CART-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, CART_OUTLET_CONFLICT, CART_QUANTITY_INVALID, VARIANT_NOT_TRANSACTIONAL, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-CART-002",
+      "contractIds": ["CUS-CART-002"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated customer"],
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer cart and referenced outlet",
+          "actor presenting a resource outside customer cart and referenced outlet"
+        ]
+      },
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for customer cart and referenced outlet.",
+        "cart awaiting validation is the authoritative starting state for revalidated cart projection."
+      ],
+      "when": [
+        "authenticated customer invokes revalidate cart with cartVersion, lineVersions.",
+        "The producer authorizes authorize customer cart and referenced outlet on the server before reading or changing revalidated cart projection. and evaluates CART_VERSION_STALE, CATALOG_REVALIDATION_FAILED, OUTLET_UNAVAILABLE."
+      ],
+      "then": [
+        "Refresh canonical variants, remove ineligible lines, clamp stock, and disclose price changes before checkout.",
+        "CART_VERSION_STALE returns the standard error envelope and leaves revalidated cart projection at its last committed version.",
+        "The observed state is cart validated or corrected; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "cart awaiting validation",
+          "to": "cart validated or corrected",
+          "trigger": "POST /api/v1/customers/me/cart/revalidation completes revalidate cart"
+        }
+      ],
+      "requiredFixtures": [
+        "cart awaiting validation fixture for Price and stock revalidation",
+        "authenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "revalidate cart",
+        "method": "POST",
+        "path": "/api/v1/customers/me/cart/revalidation",
+        "fields": ["cartVersion", "lineVersions"]
+      },
+      "apiResponse": {
+        "fields": ["cart", "removedLines", "priceChanges", "stockClamps"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["CART_VERSION_STALE", "CATALOG_REVALIDATION_FAILED", "OUTLET_UNAVAILABLE"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer cart and referenced outlet",
+          "actor presenting a resource outside customer cart and referenced outlet"
+        ],
+        "ownershipRules": [
+          "Authorize customer cart and referenced outlet on the server before reading or changing revalidated cart projection.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The cart awaiting validation to cart validated or corrected transition, ownership checks, and audit or outbox record for revalidated cart projection commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Price and stock revalidation can change revalidated cart projection, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated customer, the operation, and the canonical request payload.",
+            "Return the original revalidated cart projection result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Price and stock revalidation has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["revalidation compares cart and listing versions atomically"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Price and stock revalidation has an explicit connectivity and reconnect rule for revalidated cart projection.",
+          "behavior": [
+            "network failure preserves recoverable local cart but cannot mark it checkout-ready"
+          ],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Price and stock revalidation changes state or exercises privileged authority over revalidated cart projection.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for revalidated cart projection."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Price and stock revalidation has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and revalidated cart projection status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Price and stock revalidation does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-CART-002, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of revalidated cart projection."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Refresh canonical variants, remove ineligible lines, clamp stock, and disclose price changes before checkout.",
+        "Scope every revalidated cart projection read or write to customer cart and referenced outlet.",
+        "Price and stock revalidation exposes only cart, removedLines, priceChanges, stockClamps after revalidate cart."
+      ],
+      "requiredUnitTests": [
+        "Exercise Price and stock revalidation boundaries, CART_VERSION_STALE, CATALOG_REVALIDATION_FAILED, OUTLET_UNAVAILABLE, and the cart awaiting validation to cart validated or corrected decision."
+      ],
+      "requiredComponentTests": [
+        "Render Price and stock revalidation loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify revalidated cart projection ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate revalidate cart fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated customer through Price and stock revalidation and verify the resulting revalidated cart projection projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing revalidate cart.",
+        "Executable tests for CUS-CART-002 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, CART_VERSION_STALE, CATALOG_REVALIDATION_FAILED, OUTLET_UNAVAILABLE, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-CHK-001",
+      "contractIds": ["CUS-CHK-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated customer"],
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer, quote outlet, and selected address",
+          "actor presenting a resource outside customer, quote outlet, and selected address"
+        ]
+      },
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for customer, quote outlet, and selected address.",
+        "quote confirmed is the authoritative starting state for server-authored product order."
+      ],
+      "when": [
+        "authenticated customer invokes create order from quote with quoteId, fulfilmentMode, addressId, paymentMethod.",
+        "The producer authorizes authorize customer, quote outlet, and selected address on the server before reading or changing server-authored product order. and evaluates QUOTE_EXPIRED, QUOTE_NOT_OWNED, STOCK_CHANGED, FULFILMENT_MODE_UNAVAILABLE."
+      ],
+      "then": [
+        "Create one order from an unexpired owned quote after final stock, price, serviceability, and fulfilment validation.",
+        "QUOTE_EXPIRED returns the standard error envelope and leaves server-authored product order at its last committed version.",
+        "The observed state is order placed; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "quote confirmed",
+          "to": "order placed",
+          "trigger": "POST /api/v1/orders completes create order from quote"
+        }
+      ],
+      "requiredFixtures": [
+        "quote confirmed fixture for Authenticated checkout",
+        "authenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "create order from quote",
+        "method": "POST",
+        "path": "/api/v1/orders",
+        "fields": ["quoteId", "fulfilmentMode", "addressId", "paymentMethod"]
+      },
+      "apiResponse": {
+        "fields": ["orderId", "status", "amountPaise", "paymentAction"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "QUOTE_EXPIRED",
+        "QUOTE_NOT_OWNED",
+        "STOCK_CHANGED",
+        "FULFILMENT_MODE_UNAVAILABLE"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer, quote outlet, and selected address",
+          "actor presenting a resource outside customer, quote outlet, and selected address"
+        ],
+        "ownershipRules": [
+          "Authorize customer, quote outlet, and selected address on the server before reading or changing server-authored product order.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The quote confirmed to order placed transition, ownership checks, and audit or outbox record for server-authored product order commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Authenticated checkout can change server-authored product order, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated customer, the operation, and the canonical request payload.",
+            "Return the original server-authored product order result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Authenticated checkout has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["quote consumption and stock reservation are atomic"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Authenticated checkout has an explicit connectivity and reconnect rule for server-authored product order.",
+          "behavior": ["checkout cannot be queued offline"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Authenticated checkout changes state or exercises privileged authority over server-authored product order.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for server-authored product order."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Authenticated checkout has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and server-authored product order status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Authenticated checkout contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-001, BD-002, BD-005."
+          ],
+          "decisionRefs": ["BD-001", "BD-002", "BD-005"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-CHK-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of server-authored product order."
+      ],
+      "businessDecisionRefs": ["BD-001", "BD-002", "BD-005"],
+      "featureBehavior": [
+        "Create one order from an unexpired owned quote after final stock, price, serviceability, and fulfilment validation.",
+        "Scope every server-authored product order read or write to customer, quote outlet, and selected address.",
+        "Authenticated checkout exposes only orderId, status, amountPaise, paymentAction after create order from quote."
+      ],
+      "requiredUnitTests": [
+        "Exercise Authenticated checkout boundaries, QUOTE_EXPIRED, QUOTE_NOT_OWNED, STOCK_CHANGED, FULFILMENT_MODE_UNAVAILABLE, and the quote confirmed to order placed decision."
+      ],
+      "requiredComponentTests": [
+        "Render Authenticated checkout loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify server-authored product order ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate create order from quote fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated customer through Authenticated checkout and verify the resulting server-authored product order projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing create order from quote.",
+        "Executable tests for CUS-CHK-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, QUOTE_EXPIRED, QUOTE_NOT_OWNED, STOCK_CHANGED, FULFILMENT_MODE_UNAVAILABLE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-001, BD-002, BD-005 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-PRICE-001",
+      "contractIds": ["CUS-PRICE-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated customer"],
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer cart and outlet pricing policy",
+          "actor presenting a resource outside customer cart and outlet pricing policy"
+        ]
+      },
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for customer cart and outlet pricing policy.",
+        "cart unquoted is the authoritative starting state for authoritative checkout quote."
+      ],
+      "when": [
+        "authenticated customer invokes calculate checkout quote with cartVersion, fulfilmentMode, couponCode, rewardId, addressId.",
+        "The producer authorizes authorize customer cart and outlet pricing policy on the server before reading or changing authoritative checkout quote. and evaluates COUPON_INVALID, REWARD_NOT_ELIGIBLE, QUOTE_INPUT_STALE."
+      ],
+      "then": [
+        "Calculate money exclusively from canonical catalog, fee, coupon, reward, tax, and serviceability rules.",
+        "COUPON_INVALID returns the standard error envelope and leaves authoritative checkout quote at its last committed version.",
+        "The observed state is immutable expiring quote; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "cart unquoted",
+          "to": "immutable expiring quote",
+          "trigger": "POST /api/v1/checkout/quotes completes calculate checkout quote"
+        }
+      ],
+      "requiredFixtures": [
+        "cart unquoted fixture for Fees coupons and rewards",
+        "authenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "calculate checkout quote",
+        "method": "POST",
+        "path": "/api/v1/checkout/quotes",
+        "fields": ["cartVersion", "fulfilmentMode", "couponCode", "rewardId", "addressId"]
+      },
+      "apiResponse": {
+        "fields": [
+          "quoteId",
+          "lineTotals",
+          "fees",
+          "discounts",
+          "taxes",
+          "grandTotalPaise",
+          "expiresAt"
+        ],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["COUPON_INVALID", "REWARD_NOT_ELIGIBLE", "QUOTE_INPUT_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer cart and outlet pricing policy",
+          "actor presenting a resource outside customer cart and outlet pricing policy"
+        ],
+        "ownershipRules": [
+          "Authorize customer cart and outlet pricing policy on the server before reading or changing authoritative checkout quote.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The cart unquoted to immutable expiring quote transition, ownership checks, and audit or outbox record for authoritative checkout quote commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Fees coupons and rewards can change authoritative checkout quote, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated customer, the operation, and the canonical request payload.",
+            "Return the original authoritative checkout quote result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Fees coupons and rewards has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["quote uses one committed pricing-policy version"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Fees coupons and rewards has an explicit connectivity and reconnect rule for authoritative checkout quote.",
+          "behavior": ["quote calculation requires authoritative connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Fees coupons and rewards changes state or exercises privileged authority over authoritative checkout quote.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for authoritative checkout quote."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Fees coupons and rewards has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and authoritative checkout quote status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Fees coupons and rewards contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-002, BD-003."
+          ],
+          "decisionRefs": ["BD-002", "BD-003"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-PRICE-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of authoritative checkout quote."
+      ],
+      "businessDecisionRefs": ["BD-002", "BD-003"],
+      "featureBehavior": [
+        "Calculate money exclusively from canonical catalog, fee, coupon, reward, tax, and serviceability rules.",
+        "Scope every authoritative checkout quote read or write to customer cart and outlet pricing policy.",
+        "Fees coupons and rewards exposes only quoteId, lineTotals, fees, discounts, taxes, grandTotalPaise, expiresAt after calculate checkout quote."
+      ],
+      "requiredUnitTests": [
+        "Exercise Fees coupons and rewards boundaries, COUPON_INVALID, REWARD_NOT_ELIGIBLE, QUOTE_INPUT_STALE, and the cart unquoted to immutable expiring quote decision."
+      ],
+      "requiredComponentTests": [
+        "Render Fees coupons and rewards loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify authoritative checkout quote ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate calculate checkout quote fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated customer through Fees coupons and rewards and verify the resulting authoritative checkout quote projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing calculate checkout quote.",
+        "Executable tests for CUS-PRICE-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, COUPON_INVALID, REWARD_NOT_ELIGIBLE, QUOTE_INPUT_STALE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-002, BD-003 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-PAY-001",
+      "contractIds": ["CUS-PAY-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated customer"],
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer-owned order or appointment",
+          "actor presenting a resource outside customer-owned order or appointment"
+        ]
+      },
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for customer-owned order or appointment.",
+        "payment absent is the authoritative starting state for customer-owned payment attempt."
+      ],
+      "when": [
+        "authenticated customer invokes initiate payment with referenceType, referenceId, provider, idempotencyKey.",
+        "The producer authorizes authorize customer-owned order or appointment on the server before reading or changing customer-owned payment attempt. and evaluates PAYMENT_METHOD_UNAVAILABLE, PAYMENT_REFERENCE_FORBIDDEN, PAYMENT_PROVIDER_FAILED."
+      ],
+      "then": [
+        "Create a provider attempt using server-owned identity and amount; client callbacks only trigger backend status verification.",
+        "PAYMENT_METHOD_UNAVAILABLE returns the standard error envelope and leaves customer-owned payment attempt at its last committed version.",
+        "The observed state is payment pending or COD selected; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "payment absent",
+          "to": "payment pending or COD selected",
+          "trigger": "POST /api/v1/payments completes initiate payment"
+        }
+      ],
+      "requiredFixtures": [
+        "payment absent fixture for COD and payment recovery",
+        "authenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "initiate payment",
+        "method": "POST",
+        "path": "/api/v1/payments",
+        "fields": ["referenceType", "referenceId", "provider", "idempotencyKey"]
+      },
+      "apiResponse": {
+        "fields": [
+          "paymentId",
+          "status",
+          "amountPaise",
+          "providerOrderId",
+          "paymentSessionId",
+          "expiresAt"
+        ],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "PAYMENT_METHOD_UNAVAILABLE",
+        "PAYMENT_REFERENCE_FORBIDDEN",
+        "PAYMENT_PROVIDER_FAILED"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer-owned order or appointment",
+          "actor presenting a resource outside customer-owned order or appointment"
+        ],
+        "ownershipRules": [
+          "Authorize customer-owned order or appointment on the server before reading or changing customer-owned payment attempt.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The payment absent to payment pending or COD selected transition, ownership checks, and audit or outbox record for customer-owned payment attempt commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "COD and payment recovery can change customer-owned payment attempt, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated customer, the operation, and the canonical request payload.",
+            "Return the original customer-owned payment attempt result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "COD and payment recovery has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one active payment attempt per reference and idempotency key"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "COD and payment recovery has an explicit connectivity and reconnect rule for customer-owned payment attempt.",
+          "behavior": ["persist safe payment IDs locally and verify status after reconnect"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "COD and payment recovery changes state or exercises privileged authority over customer-owned payment attempt.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for customer-owned payment attempt."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "COD and payment recovery has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer-owned payment attempt status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "COD and payment recovery contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-005."
+          ],
+          "decisionRefs": ["BD-005"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-PAY-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer-owned payment attempt."
+      ],
+      "businessDecisionRefs": ["BD-005"],
+      "featureBehavior": [
+        "Create a provider attempt using server-owned identity and amount; client callbacks only trigger backend status verification.",
+        "Scope every customer-owned payment attempt read or write to customer-owned order or appointment.",
+        "COD and payment recovery exposes only paymentId, status, amountPaise, providerOrderId, paymentSessionId, expiresAt after initiate payment."
+      ],
+      "requiredUnitTests": [
+        "Exercise COD and payment recovery boundaries, PAYMENT_METHOD_UNAVAILABLE, PAYMENT_REFERENCE_FORBIDDEN, PAYMENT_PROVIDER_FAILED, and the payment absent to payment pending or COD selected decision."
+      ],
+      "requiredComponentTests": [
+        "Render COD and payment recovery loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify customer-owned payment attempt ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate initiate payment fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated customer through COD and payment recovery and verify the resulting customer-owned payment attempt projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing initiate payment.",
+        "Executable tests for CUS-PAY-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, PAYMENT_METHOD_UNAVAILABLE, PAYMENT_REFERENCE_FORBIDDEN, PAYMENT_PROVIDER_FAILED, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-005 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-ORD-001",
+      "contractIds": ["CUS-ORD-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated customer"],
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside authenticated customer owner",
+          "actor presenting a resource outside authenticated customer owner"
+        ]
+      },
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for authenticated customer owner.",
+        "orders unchanged is the authoritative starting state for customer-owned order history projection."
+      ],
+      "when": [
+        "authenticated customer invokes list customer orders with status, cursor.",
+        "The producer authorizes authorize authenticated customer owner on the server before reading or changing customer-owned order history projection. and evaluates ORDER_NOT_FOUND, ORDER_ACCESS_DENIED, ORDER_CURSOR_INVALID."
+      ],
+      "then": [
+        "Return only owned orders with authoritative fulfilment, payment, and delivery state.",
+        "ORDER_NOT_FOUND returns the standard error envelope and leaves customer-owned order history projection at its last committed version.",
+        "The observed state is orders unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "orders unchanged",
+          "to": "orders unchanged",
+          "trigger": "GET /api/v1/customers/me/orders completes list customer orders"
+        },
+        {
+          "from": "order unchanged",
+          "to": "order unchanged",
+          "trigger": "GET /api/v1/customers/me/orders/{orderId} completes load customer order detail"
+        }
+      ],
+      "requiredFixtures": [
+        "orders unchanged fixture for Order history and detail",
+        "authenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "list customer orders",
+        "method": "GET",
+        "path": "/api/v1/customers/me/orders",
+        "fields": ["status", "cursor"]
+      },
+      "apiResponse": {
+        "fields": ["orders", "nextCursor"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["ORDER_NOT_FOUND", "ORDER_ACCESS_DENIED", "ORDER_CURSOR_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside authenticated customer owner",
+          "actor presenting a resource outside authenticated customer owner"
+        ],
+        "ownershipRules": [
+          "Authorize authenticated customer owner on the server before reading or changing customer-owned order history projection.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "list customer orders does not mutate customer-owned order history projection; it reads authenticated customer owner from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Order history and detail observes customer-owned order history projection without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Order history and detail must not combine incompatible versions of customer-owned order history projection in one response.",
+          "behavior": [
+            "Read customer-owned order history projection from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Order history and detail has an explicit connectivity and reconnect rule for customer-owned order history projection.",
+          "behavior": ["safe-read-cache"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Order history and detail is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CUS-ORD-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Order history and detail has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer-owned order history projection status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Order history and detail does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-ORD-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer-owned order history projection."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Return only owned orders with authoritative fulfilment, payment, and delivery state.",
+        "Scope every customer-owned order history projection read to authenticated customer owner.",
+        "Order history and detail exposes only orders, nextCursor after list customer orders."
+      ],
+      "requiredUnitTests": [
+        "Exercise Order history and detail boundaries, ORDER_NOT_FOUND, ORDER_ACCESS_DENIED, ORDER_CURSOR_INVALID, and the orders unchanged to orders unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Render Order history and detail loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify customer-owned order history projection ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate list customer orders and load customer order detail fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated customer through Order history and detail and verify the resulting customer-owned order history projection projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing list customer orders and load customer order detail.",
+        "Executable tests for CUS-ORD-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ORDER_NOT_FOUND, ORDER_ACCESS_DENIED, ORDER_CURSOR_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-APT-001",
+      "contractIds": ["CUS-APT-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["guest customer", "authenticated customer"],
+        "allowed": ["guest customer", "authenticated customer"],
+        "denied": [
+          "revoked or suspended guest or authenticated customer",
+          "actor outside care provider outlet and service region",
+          "actor presenting a resource outside care provider outlet and service region"
+        ]
+      },
+      "given": [
+        "guest or authenticated customer supplies the required input; no authenticated session is assumed.",
+        "care schedule unchanged is the authoritative starting state for care provider service and slot projection."
+      ],
+      "when": [
+        "guest customer invokes discover care services with serviceType, postalCode, providerId, date.",
+        "The producer authorizes authorize care provider outlet and service region on the server before reading or changing care provider service and slot projection. and evaluates CARE_SERVICE_NOT_FOUND, CARE_REGION_UNAVAILABLE, CARE_SLOT_QUERY_INVALID."
+      ],
+      "then": [
+        "Return active provider-authored services and available slots with paise prices and no fabricated availability.",
+        "CARE_SERVICE_NOT_FOUND returns the standard error envelope and leaves care provider service and slot projection at its last committed version.",
+        "The observed state is care schedule unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "care schedule unchanged",
+          "to": "care schedule unchanged",
+          "trigger": "GET /api/v1/care/services completes discover care services"
+        }
+      ],
+      "requiredFixtures": [
+        "care schedule unchanged fixture for Grooming and veterinary discovery",
+        "guest customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "discover care services",
+        "method": "GET",
+        "path": "/api/v1/care/services",
+        "fields": ["serviceType", "postalCode", "providerId", "date"]
+      },
+      "apiResponse": {
+        "fields": ["providers", "services", "slots"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "CARE_SERVICE_NOT_FOUND",
+        "CARE_REGION_UNAVAILABLE",
+        "CARE_SLOT_QUERY_INVALID"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["guest customer", "authenticated customer"],
+        "denied": [
+          "revoked or suspended guest or authenticated customer",
+          "actor outside care provider outlet and service region",
+          "actor presenting a resource outside care provider outlet and service region"
+        ],
+        "ownershipRules": [
+          "Authorize care provider outlet and service region on the server before reading or changing care provider service and slot projection.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "discover care services does not mutate care provider service and slot projection; it reads care provider outlet and service region from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Grooming and veterinary discovery observes care provider service and slot projection without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Grooming and veterinary discovery must not combine incompatible versions of care provider service and slot projection in one response.",
+          "behavior": [
+            "Read care provider service and slot projection from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Grooming and veterinary discovery has an explicit connectivity and reconnect rule for care provider service and slot projection.",
+          "behavior": ["safe-read-cache"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Grooming and veterinary discovery is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CUS-APT-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Grooming and veterinary discovery has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and care provider service and slot projection status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Grooming and veterinary discovery does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-APT-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of care provider service and slot projection."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Return active provider-authored services and available slots with paise prices and no fabricated availability.",
+        "Scope every care provider service and slot projection read to care provider outlet and service region.",
+        "Grooming and veterinary discovery exposes only providers, services, slots after discover care services."
+      ],
+      "requiredUnitTests": [
+        "Exercise Grooming and veterinary discovery boundaries, CARE_SERVICE_NOT_FOUND, CARE_REGION_UNAVAILABLE, CARE_SLOT_QUERY_INVALID, and the care schedule unchanged to care schedule unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Render Grooming and veterinary discovery loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify care provider service and slot projection ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate discover care services fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive guest or authenticated customer through Grooming and veterinary discovery and verify the resulting care provider service and slot projection projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing discover care services.",
+        "Executable tests for CUS-APT-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, CARE_SERVICE_NOT_FOUND, CARE_REGION_UNAVAILABLE, CARE_SLOT_QUERY_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-APT-002",
+      "contractIds": ["CUS-APT-002"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated customer"],
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer pet and provider outlet",
+          "actor presenting a resource outside customer pet and provider outlet"
+        ]
+      },
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for customer pet and provider outlet.",
+        "slot available is the authoritative starting state for customer-owned care appointment."
+      ],
+      "when": [
+        "authenticated customer invokes book appointment with serviceId, slotId, petId, notes, paymentMethod.",
+        "The producer authorizes authorize customer pet and provider outlet on the server before reading or changing customer-owned care appointment. and evaluates SLOT_UNAVAILABLE, PET_NOT_OWNED, APPOINTMENT_TRANSITION_INVALID."
+      ],
+      "then": [
+        "Reserve one available slot, attach an owned pet, and expose provider-confirmed lifecycle history.",
+        "SLOT_UNAVAILABLE returns the standard error envelope and leaves customer-owned care appointment at its last committed version.",
+        "The observed state is appointment requested; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "slot available",
+          "to": "appointment requested",
+          "trigger": "POST /api/v1/appointments completes book appointment"
+        },
+        {
+          "from": "appointments unchanged",
+          "to": "appointments unchanged",
+          "trigger": "GET /api/v1/customers/me/appointments completes list customer appointments"
+        }
+      ],
+      "requiredFixtures": [
+        "slot available fixture for Appointment booking payment and history",
+        "authenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "book appointment",
+        "method": "POST",
+        "path": "/api/v1/appointments",
+        "fields": ["serviceId", "slotId", "petId", "notes", "paymentMethod"]
+      },
+      "apiResponse": {
+        "fields": ["appointmentId", "status", "amountPaise", "paymentAction"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["SLOT_UNAVAILABLE", "PET_NOT_OWNED", "APPOINTMENT_TRANSITION_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer pet and provider outlet",
+          "actor presenting a resource outside customer pet and provider outlet"
+        ],
+        "ownershipRules": [
+          "Authorize customer pet and provider outlet on the server before reading or changing customer-owned care appointment.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The slot available to appointment requested transition, ownership checks, and audit or outbox record for customer-owned care appointment commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Appointment booking payment and history can change customer-owned care appointment, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated customer, the operation, and the canonical request payload.",
+            "Return the original customer-owned care appointment result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Appointment booking payment and history has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["slot reservation has one winner"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Appointment booking payment and history has an explicit connectivity and reconnect rule for customer-owned care appointment.",
+          "behavior": ["appointment mutations cannot be queued without live slot validation"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Appointment booking payment and history changes state or exercises privileged authority over customer-owned care appointment.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for customer-owned care appointment."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Appointment booking payment and history has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer-owned care appointment status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Appointment booking payment and history contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-004, BD-005."
+          ],
+          "decisionRefs": ["BD-004", "BD-005"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-APT-002, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer-owned care appointment."
+      ],
+      "businessDecisionRefs": ["BD-004", "BD-005"],
+      "featureBehavior": [
+        "Reserve one available slot, attach an owned pet, and expose provider-confirmed lifecycle history.",
+        "Scope every customer-owned care appointment read or write to customer pet and provider outlet.",
+        "Appointment booking payment and history exposes only appointmentId, status, amountPaise, paymentAction after book appointment."
+      ],
+      "requiredUnitTests": [
+        "Exercise Appointment booking payment and history boundaries, SLOT_UNAVAILABLE, PET_NOT_OWNED, APPOINTMENT_TRANSITION_INVALID, and the slot available to appointment requested decision."
+      ],
+      "requiredComponentTests": [
+        "Render Appointment booking payment and history loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify customer-owned care appointment ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate book appointment and list customer appointments fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated customer through Appointment booking payment and history and verify the resulting customer-owned care appointment projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing book appointment and list customer appointments.",
+        "Executable tests for CUS-APT-002 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, SLOT_UNAVAILABLE, PET_NOT_OWNED, APPOINTMENT_TRANSITION_INVALID, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-004, BD-005 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-PROF-001",
+      "contractIds": ["CUS-PROF-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated customer"],
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside authenticated customer aggregate",
+          "actor presenting a resource outside authenticated customer aggregate"
+        ]
+      },
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for authenticated customer aggregate.",
+        "profile version current is the authoritative starting state for customer profile aggregate."
+      ],
+      "when": [
+        "authenticated customer invokes update customer profile with displayName, locale, notificationPreferences.",
+        "The producer authorizes authorize authenticated customer aggregate on the server before reading or changing customer profile aggregate. and evaluates PROFILE_VERSION_STALE, PET_NOT_OWNED, ADDRESS_NOT_OWNED."
+      ],
+      "then": [
+        "Update only allow-listed profile fields and retain ownership of pets, addresses, and private documents.",
+        "PROFILE_VERSION_STALE returns the standard error envelope and leaves customer profile aggregate at its last committed version.",
+        "The observed state is profile version incremented; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "profile version current",
+          "to": "profile version incremented",
+          "trigger": "PATCH /api/v1/customers/me completes update customer profile"
+        },
+        {
+          "from": "owned pet absent",
+          "to": "owned pet created",
+          "trigger": "POST /api/v1/customers/me/pets completes create owned pet"
+        },
+        {
+          "from": "owned address absent",
+          "to": "owned address created",
+          "trigger": "POST /api/v1/customers/me/addresses completes create owned address"
+        }
+      ],
+      "requiredFixtures": [
+        "profile version current fixture for Profile pets and addresses",
+        "authenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "update customer profile",
+        "method": "PATCH",
+        "path": "/api/v1/customers/me",
+        "fields": ["displayName", "locale", "notificationPreferences"]
+      },
+      "apiResponse": {
+        "fields": ["customerId", "displayName", "locale", "version"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["PROFILE_VERSION_STALE", "PET_NOT_OWNED", "ADDRESS_NOT_OWNED"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside authenticated customer aggregate",
+          "actor presenting a resource outside authenticated customer aggregate"
+        ],
+        "ownershipRules": [
+          "Authorize authenticated customer aggregate on the server before reading or changing customer profile aggregate.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The profile version current to profile version incremented transition, ownership checks, and audit or outbox record for customer profile aggregate commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Profile pets and addresses can change customer profile aggregate, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated customer, the operation, and the canonical request payload.",
+            "Return the original customer profile aggregate result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Profile pets and addresses has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["profile version rejects lost updates"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Profile pets and addresses has an explicit connectivity and reconnect rule for customer profile aggregate.",
+          "behavior": ["draft edits may remain local but server mutation revalidates ownership"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Profile pets and addresses changes state or exercises privileged authority over customer profile aggregate.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for customer profile aggregate."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Profile pets and addresses has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer profile aggregate status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Profile pets and addresses contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-009."
+          ],
+          "decisionRefs": ["BD-009"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-PROF-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer profile aggregate."
+      ],
+      "businessDecisionRefs": ["BD-009"],
+      "featureBehavior": [
+        "Update only allow-listed profile fields and retain ownership of pets, addresses, and private documents.",
+        "Scope every customer profile aggregate read or write to authenticated customer aggregate.",
+        "Profile pets and addresses exposes only customerId, displayName, locale, version after update customer profile."
+      ],
+      "requiredUnitTests": [
+        "Exercise Profile pets and addresses boundaries, PROFILE_VERSION_STALE, PET_NOT_OWNED, ADDRESS_NOT_OWNED, and the profile version current to profile version incremented decision."
+      ],
+      "requiredComponentTests": [
+        "Render Profile pets and addresses loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify customer profile aggregate ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate update customer profile and create owned pet and create owned address fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated customer through Profile pets and addresses and verify the resulting customer profile aggregate projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing update customer profile and create owned pet and create owned address.",
+        "Executable tests for CUS-PROF-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, PROFILE_VERSION_STALE, PET_NOT_OWNED, ADDRESS_NOT_OWNED, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-009 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-LOY-001",
+      "contractIds": ["CUS-LOY-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated customer"],
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer and merchant loyalty program",
+          "actor presenting a resource outside customer and merchant loyalty program"
+        ]
+      },
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for customer and merchant loyalty program.",
+        "loyalty ledger unchanged is the authoritative starting state for customer loyalty ledger and reward projection."
+      ],
+      "when": [
+        "authenticated customer invokes view loyalty balance with outletId, cursor.",
+        "The producer authorizes authorize customer and merchant loyalty program on the server before reading or changing customer loyalty ledger and reward projection. and evaluates LOYALTY_PROGRAM_UNAVAILABLE, LOYALTY_OUTLET_FORBIDDEN."
+      ],
+      "then": [
+        "Project stars and rewards from the append-only ledger without client-authored balances.",
+        "LOYALTY_PROGRAM_UNAVAILABLE returns the standard error envelope and leaves customer loyalty ledger and reward projection at its last committed version.",
+        "The observed state is loyalty ledger unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "loyalty ledger unchanged",
+          "to": "loyalty ledger unchanged",
+          "trigger": "GET /api/v1/customers/me/loyalty completes view loyalty balance"
+        }
+      ],
+      "requiredFixtures": [
+        "loyalty ledger unchanged fixture for Customer loyalty",
+        "authenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "view loyalty balance",
+        "method": "GET",
+        "path": "/api/v1/customers/me/loyalty",
+        "fields": ["outletId", "cursor"]
+      },
+      "apiResponse": {
+        "fields": ["balance", "ledgerEntries", "rewards", "nextCursor"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["LOYALTY_PROGRAM_UNAVAILABLE", "LOYALTY_OUTLET_FORBIDDEN"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer and merchant loyalty program",
+          "actor presenting a resource outside customer and merchant loyalty program"
+        ],
+        "ownershipRules": [
+          "Authorize customer and merchant loyalty program on the server before reading or changing customer loyalty ledger and reward projection.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "view loyalty balance does not mutate customer loyalty ledger and reward projection; it reads customer and merchant loyalty program from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Customer loyalty observes customer loyalty ledger and reward projection without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Customer loyalty must not combine incompatible versions of customer loyalty ledger and reward projection in one response.",
+          "behavior": [
+            "Read customer loyalty ledger and reward projection from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Customer loyalty has an explicit connectivity and reconnect rule for customer loyalty ledger and reward projection.",
+          "behavior": ["safe-read-cache"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Customer loyalty is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CUS-LOY-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Customer loyalty has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer loyalty ledger and reward projection status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Customer loyalty contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-003."
+          ],
+          "decisionRefs": ["BD-003"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-LOY-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer loyalty ledger and reward projection."
+      ],
+      "businessDecisionRefs": ["BD-003"],
+      "featureBehavior": [
+        "Project stars and rewards from the append-only ledger without client-authored balances.",
+        "Scope every customer loyalty ledger and reward projection read to customer and merchant loyalty program.",
+        "Customer loyalty exposes only balance, ledgerEntries, rewards, nextCursor after view loyalty balance."
+      ],
+      "requiredUnitTests": [
+        "Exercise Customer loyalty boundaries, LOYALTY_PROGRAM_UNAVAILABLE, LOYALTY_OUTLET_FORBIDDEN, and the loyalty ledger unchanged to loyalty ledger unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Render Customer loyalty loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify customer loyalty ledger and reward projection ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate view loyalty balance fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated customer through Customer loyalty and verify the resulting customer loyalty ledger and reward projection projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing view loyalty balance.",
+        "Executable tests for CUS-LOY-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, LOYALTY_PROGRAM_UNAVAILABLE, LOYALTY_OUTLET_FORBIDDEN, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-003 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-REC-001",
+      "contractIds": ["CUS-REC-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated customer"],
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer-owned source order",
+          "actor presenting a resource outside customer-owned source order"
+        ]
+      },
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for customer-owned source order.",
+        "no proposal is the authoritative starting state for customer-confirmed recurring order proposal."
+      ],
+      "when": [
+        "authenticated customer invokes create recurring proposal with sourceOrderId, cadence, nextReviewAt.",
+        "The producer authorizes authorize customer-owned source order on the server before reading or changing customer-confirmed recurring order proposal. and evaluates SOURCE_ORDER_NOT_OWNED, CADENCE_INVALID, RECURRING_CONFIRMATION_REQUIRED."
+      ],
+      "then": [
+        "Create a proposal only; each future order requires explicit customer confirmation against a fresh quote.",
+        "SOURCE_ORDER_NOT_OWNED returns the standard error envelope and leaves customer-confirmed recurring order proposal at its last committed version.",
+        "The observed state is proposal awaiting confirmation; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "no proposal",
+          "to": "proposal awaiting confirmation",
+          "trigger": "POST /api/v1/recurring-order-proposals completes create recurring proposal"
+        },
+        {
+          "from": "proposal awaiting confirmation",
+          "to": "confirmed order placed",
+          "trigger": "POST /api/v1/recurring-order-proposals/{proposalId}/confirmations completes confirm recurring proposal against fresh quote"
+        }
+      ],
+      "requiredFixtures": [
+        "no proposal fixture for Recurring-order proposals",
+        "authenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "create recurring proposal",
+        "method": "POST",
+        "path": "/api/v1/recurring-order-proposals",
+        "fields": ["sourceOrderId", "cadence", "nextReviewAt"]
+      },
+      "apiResponse": {
+        "fields": ["proposalId", "status", "nextReviewAt"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "SOURCE_ORDER_NOT_OWNED",
+        "CADENCE_INVALID",
+        "RECURRING_CONFIRMATION_REQUIRED"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer-owned source order",
+          "actor presenting a resource outside customer-owned source order"
+        ],
+        "ownershipRules": [
+          "Authorize customer-owned source order on the server before reading or changing customer-confirmed recurring order proposal.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The no proposal to proposal awaiting confirmation transition, ownership checks, and audit or outbox record for customer-confirmed recurring order proposal commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Recurring-order proposals can change customer-confirmed recurring order proposal, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated customer, the operation, and the canonical request payload.",
+            "Return the original customer-confirmed recurring order proposal result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Recurring-order proposals has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one active proposal per source order and cadence"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Recurring-order proposals has an explicit connectivity and reconnect rule for customer-confirmed recurring order proposal.",
+          "behavior": ["proposal creation waits for connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Recurring-order proposals changes state or exercises privileged authority over customer-confirmed recurring order proposal.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for customer-confirmed recurring order proposal."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Recurring-order proposals has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer-confirmed recurring order proposal status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Recurring-order proposals does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-REC-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer-confirmed recurring order proposal."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Create a proposal only; each future order requires explicit customer confirmation against a fresh quote.",
+        "Scope every customer-confirmed recurring order proposal read or write to customer-owned source order.",
+        "Recurring-order proposals exposes only proposalId, status, nextReviewAt after create recurring proposal."
+      ],
+      "requiredUnitTests": [
+        "Exercise Recurring-order proposals boundaries, SOURCE_ORDER_NOT_OWNED, CADENCE_INVALID, RECURRING_CONFIRMATION_REQUIRED, and the no proposal to proposal awaiting confirmation decision."
+      ],
+      "requiredComponentTests": [
+        "Render Recurring-order proposals loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify customer-confirmed recurring order proposal ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate create recurring proposal and confirm recurring proposal against fresh quote fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated customer through Recurring-order proposals and verify the resulting customer-confirmed recurring order proposal projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing create recurring proposal and confirm recurring proposal against fresh quote.",
+        "Executable tests for CUS-REC-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, SOURCE_ORDER_NOT_OWNED, CADENCE_INVALID, RECURRING_CONFIRMATION_REQUIRED, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-NOT-001",
+      "contractIds": ["CUS-NOT-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated customer"],
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside notification recipient",
+          "actor presenting a resource outside notification recipient"
+        ]
+      },
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for notification recipient.",
+        "notification unread is the authoritative starting state for customer notification inbox and authoritative destination."
+      ],
+      "when": [
+        "authenticated customer invokes list notifications with cursor.",
+        "The producer authorizes authorize notification recipient on the server before reading or changing customer notification inbox and authoritative destination. and evaluates NOTIFICATION_NOT_FOUND, DEEPLINK_TARGET_UNAVAILABLE."
+      ],
+      "then": [
+        "Show owned notifications and resolve deep links by reloading authoritative resource state.",
+        "NOTIFICATION_NOT_FOUND returns the standard error envelope and leaves customer notification inbox and authoritative destination at its last committed version.",
+        "The observed state is notifications unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "notifications unchanged",
+          "to": "notifications unchanged",
+          "trigger": "GET /api/v1/customers/me/notifications completes list notifications"
+        },
+        {
+          "from": "notification unread",
+          "to": "notification read",
+          "trigger": "PATCH /api/v1/customers/me/notifications/{notificationId} completes mark notification read"
+        },
+        {
+          "from": "notification signal selected",
+          "to": "authoritative destination loaded or rejected",
+          "trigger": "CustomerNotificationNavigation.resolve completes CustomerNotificationNavigation.resolve"
+        }
+      ],
+      "requiredFixtures": [
+        "notifications unchanged fixture for Notifications and deep links",
+        "authenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "list notifications",
+        "method": "GET",
+        "path": "/api/v1/customers/me/notifications",
+        "fields": ["cursor"]
+      },
+      "apiResponse": {
+        "fields": ["notifications", "nextCursor", "unreadCount"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["NOTIFICATION_NOT_FOUND", "DEEPLINK_TARGET_UNAVAILABLE"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside notification recipient",
+          "actor presenting a resource outside notification recipient"
+        ],
+        "ownershipRules": [
+          "Authorize notification recipient on the server before reading or changing customer notification inbox and authoritative destination.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "list notifications does not mutate customer notification inbox and authoritative destination; it reads notification recipient from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Notifications and deep links can change customer notification inbox and authoritative destination, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated customer, the operation, and the canonical request payload.",
+            "Return the original customer notification inbox and authoritative destination result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Notifications and deep links has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["read receipts are monotonic"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Notifications and deep links has an explicit connectivity and reconnect rule for customer notification inbox and authoritative destination.",
+          "behavior": ["retain signal and revalidate destination on reconnect"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Notifications and deep links changes state or exercises privileged authority over customer notification inbox and authoritative destination.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for customer notification inbox and authoritative destination."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Notifications and deep links has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer notification inbox and authoritative destination status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Notifications and deep links contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-010."
+          ],
+          "decisionRefs": ["BD-010"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-NOT-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer notification inbox and authoritative destination."
+      ],
+      "businessDecisionRefs": ["BD-010"],
+      "featureBehavior": [
+        "Show owned notifications and resolve deep links by reloading authoritative resource state.",
+        "Scope every customer notification inbox and authoritative destination read or write to notification recipient.",
+        "Notifications and deep links exposes only notifications, nextCursor, unreadCount after list notifications."
+      ],
+      "requiredUnitTests": [
+        "Exercise Notifications and deep links boundaries, NOTIFICATION_NOT_FOUND, DEEPLINK_TARGET_UNAVAILABLE, and the notification unread to notification read after explicit receipt decision."
+      ],
+      "requiredComponentTests": [
+        "Render Notifications and deep links loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify customer notification inbox and authoritative destination ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate list notifications and mark notification read and CustomerNotificationNavigation.resolve fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated customer through Notifications and deep links and verify the resulting customer notification inbox and authoritative destination projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing list notifications and mark notification read and CustomerNotificationNavigation.resolve.",
+        "Executable tests for CUS-NOT-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, NOTIFICATION_NOT_FOUND, DEEPLINK_TARGET_UNAVAILABLE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-010 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-OFF-001",
+      "contractIds": ["CUS-OFF-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated customer"],
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer device and auth epoch",
+          "actor presenting a resource outside customer device and auth epoch"
+        ]
+      },
+      "given": [
+        "authenticated customer has a current server-verified identity authorized for customer device and auth epoch.",
+        "client disconnected is the authoritative starting state for customer safe-read cache and retry queue."
+      ],
+      "when": [
+        "authenticated customer invokes CustomerOfflineCoordinator.reconcile with authEpoch, cachedReads, queuedCommands.",
+        "The producer authorizes authorize customer device and auth epoch on the server before reading or changing customer safe-read cache and retry queue. and evaluates NETWORK_UNAVAILABLE, OFFLINE_COMMAND_NOT_RETRYABLE, AUTH_EPOCH_STALE."
+      ],
+      "then": [
+        "Display labelled cached reads and replay only explicitly idempotent commands after auth and state revalidation.",
+        "NETWORK_UNAVAILABLE returns the standard error envelope and leaves customer safe-read cache and retry queue at its last committed version.",
+        "The observed state is client reconciled; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "client disconnected",
+          "to": "client reconciled",
+          "trigger": "CustomerOfflineCoordinator.reconcile completes CustomerOfflineCoordinator.reconcile"
+        }
+      ],
+      "requiredFixtures": [
+        "client disconnected fixture for Offline and reconnect",
+        "authenticated customer and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "client",
+        "operation": "CustomerOfflineCoordinator.reconcile",
+        "interface": "CustomerOfflineCoordinator.reconcile",
+        "fields": ["authEpoch", "cachedReads", "queuedCommands"]
+      },
+      "apiResponse": {
+        "fields": ["revalidatedReads", "commandOutcomes", "conflicts"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["NETWORK_UNAVAILABLE", "OFFLINE_COMMAND_NOT_RETRYABLE", "AUTH_EPOCH_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated customer"],
+        "denied": [
+          "revoked or suspended authenticated customer",
+          "actor outside customer device and auth epoch",
+          "actor presenting a resource outside customer device and auth epoch"
+        ],
+        "ownershipRules": [
+          "Authorize customer device and auth epoch on the server before reading or changing customer safe-read cache and retry queue.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The client disconnected to client reconciled transition, ownership checks, and audit or outbox record for customer safe-read cache and retry queue commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Offline and reconnect can change customer safe-read cache and retry queue, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated customer, the operation, and the canonical request payload.",
+            "Return the original customer safe-read cache and retry queue result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Offline and reconnect has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one replay worker per installation"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Offline and reconnect has an explicit connectivity and reconnect rule for customer safe-read cache and retry queue.",
+          "behavior": ["core-purpose-offline-contract"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Offline and reconnect changes state or exercises privileged authority over customer safe-read cache and retry queue.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for customer safe-read cache and retry queue."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Offline and reconnect has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer safe-read cache and retry queue status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Offline and reconnect does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-OFF-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer safe-read cache and retry queue."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Display labelled cached reads and replay only explicitly idempotent commands after auth and state revalidation.",
+        "Scope every customer safe-read cache and retry queue read or write to customer device and auth epoch.",
+        "Offline and reconnect exposes only revalidatedReads, commandOutcomes, conflicts after CustomerOfflineCoordinator.reconcile."
+      ],
+      "requiredUnitTests": [
+        "Exercise Offline and reconnect boundaries, NETWORK_UNAVAILABLE, OFFLINE_COMMAND_NOT_RETRYABLE, AUTH_EPOCH_STALE, and the client disconnected to client reconciled decision."
+      ],
+      "requiredComponentTests": [
+        "Render Offline and reconnect loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify customer safe-read cache and retry queue ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate CustomerOfflineCoordinator.reconcile fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated customer through Offline and reconnect and verify the resulting customer safe-read cache and retry queue projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing CustomerOfflineCoordinator.reconcile.",
+        "Executable tests for CUS-OFF-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, NETWORK_UNAVAILABLE, OFFLINE_COMMAND_NOT_RETRYABLE, AUTH_EPOCH_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-CUS-A11Y-001",
+      "contractIds": ["CUS-A11Y-001"],
+      "priority": "P1",
+      "actors": {
+        "initiators": ["customer using touch, keyboard, or assistive technology"],
+        "allowed": ["customer using touch, keyboard, or assistive technology"],
+        "denied": [
+          "revoked or suspended customer using touch, keyboard, or assistive technology",
+          "actor outside current customer navigation state",
+          "actor presenting a resource outside current customer navigation state"
+        ]
+      },
+      "given": [
+        "customer using touch, keyboard, or assistive technology has a current server-verified identity authorized for current customer navigation state.",
+        "route unresolved is the authoritative starting state for customer navigation and semantic UI contract."
+      ],
+      "when": [
+        "customer using touch, keyboard, or assistive technology invokes CustomerNavigation.resolve with routeAlias, parameters, authState.",
+        "The producer authorizes authorize current customer navigation state on the server before reading or changing customer navigation and semantic ui contract. and evaluates ROUTE_NOT_SUPPORTED, ROUTE_PARAMETER_INVALID."
+      ],
+      "then": [
+        "Resolve supported routes with labelled controls, logical focus, announced errors, and non-color status cues.",
+        "ROUTE_NOT_SUPPORTED returns the standard error envelope and leaves customer navigation and semantic UI contract at its last committed version.",
+        "The observed state is screen focused and announced; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "route unresolved",
+          "to": "screen focused and announced",
+          "trigger": "CustomerNavigation.resolve completes CustomerNavigation.resolve"
+        }
+      ],
+      "requiredFixtures": [
+        "route unresolved fixture for Navigation and accessibility",
+        "customer using touch, keyboard, or assistive technology and denied cross-scope actor identities",
+        "deterministic customer clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "client",
+        "operation": "CustomerNavigation.resolve",
+        "interface": "CustomerNavigation.resolve",
+        "fields": ["routeAlias", "parameters", "authState"]
+      },
+      "apiResponse": {
+        "fields": ["screen", "focusTarget", "announcement"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["ROUTE_NOT_SUPPORTED", "ROUTE_PARAMETER_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["customer using touch, keyboard, or assistive technology"],
+        "denied": [
+          "revoked or suspended customer using touch, keyboard, or assistive technology",
+          "actor outside current customer navigation state",
+          "actor presenting a resource outside current customer navigation state"
+        ],
+        "ownershipRules": [
+          "Authorize current customer navigation state on the server before reading or changing customer navigation and semantic UI contract.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "CustomerNavigation.resolve does not mutate customer navigation and semantic UI contract; it reads current customer navigation state from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Navigation and accessibility observes customer navigation and semantic UI contract without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Navigation and accessibility must not combine incompatible versions of customer navigation and semantic UI contract in one response.",
+          "behavior": ["latest navigation intent wins"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Navigation and accessibility has an explicit connectivity and reconnect rule for customer navigation and semantic UI contract.",
+          "behavior": ["offline screens remain labelled and expose recovery"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Navigation and accessibility is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for CUS-A11Y-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Navigation and accessibility has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and customer navigation and semantic UI contract status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Navigation and accessibility does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit CUS-A11Y-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of customer navigation and semantic UI contract."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Resolve supported routes with labelled controls, logical focus, announced errors, and non-color status cues.",
+        "Scope every customer navigation and semantic UI contract read to current customer navigation state.",
+        "Navigation and accessibility exposes only screen, focusTarget, announcement after CustomerNavigation.resolve."
+      ],
+      "requiredUnitTests": [
+        "Exercise Navigation and accessibility boundaries, ROUTE_NOT_SUPPORTED, ROUTE_PARAMETER_INVALID, and the route unresolved to screen focused and announced decision."
+      ],
+      "requiredComponentTests": [
+        "Render Navigation and accessibility loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify customer navigation and semantic UI contract ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate CustomerNavigation.resolve fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive customer using touch, keyboard, or assistive technology through Navigation and accessibility and verify the resulting customer navigation and semantic UI contract projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing CustomerNavigation.resolve.",
+        "Executable tests for CUS-A11Y-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ROUTE_NOT_SUPPORTED, ROUTE_PARAMETER_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    }
+  ]
+}

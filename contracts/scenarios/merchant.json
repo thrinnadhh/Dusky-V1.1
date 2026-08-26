@@ -1,0 +1,2664 @@
+{
+  "schemaVersion": "2.0.0",
+  "application": "Merchant",
+  "scenarios": [
+    {
+      "scenarioId": "SCN-MER-AUTH-001",
+      "contractIds": ["MER-AUTH-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["unauthenticated merchant staff member"],
+        "allowed": ["unauthenticated merchant staff member"],
+        "denied": [
+          "revoked or suspended unauthenticated merchant staff member",
+          "actor outside merchant staff identity",
+          "actor presenting a resource outside merchant staff identity"
+        ]
+      },
+      "given": [
+        "unauthenticated merchant staff member supplies the required input; no authenticated session is assumed.",
+        "challenge pending is the authoritative starting state for merchant staff session."
+      ],
+      "when": [
+        "unauthenticated merchant staff member invokes verify merchant OTP with challengeId, otp.",
+        "The producer authorizes authorize merchant staff identity on the server before reading or changing merchant staff session. and evaluates MERCHANT_NOT_APPROVED, OTP_INVALID, MERCHANT_ROLE_MISMATCH."
+      ],
+      "then": [
+        "Create a merchant-role session only for approved staff and server-assigned outlets.",
+        "MERCHANT_NOT_APPROVED returns the standard error envelope and leaves merchant staff session at its last committed version.",
+        "The observed state is merchant session active; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "challenge pending",
+          "to": "merchant session active",
+          "trigger": "POST /api/v1/merchant/auth/otp/verifications completes verify merchant OTP"
+        }
+      ],
+      "requiredFixtures": [
+        "challenge pending fixture for Merchant authentication",
+        "unauthenticated merchant staff member and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "verify merchant OTP",
+        "method": "POST",
+        "path": "/api/v1/merchant/auth/otp/verifications",
+        "fields": ["challengeId", "otp"]
+      },
+      "apiResponse": {
+        "fields": ["accessToken", "refreshToken", "staff", "outlets"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["MERCHANT_NOT_APPROVED", "OTP_INVALID", "MERCHANT_ROLE_MISMATCH"],
+      "authorizationMatrix": {
+        "allowed": ["unauthenticated merchant staff member"],
+        "denied": [
+          "revoked or suspended unauthenticated merchant staff member",
+          "actor outside merchant staff identity",
+          "actor presenting a resource outside merchant staff identity"
+        ],
+        "ownershipRules": [
+          "Authorize merchant staff identity on the server before reading or changing merchant staff session.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The challenge pending to merchant session active transition, ownership checks, and audit or outbox record for merchant staff session commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Merchant authentication can change merchant staff session, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to unauthenticated merchant staff member, the operation, and the canonical request payload.",
+            "Return the original merchant staff session result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Merchant authentication has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one refresh flow per auth generation"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Merchant authentication has an explicit connectivity and reconnect rule for merchant staff session.",
+          "behavior": [
+            "Do not assume an offline mutation; retry only after reloading merchant staff session."
+          ],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Merchant authentication changes state or exercises privileged authority over merchant staff session.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for merchant staff session."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Merchant authentication has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and merchant staff session status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Merchant authentication contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-006."
+          ],
+          "decisionRefs": ["BD-006"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-AUTH-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of merchant staff session."
+      ],
+      "businessDecisionRefs": ["BD-006"],
+      "featureBehavior": [
+        "Create a merchant-role session only for approved staff and server-assigned outlets.",
+        "Scope every merchant staff session read or write to merchant staff identity.",
+        "Merchant authentication exposes only accessToken, refreshToken, staff, outlets after verify merchant OTP."
+      ],
+      "requiredUnitTests": [
+        "Exercise Merchant authentication boundaries, MERCHANT_NOT_APPROVED, OTP_INVALID, MERCHANT_ROLE_MISMATCH, and the challenge pending to merchant session active decision."
+      ],
+      "requiredComponentTests": [
+        "Render Merchant authentication loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify merchant staff session ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate verify merchant OTP fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive unauthenticated merchant staff member through Merchant authentication and verify the resulting merchant staff session projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing verify merchant OTP.",
+        "Executable tests for MER-AUTH-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, MERCHANT_NOT_APPROVED, OTP_INVALID, MERCHANT_ROLE_MISMATCH, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-006 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-OUTLET-001",
+      "contractIds": ["MER-OUTLET-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated merchant staff member"],
+        "allowed": ["authenticated merchant staff member"],
+        "denied": [
+          "revoked or suspended authenticated merchant staff member",
+          "actor outside merchant and assigned outlet",
+          "actor presenting a resource outside merchant and assigned outlet"
+        ]
+      },
+      "given": [
+        "authenticated merchant staff member has a current server-verified identity authorized for merchant and assigned outlet.",
+        "no outlet selected is the authoritative starting state for selected merchant outlet context."
+      ],
+      "when": [
+        "authenticated merchant staff member invokes select outlet with outletId.",
+        "The producer authorizes authorize merchant and assigned outlet on the server before reading or changing selected merchant outlet context. and evaluates OUTLET_NOT_ASSIGNED, OUTLET_INACTIVE."
+      ],
+      "then": [
+        "Select only an assigned outlet and scope every subsequent query and command to it.",
+        "OUTLET_NOT_ASSIGNED returns the standard error envelope and leaves selected merchant outlet context at its last committed version.",
+        "The observed state is assigned outlet selected; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "no outlet selected",
+          "to": "assigned outlet selected",
+          "trigger": "PUT /api/v1/merchant/session/outlet completes select outlet"
+        }
+      ],
+      "requiredFixtures": [
+        "no outlet selected fixture for Outlet isolation",
+        "authenticated merchant staff member and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "select outlet",
+        "method": "PUT",
+        "path": "/api/v1/merchant/session/outlet",
+        "fields": ["outletId"]
+      },
+      "apiResponse": {
+        "fields": ["outletId", "permissions", "contextVersion"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["OUTLET_NOT_ASSIGNED", "OUTLET_INACTIVE"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated merchant staff member"],
+        "denied": [
+          "revoked or suspended authenticated merchant staff member",
+          "actor outside merchant and assigned outlet",
+          "actor presenting a resource outside merchant and assigned outlet"
+        ],
+        "ownershipRules": [
+          "Authorize merchant and assigned outlet on the server before reading or changing selected merchant outlet context.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The no outlet selected to assigned outlet selected transition, ownership checks, and audit or outbox record for selected merchant outlet context commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Outlet isolation can change selected merchant outlet context, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated merchant staff member, the operation, and the canonical request payload.",
+            "Return the original selected merchant outlet context result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Outlet isolation has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["context version invalidates responses from a prior outlet"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Outlet isolation has an explicit connectivity and reconnect rule for selected merchant outlet context.",
+          "behavior": ["outlet switch requires server verification"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Outlet isolation changes state or exercises privileged authority over selected merchant outlet context.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for selected merchant outlet context."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Outlet isolation has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and selected merchant outlet context status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Outlet isolation does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-OUTLET-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of selected merchant outlet context."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Select only an assigned outlet and scope every subsequent query and command to it.",
+        "Scope every selected merchant outlet context read or write to merchant and assigned outlet.",
+        "Outlet isolation exposes only outletId, permissions, contextVersion after select outlet."
+      ],
+      "requiredUnitTests": [
+        "Exercise Outlet isolation boundaries, OUTLET_NOT_ASSIGNED, OUTLET_INACTIVE, and the no outlet selected to assigned outlet selected decision."
+      ],
+      "requiredComponentTests": [
+        "Render Outlet isolation loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify selected merchant outlet context ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate select outlet fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated merchant staff member through Outlet isolation and verify the resulting selected merchant outlet context projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing select outlet.",
+        "Executable tests for MER-OUTLET-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, OUTLET_NOT_ASSIGNED, OUTLET_INACTIVE, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-DASH-001",
+      "contractIds": ["MER-DASH-001"],
+      "priority": "P1",
+      "actors": {
+        "initiators": ["authorized outlet operator"],
+        "allowed": ["authorized outlet operator"],
+        "denied": [
+          "revoked or suspended authorized outlet operator",
+          "actor outside selected outlet",
+          "actor presenting a resource outside selected outlet"
+        ]
+      },
+      "given": [
+        "authorized outlet operator has a current server-verified identity authorized for selected outlet.",
+        "business data unchanged is the authoritative starting state for outlet operations summary."
+      ],
+      "when": [
+        "authorized outlet operator invokes load dashboard with outletId, businessDate.",
+        "The producer authorizes authorize selected outlet on the server before reading or changing outlet operations summary. and evaluates OUTLET_FORBIDDEN, DASHBOARD_DATE_INVALID."
+      ],
+      "then": [
+        "Return counts computed from the selected outlet without cross-outlet totals.",
+        "OUTLET_FORBIDDEN returns the standard error envelope and leaves outlet operations summary at its last committed version.",
+        "The observed state is business data unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "business data unchanged",
+          "to": "business data unchanged",
+          "trigger": "GET /api/v1/merchant/outlets/{outletId}/dashboard completes load dashboard"
+        }
+      ],
+      "requiredFixtures": [
+        "business data unchanged fixture for Merchant dashboard",
+        "authorized outlet operator and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "load dashboard",
+        "method": "GET",
+        "path": "/api/v1/merchant/outlets/{outletId}/dashboard",
+        "fields": ["outletId", "businessDate"]
+      },
+      "apiResponse": {
+        "fields": ["orderCounts", "appointmentCounts", "stockAlerts", "syncHealth"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["OUTLET_FORBIDDEN", "DASHBOARD_DATE_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["authorized outlet operator"],
+        "denied": [
+          "revoked or suspended authorized outlet operator",
+          "actor outside selected outlet",
+          "actor presenting a resource outside selected outlet"
+        ],
+        "ownershipRules": [
+          "Authorize selected outlet on the server before reading or changing outlet operations summary.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "load dashboard does not mutate outlet operations summary; it reads selected outlet from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Merchant dashboard observes outlet operations summary without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Merchant dashboard must not combine incompatible versions of outlet operations summary in one response.",
+          "behavior": [
+            "Read outlet operations summary from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Merchant dashboard has an explicit connectivity and reconnect rule for outlet operations summary.",
+          "behavior": ["safe-read-cache"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Merchant dashboard is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for MER-DASH-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Merchant dashboard has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and outlet operations summary status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Merchant dashboard does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-DASH-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of outlet operations summary."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Return counts computed from the selected outlet without cross-outlet totals.",
+        "Scope every outlet operations summary read to selected outlet.",
+        "Merchant dashboard exposes only orderCounts, appointmentCounts, stockAlerts, syncHealth after load dashboard."
+      ],
+      "requiredUnitTests": [
+        "Exercise Merchant dashboard boundaries, OUTLET_FORBIDDEN, DASHBOARD_DATE_INVALID, and the business data unchanged to business data unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Render Merchant dashboard loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify outlet operations summary ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate load dashboard fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authorized outlet operator through Merchant dashboard and verify the resulting outlet operations summary projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing load dashboard.",
+        "Executable tests for MER-DASH-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, OUTLET_FORBIDDEN, DASHBOARD_DATE_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-CAT-001",
+      "contractIds": ["MER-CAT-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["catalog manager"],
+        "allowed": ["catalog manager"],
+        "denied": [
+          "revoked or suspended catalog manager",
+          "actor outside merchant outlet",
+          "actor presenting a resource outside merchant outlet"
+        ]
+      },
+      "given": [
+        "catalog manager has a current server-verified identity authorized for merchant outlet.",
+        "listing absent is the authoritative starting state for outlet-owned catalog listing."
+      ],
+      "when": [
+        "catalog manager invokes create listing with outletId, productName, categoryId, variants, commerceMode, mediaIds.",
+        "The producer authorizes authorize merchant outlet on the server before reading or changing outlet-owned catalog listing. and evaluates CATEGORY_INVALID, LISTING_VERSION_STALE, MEDIA_NOT_OWNED."
+      ],
+      "then": [
+        "Create, update, or archive an outlet listing with valid paise prices, variants, category, media, and moderation state.",
+        "CATEGORY_INVALID returns the standard error envelope and leaves outlet-owned catalog listing at its last committed version.",
+        "The observed state is listing draft; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "listing absent",
+          "to": "listing draft",
+          "trigger": "POST /api/v1/merchant/outlets/{outletId}/listings completes create listing"
+        },
+        {
+          "from": "listing version current",
+          "to": "listing version incremented",
+          "trigger": "PATCH /api/v1/merchant/outlets/{outletId}/listings/{listingId} completes update listing"
+        },
+        {
+          "from": "listing active or draft",
+          "to": "listing archived",
+          "trigger": "DELETE /api/v1/merchant/outlets/{outletId}/listings/{listingId} completes archive listing"
+        }
+      ],
+      "requiredFixtures": [
+        "listing absent fixture for Product CRUD categories and images",
+        "catalog manager and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "create listing",
+        "method": "POST",
+        "path": "/api/v1/merchant/outlets/{outletId}/listings",
+        "fields": ["outletId", "productName", "categoryId", "variants", "commerceMode", "mediaIds"]
+      },
+      "apiResponse": {
+        "fields": ["listingId", "status", "version"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["CATEGORY_INVALID", "LISTING_VERSION_STALE", "MEDIA_NOT_OWNED"],
+      "authorizationMatrix": {
+        "allowed": ["catalog manager"],
+        "denied": [
+          "revoked or suspended catalog manager",
+          "actor outside merchant outlet",
+          "actor presenting a resource outside merchant outlet"
+        ],
+        "ownershipRules": [
+          "Authorize merchant outlet on the server before reading or changing outlet-owned catalog listing.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The listing absent to listing draft transition, ownership checks, and audit or outbox record for outlet-owned catalog listing commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Product CRUD categories and images can change outlet-owned catalog listing, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to catalog manager, the operation, and the canonical request payload.",
+            "Return the original outlet-owned catalog listing result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Product CRUD categories and images has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["listing version prevents overwritten edits"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Product CRUD categories and images has an explicit connectivity and reconnect rule for outlet-owned catalog listing.",
+          "behavior": ["draft may be local; publication requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Product CRUD categories and images changes state or exercises privileged authority over outlet-owned catalog listing.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for outlet-owned catalog listing."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Product CRUD categories and images has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and outlet-owned catalog listing status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Product CRUD categories and images does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-CAT-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of outlet-owned catalog listing."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Create, update, or archive an outlet listing with valid paise prices, variants, category, media, and moderation state.",
+        "Scope every outlet-owned catalog listing read or write to merchant outlet.",
+        "Product CRUD categories and images exposes only listingId, status, version after create listing."
+      ],
+      "requiredUnitTests": [
+        "Exercise Product CRUD categories and images boundaries, CATEGORY_INVALID, LISTING_VERSION_STALE, MEDIA_NOT_OWNED, and the listing absent to listing draft decision."
+      ],
+      "requiredComponentTests": [
+        "Render Product CRUD categories and images loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify outlet-owned catalog listing ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate create listing and update listing and archive listing fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive catalog manager through Product CRUD categories and images and verify the resulting outlet-owned catalog listing projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing create listing and update listing and archive listing.",
+        "Executable tests for MER-CAT-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, CATEGORY_INVALID, LISTING_VERSION_STALE, MEDIA_NOT_OWNED, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-BAR-001",
+      "contractIds": ["MER-BAR-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["inventory operator"],
+        "allowed": ["inventory operator"],
+        "denied": [
+          "revoked or suspended inventory operator",
+          "actor outside outlet plus global canonical barcode namespace",
+          "actor presenting a resource outside outlet plus global canonical barcode namespace"
+        ]
+      },
+      "given": [
+        "inventory operator has a current server-verified identity authorized for outlet plus global canonical barcode namespace.",
+        "barcode unbound or bound is the authoritative starting state for canonical product barcode binding."
+      ],
+      "when": [
+        "inventory operator invokes resolve barcode with outletId, barcode.",
+        "The producer authorizes authorize outlet plus global canonical barcode namespace on the server before reading or changing canonical product barcode binding. and evaluates BARCODE_INVALID, BARCODE_CONFLICT."
+      ],
+      "then": [
+        "Resolve a normalized barcode and prevent conflicting canonical product identity.",
+        "BARCODE_INVALID returns the standard error envelope and leaves canonical product barcode binding at its last committed version.",
+        "The observed state is barcode resolution returned; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "barcode unbound or bound",
+          "to": "barcode resolution returned",
+          "trigger": "POST /api/v1/merchant/outlets/{outletId}/barcode-resolutions completes resolve barcode"
+        }
+      ],
+      "requiredFixtures": [
+        "barcode unbound or bound fixture for Barcode scanning and uniqueness",
+        "inventory operator and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "resolve barcode",
+        "method": "POST",
+        "path": "/api/v1/merchant/outlets/{outletId}/barcode-resolutions",
+        "fields": ["outletId", "barcode"]
+      },
+      "apiResponse": {
+        "fields": ["resolutionType", "productId", "listingId"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["BARCODE_INVALID", "BARCODE_CONFLICT"],
+      "authorizationMatrix": {
+        "allowed": ["inventory operator"],
+        "denied": [
+          "revoked or suspended inventory operator",
+          "actor outside outlet plus global canonical barcode namespace",
+          "actor presenting a resource outside outlet plus global canonical barcode namespace"
+        ],
+        "ownershipRules": [
+          "Authorize outlet plus global canonical barcode namespace on the server before reading or changing canonical product barcode binding.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "resolve barcode does not mutate canonical product barcode binding; it reads outlet plus global canonical barcode namespace from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Barcode scanning and uniqueness observes canonical product barcode binding without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Barcode scanning and uniqueness must not combine incompatible versions of canonical product barcode binding in one response.",
+          "behavior": ["unique normalized barcode has one canonical binding"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Barcode scanning and uniqueness has an explicit connectivity and reconnect rule for canonical product barcode binding.",
+          "behavior": ["unknown barcode resolution requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Barcode scanning and uniqueness is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for MER-BAR-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Barcode scanning and uniqueness has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and canonical product barcode binding status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Barcode scanning and uniqueness does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-BAR-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of canonical product barcode binding."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Resolve a normalized barcode and prevent conflicting canonical product identity.",
+        "Scope every canonical product barcode binding read to outlet plus global canonical barcode namespace.",
+        "Barcode scanning and uniqueness exposes only resolutionType, productId, listingId after resolve barcode."
+      ],
+      "requiredUnitTests": [
+        "Exercise Barcode scanning and uniqueness boundaries, BARCODE_INVALID, BARCODE_CONFLICT, and the barcode unbound or bound to barcode resolution returned decision."
+      ],
+      "requiredComponentTests": [
+        "Render Barcode scanning and uniqueness loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify canonical product barcode binding ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate resolve barcode fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive inventory operator through Barcode scanning and uniqueness and verify the resulting canonical product barcode binding projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing resolve barcode.",
+        "Executable tests for MER-BAR-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, BARCODE_INVALID, BARCODE_CONFLICT, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-INV-001",
+      "contractIds": ["MER-INV-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["inventory operator"],
+        "allowed": ["inventory operator"],
+        "denied": [
+          "revoked or suspended inventory operator",
+          "actor outside selected outlet",
+          "actor presenting a resource outside selected outlet"
+        ]
+      },
+      "given": [
+        "inventory operator has a current server-verified identity authorized for selected outlet.",
+        "inventory unchanged is the authoritative starting state for outlet listing inventory balance."
+      ],
+      "when": [
+        "inventory operator invokes list inventory with outletId, cursor, lowStockOnly.",
+        "The producer authorizes authorize selected outlet on the server before reading or changing outlet listing inventory balance. and evaluates OUTLET_FORBIDDEN, INVENTORY_CURSOR_INVALID."
+      ],
+      "then": [
+        "Return canonical on-hand, reserved, and available quantities derived from movements.",
+        "OUTLET_FORBIDDEN returns the standard error envelope and leaves outlet listing inventory balance at its last committed version.",
+        "The observed state is inventory unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "inventory unchanged",
+          "to": "inventory unchanged",
+          "trigger": "GET /api/v1/merchant/outlets/{outletId}/inventory completes list inventory"
+        }
+      ],
+      "requiredFixtures": [
+        "inventory unchanged fixture for Canonical inventory",
+        "inventory operator and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "list inventory",
+        "method": "GET",
+        "path": "/api/v1/merchant/outlets/{outletId}/inventory",
+        "fields": ["outletId", "cursor", "lowStockOnly"]
+      },
+      "apiResponse": {
+        "fields": ["balances", "nextCursor", "asOf"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["OUTLET_FORBIDDEN", "INVENTORY_CURSOR_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["inventory operator"],
+        "denied": [
+          "revoked or suspended inventory operator",
+          "actor outside selected outlet",
+          "actor presenting a resource outside selected outlet"
+        ],
+        "ownershipRules": [
+          "Authorize selected outlet on the server before reading or changing outlet listing inventory balance.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "list inventory does not mutate outlet listing inventory balance; it reads selected outlet from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Canonical inventory observes outlet listing inventory balance without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Canonical inventory must not combine incompatible versions of outlet listing inventory balance in one response.",
+          "behavior": ["projection is tied to one movement sequence"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Canonical inventory has an explicit connectivity and reconnect rule for outlet listing inventory balance.",
+          "behavior": ["safe-read-cache"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Canonical inventory is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for MER-INV-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Canonical inventory has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and outlet listing inventory balance status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Canonical inventory does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-INV-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of outlet listing inventory balance."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Return canonical on-hand, reserved, and available quantities derived from movements.",
+        "Scope every outlet listing inventory balance read to selected outlet.",
+        "Canonical inventory exposes only balances, nextCursor, asOf after list inventory."
+      ],
+      "requiredUnitTests": [
+        "Exercise Canonical inventory boundaries, OUTLET_FORBIDDEN, INVENTORY_CURSOR_INVALID, and the inventory unchanged to inventory unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Render Canonical inventory loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify outlet listing inventory balance ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate list inventory fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive inventory operator through Canonical inventory and verify the resulting outlet listing inventory balance projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing list inventory.",
+        "Executable tests for MER-INV-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, OUTLET_FORBIDDEN, INVENTORY_CURSOR_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-MOV-001",
+      "contractIds": ["MER-MOV-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["inventory operator"],
+        "allowed": ["inventory operator"],
+        "denied": [
+          "revoked or suspended inventory operator",
+          "actor outside selected outlet and listing",
+          "actor presenting a resource outside selected outlet and listing"
+        ]
+      },
+      "given": [
+        "inventory operator has a current server-verified identity authorized for selected outlet and listing.",
+        "balance at sequence N is the authoritative starting state for inventory movement ledger."
+      ],
+      "when": [
+        "inventory operator invokes append inventory movement with outletId, listingId, movementType, quantity, reason, idempotencyKey.",
+        "The producer authorizes authorize selected outlet and listing on the server before reading or changing inventory movement ledger. and evaluates INVENTORY_QUANTITY_INVALID, INVENTORY_NEGATIVE_FORBIDDEN, MOVEMENT_REASON_REQUIRED."
+      ],
+      "then": [
+        "Append one signed movement and derive the new balance without editing history.",
+        "INVENTORY_QUANTITY_INVALID returns the standard error envelope and leaves inventory movement ledger at its last committed version.",
+        "The observed state is balance at sequence N+1; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "balance at sequence N",
+          "to": "balance at sequence N+1",
+          "trigger": "POST /api/v1/merchant/outlets/{outletId}/inventory/movements completes append inventory movement"
+        }
+      ],
+      "requiredFixtures": [
+        "balance at sequence N fixture for Append-only inventory movements",
+        "inventory operator and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "append inventory movement",
+        "method": "POST",
+        "path": "/api/v1/merchant/outlets/{outletId}/inventory/movements",
+        "fields": ["outletId", "listingId", "movementType", "quantity", "reason", "idempotencyKey"]
+      },
+      "apiResponse": {
+        "fields": ["movementId", "balance", "sequence"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "INVENTORY_QUANTITY_INVALID",
+        "INVENTORY_NEGATIVE_FORBIDDEN",
+        "MOVEMENT_REASON_REQUIRED"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["inventory operator"],
+        "denied": [
+          "revoked or suspended inventory operator",
+          "actor outside selected outlet and listing",
+          "actor presenting a resource outside selected outlet and listing"
+        ],
+        "ownershipRules": [
+          "Authorize selected outlet and listing on the server before reading or changing inventory movement ledger.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The balance at sequence N to balance at sequence N+1 transition, ownership checks, and audit or outbox record for inventory movement ledger commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Append-only inventory movements can change inventory movement ledger, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to inventory operator, the operation, and the canonical request payload.",
+            "Return the original inventory movement ledger result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Append-only inventory movements has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["ledger sequence serializes conflicting movements"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Append-only inventory movements has an explicit connectivity and reconnect rule for inventory movement ledger.",
+          "behavior": ["queue-idempotent-command"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Append-only inventory movements changes state or exercises privileged authority over inventory movement ledger.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for inventory movement ledger."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Append-only inventory movements has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and inventory movement ledger status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Append-only inventory movements does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-MOV-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of inventory movement ledger."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Append one signed movement and derive the new balance without editing history.",
+        "Scope every inventory movement ledger read or write to selected outlet and listing.",
+        "Append-only inventory movements exposes only movementId, balance, sequence after append inventory movement."
+      ],
+      "requiredUnitTests": [
+        "Exercise Append-only inventory movements boundaries, INVENTORY_QUANTITY_INVALID, INVENTORY_NEGATIVE_FORBIDDEN, MOVEMENT_REASON_REQUIRED, and the balance at sequence N to balance at sequence N+1 decision."
+      ],
+      "requiredComponentTests": [
+        "Render Append-only inventory movements loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify inventory movement ledger ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate append inventory movement fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive inventory operator through Append-only inventory movements and verify the resulting inventory movement ledger projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing append inventory movement.",
+        "Executable tests for MER-MOV-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, INVENTORY_QUANTITY_INVALID, INVENTORY_NEGATIVE_FORBIDDEN, MOVEMENT_REASON_REQUIRED, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-REC-001",
+      "contractIds": ["MER-REC-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["inventory supervisor"],
+        "allowed": ["inventory supervisor"],
+        "denied": [
+          "revoked or suspended inventory supervisor",
+          "actor outside selected outlet",
+          "actor presenting a resource outside selected outlet"
+        ]
+      },
+      "given": [
+        "inventory supervisor has a current server-verified identity authorized for selected outlet.",
+        "count draft is the authoritative starting state for receiving or cycle-count batch."
+      ],
+      "when": [
+        "inventory supervisor invokes submit stock count with outletId, lines, countedAt, reason.",
+        "The producer authorizes authorize selected outlet on the server before reading or changing receiving or cycle-count batch. and evaluates COUNT_LINE_DUPLICATE, COUNT_REASON_REQUIRED, LISTING_NOT_FOUND."
+      ],
+      "then": [
+        "Convert a validated receiving/count batch into auditable movements and discrepancy records.",
+        "COUNT_LINE_DUPLICATE returns the standard error envelope and leaves receiving or cycle-count batch at its last committed version.",
+        "The observed state is count posted; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "count draft",
+          "to": "count posted",
+          "trigger": "POST /api/v1/merchant/outlets/{outletId}/inventory/counts completes submit stock count"
+        }
+      ],
+      "requiredFixtures": [
+        "count draft fixture for Receiving adjustments and counts",
+        "inventory supervisor and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "submit stock count",
+        "method": "POST",
+        "path": "/api/v1/merchant/outlets/{outletId}/inventory/counts",
+        "fields": ["outletId", "lines", "countedAt", "reason"]
+      },
+      "apiResponse": {
+        "fields": ["countId", "movements", "discrepancies"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["COUNT_LINE_DUPLICATE", "COUNT_REASON_REQUIRED", "LISTING_NOT_FOUND"],
+      "authorizationMatrix": {
+        "allowed": ["inventory supervisor"],
+        "denied": [
+          "revoked or suspended inventory supervisor",
+          "actor outside selected outlet",
+          "actor presenting a resource outside selected outlet"
+        ],
+        "ownershipRules": [
+          "Authorize selected outlet on the server before reading or changing receiving or cycle-count batch.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The count draft to count posted transition, ownership checks, and audit or outbox record for receiving or cycle-count batch commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Receiving adjustments and counts can change receiving or cycle-count batch, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to inventory supervisor, the operation, and the canonical request payload.",
+            "Return the original receiving or cycle-count batch result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Receiving adjustments and counts has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["batch posts against expected movement sequences"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Receiving adjustments and counts has an explicit connectivity and reconnect rule for receiving or cycle-count batch.",
+          "behavior": ["draft locally; posting requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Receiving adjustments and counts changes state or exercises privileged authority over receiving or cycle-count batch.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for receiving or cycle-count batch."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Receiving adjustments and counts has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and receiving or cycle-count batch status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Receiving adjustments and counts does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-REC-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of receiving or cycle-count batch."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Convert a validated receiving/count batch into auditable movements and discrepancy records.",
+        "Scope every receiving or cycle-count batch read or write to selected outlet.",
+        "Receiving adjustments and counts exposes only countId, movements, discrepancies after submit stock count."
+      ],
+      "requiredUnitTests": [
+        "Exercise Receiving adjustments and counts boundaries, COUNT_LINE_DUPLICATE, COUNT_REASON_REQUIRED, LISTING_NOT_FOUND, and the count draft to count posted decision."
+      ],
+      "requiredComponentTests": [
+        "Render Receiving adjustments and counts loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify receiving or cycle-count batch ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate submit stock count fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive inventory supervisor through Receiving adjustments and counts and verify the resulting receiving or cycle-count batch projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing submit stock count.",
+        "Executable tests for MER-REC-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, COUNT_LINE_DUPLICATE, COUNT_REASON_REQUIRED, LISTING_NOT_FOUND, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-OFF-001",
+      "contractIds": ["MER-OFF-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["inventory operator"],
+        "allowed": ["inventory operator"],
+        "denied": [
+          "revoked or suspended inventory operator",
+          "actor outside device-selected outlet",
+          "actor presenting a resource outside device-selected outlet"
+        ]
+      },
+      "given": [
+        "inventory operator has a current server-verified identity authorized for device-selected outlet.",
+        "connected or disconnected is the authoritative starting state for merchant offline inventory command."
+      ],
+      "when": [
+        "inventory operator invokes MerchantInventoryQueue.enqueue with outletId, listingId, delta, reason, baseSequence.",
+        "The producer authorizes authorize device-selected outlet on the server before reading or changing merchant offline inventory command. and evaluates OFFLINE_COMMAND_INVALID, OUTLET_CONTEXT_STALE."
+      ],
+      "then": [
+        "Queue only bounded inventory deltas with stable IDs and preserve selected-outlet context.",
+        "OFFLINE_COMMAND_INVALID returns the standard error envelope and leaves merchant offline inventory command at its last committed version.",
+        "The observed state is command queued or sent; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "connected or disconnected",
+          "to": "command queued or sent",
+          "trigger": "MerchantInventoryQueue.enqueue completes MerchantInventoryQueue.enqueue"
+        }
+      ],
+      "requiredFixtures": [
+        "connected or disconnected fixture for Online and offline inventory updates",
+        "inventory operator and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "client",
+        "operation": "MerchantInventoryQueue.enqueue",
+        "interface": "MerchantInventoryQueue.enqueue",
+        "fields": ["outletId", "listingId", "delta", "reason", "baseSequence"]
+      },
+      "apiResponse": {
+        "fields": ["commandId", "queueState"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["OFFLINE_COMMAND_INVALID", "OUTLET_CONTEXT_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["inventory operator"],
+        "denied": [
+          "revoked or suspended inventory operator",
+          "actor outside device-selected outlet",
+          "actor presenting a resource outside device-selected outlet"
+        ],
+        "ownershipRules": [
+          "Authorize device-selected outlet on the server before reading or changing merchant offline inventory command.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The connected or disconnected to command queued or sent transition, ownership checks, and audit or outbox record for merchant offline inventory command commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Online and offline inventory updates can change merchant offline inventory command, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to inventory operator, the operation, and the canonical request payload.",
+            "Return the original merchant offline inventory command result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Online and offline inventory updates has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["one queue writer per installation"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Online and offline inventory updates has an explicit connectivity and reconnect rule for merchant offline inventory command.",
+          "behavior": ["core-purpose-offline-contract"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Online and offline inventory updates changes state or exercises privileged authority over merchant offline inventory command.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for merchant offline inventory command."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Online and offline inventory updates has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and merchant offline inventory command status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Online and offline inventory updates does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-OFF-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of merchant offline inventory command."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Queue only bounded inventory deltas with stable IDs and preserve selected-outlet context.",
+        "Scope every merchant offline inventory command read or write to device-selected outlet.",
+        "Online and offline inventory updates exposes only commandId, queueState after MerchantInventoryQueue.enqueue."
+      ],
+      "requiredUnitTests": [
+        "Exercise Online and offline inventory updates boundaries, OFFLINE_COMMAND_INVALID, OUTLET_CONTEXT_STALE, and the connected or disconnected to command queued or sent decision."
+      ],
+      "requiredComponentTests": [
+        "Render Online and offline inventory updates loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify merchant offline inventory command ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate MerchantInventoryQueue.enqueue fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive inventory operator through Online and offline inventory updates and verify the resulting merchant offline inventory command projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing MerchantInventoryQueue.enqueue.",
+        "Executable tests for MER-OFF-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, OFFLINE_COMMAND_INVALID, OUTLET_CONTEXT_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-SYNC-001",
+      "contractIds": ["MER-SYNC-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["authenticated inventory operator"],
+        "allowed": ["authenticated inventory operator"],
+        "denied": [
+          "revoked or suspended authenticated inventory operator",
+          "actor outside selected outlet and device queue",
+          "actor presenting a resource outside selected outlet and device queue"
+        ]
+      },
+      "given": [
+        "authenticated inventory operator has a current server-verified identity authorized for selected outlet and device queue.",
+        "commands pending is the authoritative starting state for merchant inventory sync queue."
+      ],
+      "when": [
+        "authenticated inventory operator invokes replay inventory commands with outletId, commands, clientCursor.",
+        "The producer authorizes authorize selected outlet and device queue on the server before reading or changing merchant inventory sync queue. and evaluates SYNC_CURSOR_STALE, SYNC_COMMAND_CONFLICT, SYNC_COMMAND_FORBIDDEN."
+      ],
+      "then": [
+        "Replay commands in order, deduplicate stable IDs, and return resolvable conflicts without dropping later commands.",
+        "SYNC_CURSOR_STALE returns the standard error envelope and leaves merchant inventory sync queue at its last committed version.",
+        "The observed state is commands acknowledged or conflicted; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "commands pending",
+          "to": "commands acknowledged or conflicted",
+          "trigger": "POST /api/v1/merchant/outlets/{outletId}/sync/inventory completes replay inventory commands"
+        }
+      ],
+      "requiredFixtures": [
+        "commands pending fixture for Sync queue replay and conflicts",
+        "authenticated inventory operator and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "replay inventory commands",
+        "method": "POST",
+        "path": "/api/v1/merchant/outlets/{outletId}/sync/inventory",
+        "fields": ["outletId", "commands", "clientCursor"]
+      },
+      "apiResponse": {
+        "fields": ["outcomes", "serverCursor", "conflicts"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["SYNC_CURSOR_STALE", "SYNC_COMMAND_CONFLICT", "SYNC_COMMAND_FORBIDDEN"],
+      "authorizationMatrix": {
+        "allowed": ["authenticated inventory operator"],
+        "denied": [
+          "revoked or suspended authenticated inventory operator",
+          "actor outside selected outlet and device queue",
+          "actor presenting a resource outside selected outlet and device queue"
+        ],
+        "ownershipRules": [
+          "Authorize selected outlet and device queue on the server before reading or changing merchant inventory sync queue.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The commands pending to commands acknowledged or conflicted transition, ownership checks, and audit or outbox record for merchant inventory sync queue commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Sync queue replay and conflicts can change merchant inventory sync queue, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to authenticated inventory operator, the operation, and the canonical request payload.",
+            "Return the original merchant inventory sync queue result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Sync queue replay and conflicts has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["server cursor and command ID serialize replay"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Sync queue replay and conflicts has an explicit connectivity and reconnect rule for merchant inventory sync queue.",
+          "behavior": ["replay begins after reconnect and auth revalidation"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Sync queue replay and conflicts changes state or exercises privileged authority over merchant inventory sync queue.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for merchant inventory sync queue."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Sync queue replay and conflicts has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and merchant inventory sync queue status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Sync queue replay and conflicts does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-SYNC-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of merchant inventory sync queue."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Replay commands in order, deduplicate stable IDs, and return resolvable conflicts without dropping later commands.",
+        "Scope every merchant inventory sync queue read or write to selected outlet and device queue.",
+        "Sync queue replay and conflicts exposes only outcomes, serverCursor, conflicts after replay inventory commands."
+      ],
+      "requiredUnitTests": [
+        "Exercise Sync queue replay and conflicts boundaries, SYNC_CURSOR_STALE, SYNC_COMMAND_CONFLICT, SYNC_COMMAND_FORBIDDEN, and the commands pending to commands acknowledged or conflicted decision."
+      ],
+      "requiredComponentTests": [
+        "Render Sync queue replay and conflicts loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify merchant inventory sync queue ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate replay inventory commands fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive authenticated inventory operator through Sync queue replay and conflicts and verify the resulting merchant inventory sync queue projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing replay inventory commands.",
+        "Executable tests for MER-SYNC-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, SYNC_CURSOR_STALE, SYNC_COMMAND_CONFLICT, SYNC_COMMAND_FORBIDDEN, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-MULTI-001",
+      "contractIds": ["MER-MULTI-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["inventory operator on an assigned device"],
+        "allowed": ["inventory operator on an assigned device"],
+        "denied": [
+          "revoked or suspended inventory operator on an assigned device",
+          "actor outside selected outlet",
+          "actor presenting a resource outside selected outlet"
+        ]
+      },
+      "given": [
+        "inventory operator on an assigned device has a current server-verified identity authorized for selected outlet.",
+        "device behind is the authoritative starting state for outlet inventory event stream."
+      ],
+      "when": [
+        "inventory operator on an assigned device invokes pull inventory changes with outletId, afterSequence.",
+        "The producer authorizes authorize selected outlet on the server before reading or changing outlet inventory event stream. and evaluates CHANGE_SEQUENCE_GAP, OUTLET_FORBIDDEN."
+      ],
+      "then": [
+        "Apply ordered outlet movements after the device cursor and detect gaps before local projection update.",
+        "CHANGE_SEQUENCE_GAP returns the standard error envelope and leaves outlet inventory event stream at its last committed version.",
+        "The observed state is device at latest sequence; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "device behind",
+          "to": "device at latest sequence",
+          "trigger": "GET /api/v1/merchant/outlets/{outletId}/inventory/changes completes pull inventory changes"
+        }
+      ],
+      "requiredFixtures": [
+        "device behind fixture for Multi-device synchronization",
+        "inventory operator on an assigned device and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "pull inventory changes",
+        "method": "GET",
+        "path": "/api/v1/merchant/outlets/{outletId}/inventory/changes",
+        "fields": ["outletId", "afterSequence"]
+      },
+      "apiResponse": {
+        "fields": ["movements", "latestSequence"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["CHANGE_SEQUENCE_GAP", "OUTLET_FORBIDDEN"],
+      "authorizationMatrix": {
+        "allowed": ["inventory operator on an assigned device"],
+        "denied": [
+          "revoked or suspended inventory operator on an assigned device",
+          "actor outside selected outlet",
+          "actor presenting a resource outside selected outlet"
+        ],
+        "ownershipRules": [
+          "Authorize selected outlet on the server before reading or changing outlet inventory event stream.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "pull inventory changes does not mutate outlet inventory event stream; it reads selected outlet from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Multi-device synchronization observes outlet inventory event stream without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Multi-device synchronization must not combine incompatible versions of outlet inventory event stream in one response.",
+          "behavior": ["monotonic sequence prevents reordering"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Multi-device synchronization has an explicit connectivity and reconnect rule for outlet inventory event stream.",
+          "behavior": ["resume from durable cursor on reconnect"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Multi-device synchronization is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for MER-MULTI-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Multi-device synchronization has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and outlet inventory event stream status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Multi-device synchronization does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-MULTI-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of outlet inventory event stream."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Apply ordered outlet movements after the device cursor and detect gaps before local projection update.",
+        "Scope every outlet inventory event stream read to selected outlet.",
+        "Multi-device synchronization exposes only movements, latestSequence after pull inventory changes."
+      ],
+      "requiredUnitTests": [
+        "Exercise Multi-device synchronization boundaries, CHANGE_SEQUENCE_GAP, OUTLET_FORBIDDEN, and the device behind to device at latest sequence decision."
+      ],
+      "requiredComponentTests": [
+        "Render Multi-device synchronization loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify outlet inventory event stream ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate pull inventory changes fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive inventory operator on an assigned device through Multi-device synchronization and verify the resulting outlet inventory event stream projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing pull inventory changes.",
+        "Executable tests for MER-MULTI-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, CHANGE_SEQUENCE_GAP, OUTLET_FORBIDDEN, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-AVAIL-001",
+      "contractIds": ["MER-AVAIL-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["inventory projection worker"],
+        "allowed": ["inventory projection worker"],
+        "denied": [
+          "revoked or suspended inventory projection worker",
+          "actor outside source outlet listing",
+          "actor presenting a resource outside source outlet listing"
+        ]
+      },
+      "given": [
+        "inventory projection worker has a current server-verified identity authorized for source outlet listing.",
+        "availability at N is the authoritative starting state for public listing availability projection."
+      ],
+      "when": [
+        "inventory projection worker invokes InventoryAvailabilityProjector.apply with movementId, listingId, availableQuantity, sequence.",
+        "The producer authorizes authorize source outlet listing on the server before reading or changing public listing availability projection. and evaluates AVAILABILITY_EVENT_STALE, LISTING_NOT_PUBLIC."
+      ],
+      "then": [
+        "Publish available quantity only after the canonical movement commits and suppress stale events.",
+        "AVAILABILITY_EVENT_STALE returns the standard error envelope and leaves public listing availability projection at its last committed version.",
+        "The observed state is availability at N+1; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "availability at N",
+          "to": "availability at N+1",
+          "trigger": "InventoryAvailabilityProjector.apply completes InventoryAvailabilityProjector.apply"
+        }
+      ],
+      "requiredFixtures": [
+        "availability at N fixture for Customer availability propagation",
+        "inventory projection worker and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "internal",
+        "operation": "InventoryAvailabilityProjector.apply",
+        "interface": "InventoryAvailabilityProjector.apply",
+        "fields": ["movementId", "listingId", "availableQuantity", "sequence"]
+      },
+      "apiResponse": {
+        "fields": ["projectionVersion", "publishedAvailability"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["AVAILABILITY_EVENT_STALE", "LISTING_NOT_PUBLIC"],
+      "authorizationMatrix": {
+        "allowed": ["inventory projection worker"],
+        "denied": [
+          "revoked or suspended inventory projection worker",
+          "actor outside source outlet listing",
+          "actor presenting a resource outside source outlet listing"
+        ],
+        "ownershipRules": [
+          "Authorize source outlet listing on the server before reading or changing public listing availability projection.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The availability at N to availability at N+1 transition, ownership checks, and audit or outbox record for public listing availability projection commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Customer availability propagation can change public listing availability projection, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to inventory projection worker, the operation, and the canonical request payload.",
+            "Return the original public listing availability projection result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Customer availability propagation has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["listing projection sequence is monotonic"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Customer availability propagation has an explicit connectivity and reconnect rule for public listing availability projection.",
+          "behavior": ["server worker retries from durable event log"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Customer availability propagation changes state or exercises privileged authority over public listing availability projection.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for public listing availability projection."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Customer availability propagation has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and public listing availability projection status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Customer availability propagation does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-AVAIL-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of public listing availability projection."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Publish available quantity only after the canonical movement commits and suppress stale events.",
+        "Scope every public listing availability projection read or write to source outlet listing.",
+        "Customer availability propagation exposes only projectionVersion, publishedAvailability after InventoryAvailabilityProjector.apply."
+      ],
+      "requiredUnitTests": [
+        "Exercise Customer availability propagation boundaries, AVAILABILITY_EVENT_STALE, LISTING_NOT_PUBLIC, and the availability at N to availability at N+1 decision."
+      ],
+      "requiredComponentTests": [
+        "Render Customer availability propagation loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify public listing availability projection ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate InventoryAvailabilityProjector.apply fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive inventory projection worker through Customer availability propagation and verify the resulting public listing availability projection projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing InventoryAvailabilityProjector.apply.",
+        "Executable tests for MER-AVAIL-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, AVAILABILITY_EVENT_STALE, LISTING_NOT_PUBLIC, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-ORD-001",
+      "contractIds": ["MER-ORD-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["order operator"],
+        "allowed": ["order operator"],
+        "denied": [
+          "revoked or suspended order operator",
+          "actor outside selected outlet order",
+          "actor presenting a resource outside selected outlet order"
+        ]
+      },
+      "given": [
+        "order operator has a current server-verified identity authorized for selected outlet order.",
+        "order placed is the authoritative starting state for outlet order work queue."
+      ],
+      "when": [
+        "order operator invokes advance merchant order with outletId, orderId, action, expectedStatus.",
+        "The producer authorizes authorize selected outlet order on the server before reading or changing outlet order work queue. and evaluates ORDER_NOT_IN_OUTLET, ORDER_TRANSITION_INVALID, ORDER_VERSION_STALE."
+      ],
+      "then": [
+        "Allow only outlet-owned order transitions and publish accepted/rejected/ready state to consumers.",
+        "ORDER_NOT_IN_OUTLET returns the standard error envelope and leaves outlet order work queue at its last committed version.",
+        "The observed state is order accepted, rejected, or ready; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "order placed",
+          "to": "order accepted, rejected, or ready",
+          "trigger": "PATCH /api/v1/merchant/outlets/{outletId}/orders/{orderId} completes advance merchant order"
+        }
+      ],
+      "requiredFixtures": [
+        "order placed fixture for Merchant orders",
+        "order operator and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "advance merchant order",
+        "method": "PATCH",
+        "path": "/api/v1/merchant/outlets/{outletId}/orders/{orderId}",
+        "fields": ["outletId", "orderId", "action", "expectedStatus"]
+      },
+      "apiResponse": {
+        "fields": ["orderId", "status", "version"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["ORDER_NOT_IN_OUTLET", "ORDER_TRANSITION_INVALID", "ORDER_VERSION_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["order operator"],
+        "denied": [
+          "revoked or suspended order operator",
+          "actor outside selected outlet order",
+          "actor presenting a resource outside selected outlet order"
+        ],
+        "ownershipRules": [
+          "Authorize selected outlet order on the server before reading or changing outlet order work queue.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The order placed to order accepted, rejected, or ready transition, ownership checks, and audit or outbox record for outlet order work queue commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Merchant orders can change outlet order work queue, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to order operator, the operation, and the canonical request payload.",
+            "Return the original outlet order work queue result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Merchant orders has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["expected status and version yield one transition winner"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Merchant orders has an explicit connectivity and reconnect rule for outlet order work queue.",
+          "behavior": ["order decisions require connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Merchant orders changes state or exercises privileged authority over outlet order work queue.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for outlet order work queue."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Merchant orders has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and outlet order work queue status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Merchant orders does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-ORD-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of outlet order work queue."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Allow only outlet-owned order transitions and publish accepted/rejected/ready state to consumers.",
+        "Scope every outlet order work queue read or write to selected outlet order.",
+        "Merchant orders exposes only orderId, status, version after advance merchant order."
+      ],
+      "requiredUnitTests": [
+        "Exercise Merchant orders boundaries, ORDER_NOT_IN_OUTLET, ORDER_TRANSITION_INVALID, ORDER_VERSION_STALE, and the order placed to order accepted, rejected, or ready decision."
+      ],
+      "requiredComponentTests": [
+        "Render Merchant orders loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify outlet order work queue ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate advance merchant order fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive order operator through Merchant orders and verify the resulting outlet order work queue projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing advance merchant order.",
+        "Executable tests for MER-ORD-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, ORDER_NOT_IN_OUTLET, ORDER_TRANSITION_INVALID, ORDER_VERSION_STALE, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-APT-001",
+      "contractIds": ["MER-APT-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["appointment operator"],
+        "allowed": ["appointment operator"],
+        "denied": [
+          "revoked or suspended appointment operator",
+          "actor outside provider outlet appointment",
+          "actor presenting a resource outside provider outlet appointment"
+        ]
+      },
+      "given": [
+        "appointment operator has a current server-verified identity authorized for provider outlet appointment.",
+        "appointment requested is the authoritative starting state for provider appointment work queue."
+      ],
+      "when": [
+        "appointment operator invokes advance appointment with appointmentId, action, expectedStatus, reason.",
+        "The producer authorizes authorize provider outlet appointment on the server before reading or changing provider appointment work queue. and evaluates APPOINTMENT_NOT_IN_OUTLET, APPOINTMENT_TRANSITION_INVALID, APPOINTMENT_VERSION_STALE."
+      ],
+      "then": [
+        "Allow provider-owned lifecycle transitions and preserve customer-visible history.",
+        "APPOINTMENT_NOT_IN_OUTLET returns the standard error envelope and leaves provider appointment work queue at its last committed version.",
+        "The observed state is appointment confirmed, in service, completed, or declined; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "appointment requested",
+          "to": "appointment confirmed, in service, completed, or declined",
+          "trigger": "PATCH /api/v1/merchant/outlets/{outletId}/appointments/{appointmentId} completes advance appointment"
+        }
+      ],
+      "requiredFixtures": [
+        "appointment requested fixture for Merchant appointments",
+        "appointment operator and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "advance appointment",
+        "method": "PATCH",
+        "path": "/api/v1/merchant/outlets/{outletId}/appointments/{appointmentId}",
+        "fields": ["appointmentId", "action", "expectedStatus", "reason"]
+      },
+      "apiResponse": {
+        "fields": ["appointmentId", "status", "version"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": [
+        "APPOINTMENT_NOT_IN_OUTLET",
+        "APPOINTMENT_TRANSITION_INVALID",
+        "APPOINTMENT_VERSION_STALE"
+      ],
+      "authorizationMatrix": {
+        "allowed": ["appointment operator"],
+        "denied": [
+          "revoked or suspended appointment operator",
+          "actor outside provider outlet appointment",
+          "actor presenting a resource outside provider outlet appointment"
+        ],
+        "ownershipRules": [
+          "Authorize provider outlet appointment on the server before reading or changing provider appointment work queue.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The appointment requested to appointment confirmed, in service, completed, or declined transition, ownership checks, and audit or outbox record for provider appointment work queue commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Merchant appointments can change provider appointment work queue, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to appointment operator, the operation, and the canonical request payload.",
+            "Return the original provider appointment work queue result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Merchant appointments has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["expected status gives one transition winner"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Merchant appointments has an explicit connectivity and reconnect rule for provider appointment work queue.",
+          "behavior": ["lifecycle mutation requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Merchant appointments changes state or exercises privileged authority over provider appointment work queue.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for provider appointment work queue."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Merchant appointments has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and provider appointment work queue status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Merchant appointments contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-004."
+          ],
+          "decisionRefs": ["BD-004"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-APT-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of provider appointment work queue."
+      ],
+      "businessDecisionRefs": ["BD-004"],
+      "featureBehavior": [
+        "Allow provider-owned lifecycle transitions and preserve customer-visible history.",
+        "Scope every provider appointment work queue read or write to provider outlet appointment.",
+        "Merchant appointments exposes only appointmentId, status, version after advance appointment."
+      ],
+      "requiredUnitTests": [
+        "Exercise Merchant appointments boundaries, APPOINTMENT_NOT_IN_OUTLET, APPOINTMENT_TRANSITION_INVALID, APPOINTMENT_VERSION_STALE, and the appointment requested to appointment confirmed, in service, completed, or declined decision."
+      ],
+      "requiredComponentTests": [
+        "Render Merchant appointments loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify provider appointment work queue ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate advance appointment fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive appointment operator through Merchant appointments and verify the resulting provider appointment work queue projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing advance appointment.",
+        "Executable tests for MER-APT-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, APPOINTMENT_NOT_IN_OUTLET, APPOINTMENT_TRANSITION_INVALID, APPOINTMENT_VERSION_STALE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-004 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-POS-001",
+      "contractIds": ["MER-POS-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["cashier"],
+        "allowed": ["cashier"],
+        "denied": [
+          "revoked or suspended cashier",
+          "actor outside selected outlet",
+          "actor presenting a resource outside selected outlet"
+        ]
+      },
+      "given": [
+        "cashier has a current server-verified identity authorized for selected outlet.",
+        "sale draft is the authoritative starting state for merchant POS sale."
+      ],
+      "when": [
+        "cashier invokes complete POS sale with outletId, lines, customerPhone, paymentMethod.",
+        "The producer authorizes authorize selected outlet on the server before reading or changing merchant pos sale. and evaluates POS_LINE_INVALID, POS_STOCK_INSUFFICIENT, POS_PAYMENT_INVALID."
+      ],
+      "then": [
+        "Commit one sale, inventory movements, and optional loyalty event in one transaction.",
+        "POS_LINE_INVALID returns the standard error envelope and leaves merchant POS sale at its last committed version.",
+        "The observed state is sale completed; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "sale draft",
+          "to": "sale completed",
+          "trigger": "POST /api/v1/merchant/outlets/{outletId}/pos/sales completes complete POS sale"
+        }
+      ],
+      "requiredFixtures": [
+        "sale draft fixture for Point of sale",
+        "cashier and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "complete POS sale",
+        "method": "POST",
+        "path": "/api/v1/merchant/outlets/{outletId}/pos/sales",
+        "fields": ["outletId", "lines", "customerPhone", "paymentMethod"]
+      },
+      "apiResponse": {
+        "fields": ["saleId", "totalPaise", "inventoryMovements", "loyaltyEvent"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["POS_LINE_INVALID", "POS_STOCK_INSUFFICIENT", "POS_PAYMENT_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["cashier"],
+        "denied": [
+          "revoked or suspended cashier",
+          "actor outside selected outlet",
+          "actor presenting a resource outside selected outlet"
+        ],
+        "ownershipRules": [
+          "Authorize selected outlet on the server before reading or changing merchant POS sale.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The sale draft to sale completed transition, ownership checks, and audit or outbox record for merchant POS sale commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Point of sale can change merchant POS sale, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to cashier, the operation, and the canonical request payload.",
+            "Return the original merchant POS sale result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Point of sale has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["sale and stock movements commit atomically"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Point of sale has an explicit connectivity and reconnect rule for merchant POS sale.",
+          "behavior": ["sale may be drafted but cannot finalize offline"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Point of sale changes state or exercises privileged authority over merchant POS sale.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for merchant POS sale."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Point of sale has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and merchant POS sale status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Point of sale contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-003, BD-005."
+          ],
+          "decisionRefs": ["BD-003", "BD-005"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-POS-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of merchant POS sale."
+      ],
+      "businessDecisionRefs": ["BD-003", "BD-005"],
+      "featureBehavior": [
+        "Commit one sale, inventory movements, and optional loyalty event in one transaction.",
+        "Scope every merchant POS sale read or write to selected outlet.",
+        "Point of sale exposes only saleId, totalPaise, inventoryMovements, loyaltyEvent after complete POS sale."
+      ],
+      "requiredUnitTests": [
+        "Exercise Point of sale boundaries, POS_LINE_INVALID, POS_STOCK_INSUFFICIENT, POS_PAYMENT_INVALID, and the sale draft to sale completed decision."
+      ],
+      "requiredComponentTests": [
+        "Render Point of sale loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify merchant POS sale ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate complete POS sale fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive cashier through Point of sale and verify the resulting merchant POS sale projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing complete POS sale.",
+        "Executable tests for MER-POS-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, POS_LINE_INVALID, POS_STOCK_INSUFFICIENT, POS_PAYMENT_INVALID, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-003, BD-005 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-LOY-001",
+      "contractIds": ["MER-LOY-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["loyalty manager"],
+        "allowed": ["loyalty manager"],
+        "denied": [
+          "revoked or suspended loyalty manager",
+          "actor outside selected outlet program",
+          "actor presenting a resource outside selected outlet program"
+        ]
+      },
+      "given": [
+        "loyalty manager has a current server-verified identity authorized for selected outlet program.",
+        "program version current is the authoritative starting state for outlet loyalty program."
+      ],
+      "when": [
+        "loyalty manager invokes configure loyalty program with starsPerTransaction, rewardThreshold, rewardType, expiryDays.",
+        "The producer authorizes authorize selected outlet program on the server before reading or changing outlet loyalty program. and evaluates LOYALTY_CONFIG_INVALID, LOYALTY_VERSION_STALE."
+      ],
+      "then": [
+        "Save a bounded outlet program without rewriting issued ledger entries.",
+        "LOYALTY_CONFIG_INVALID returns the standard error envelope and leaves outlet loyalty program at its last committed version.",
+        "The observed state is program version incremented; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "program version current",
+          "to": "program version incremented",
+          "trigger": "PUT /api/v1/merchant/outlets/{outletId}/loyalty/program completes configure loyalty program"
+        }
+      ],
+      "requiredFixtures": [
+        "program version current fixture for Merchant loyalty",
+        "loyalty manager and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "configure loyalty program",
+        "method": "PUT",
+        "path": "/api/v1/merchant/outlets/{outletId}/loyalty/program",
+        "fields": ["starsPerTransaction", "rewardThreshold", "rewardType", "expiryDays"]
+      },
+      "apiResponse": {
+        "fields": ["programId", "version", "effectiveAt"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["LOYALTY_CONFIG_INVALID", "LOYALTY_VERSION_STALE"],
+      "authorizationMatrix": {
+        "allowed": ["loyalty manager"],
+        "denied": [
+          "revoked or suspended loyalty manager",
+          "actor outside selected outlet program",
+          "actor presenting a resource outside selected outlet program"
+        ],
+        "ownershipRules": [
+          "Authorize selected outlet program on the server before reading or changing outlet loyalty program.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "The program version current to program version incremented transition, ownership checks, and audit or outbox record for outlet loyalty program commit atomically.",
+      "applicability": {
+        "idempotency": {
+          "status": "applicable",
+          "reason": "Merchant loyalty can change outlet loyalty program, so retry identity must be stable for the initiating actor.",
+          "behavior": [
+            "Bind an idempotency key to loyalty manager, the operation, and the canonical request payload.",
+            "Return the original outlet loyalty program result for an exact replay and reject a changed payload."
+          ],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Merchant loyalty has a state boundary where simultaneous commands could otherwise conflict.",
+          "behavior": ["program version prevents lost updates"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Merchant loyalty has an explicit connectivity and reconnect rule for outlet loyalty program.",
+          "behavior": ["configuration requires connectivity"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "applicable",
+          "reason": "Merchant loyalty changes state or exercises privileged authority over outlet loyalty program.",
+          "behavior": [
+            "Record actor, scope, before/after version, outcome, and trace ID for outlet loyalty program."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Merchant loyalty has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and outlet loyalty program status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Merchant loyalty contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-003."
+          ],
+          "decisionRefs": ["BD-003"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-LOY-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of outlet loyalty program."
+      ],
+      "businessDecisionRefs": ["BD-003"],
+      "featureBehavior": [
+        "Save a bounded outlet program without rewriting issued ledger entries.",
+        "Scope every outlet loyalty program read or write to selected outlet program.",
+        "Merchant loyalty exposes only programId, version, effectiveAt after configure loyalty program."
+      ],
+      "requiredUnitTests": [
+        "Exercise Merchant loyalty boundaries, LOYALTY_CONFIG_INVALID, LOYALTY_VERSION_STALE, and the program version current to program version incremented decision."
+      ],
+      "requiredComponentTests": [
+        "Render Merchant loyalty loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify outlet loyalty program ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate configure loyalty program fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive loyalty manager through Merchant loyalty and verify the resulting outlet loyalty program projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing configure loyalty program.",
+        "Executable tests for MER-LOY-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, LOYALTY_CONFIG_INVALID, LOYALTY_VERSION_STALE, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-003 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-NOT-001",
+      "contractIds": ["MER-NOT-001"],
+      "priority": "P0-launch",
+      "actors": {
+        "initiators": ["assigned merchant staff member"],
+        "allowed": ["assigned merchant staff member"],
+        "denied": [
+          "revoked or suspended assigned merchant staff member",
+          "actor outside selected outlet recipient",
+          "actor presenting a resource outside selected outlet recipient"
+        ]
+      },
+      "given": [
+        "assigned merchant staff member has a current server-verified identity authorized for selected outlet recipient.",
+        "notifications unchanged is the authoritative starting state for merchant outlet notification inbox."
+      ],
+      "when": [
+        "assigned merchant staff member invokes list merchant notifications with outletId, cursor.",
+        "The producer authorizes authorize selected outlet recipient on the server before reading or changing merchant outlet notification inbox. and evaluates NOTIFICATION_NOT_FOUND, NOTIFICATION_OUTLET_FORBIDDEN."
+      ],
+      "then": [
+        "Return only selected-outlet events and deep-link to a freshly authorized resource.",
+        "NOTIFICATION_NOT_FOUND returns the standard error envelope and leaves merchant outlet notification inbox at its last committed version.",
+        "The observed state is notifications unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "notifications unchanged",
+          "to": "notifications unchanged",
+          "trigger": "GET /api/v1/merchant/outlets/{outletId}/notifications completes list merchant notifications"
+        }
+      ],
+      "requiredFixtures": [
+        "notifications unchanged fixture for Merchant notifications",
+        "assigned merchant staff member and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "list merchant notifications",
+        "method": "GET",
+        "path": "/api/v1/merchant/outlets/{outletId}/notifications",
+        "fields": ["outletId", "cursor"]
+      },
+      "apiResponse": {
+        "fields": ["notifications", "nextCursor", "unreadCount"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["NOTIFICATION_NOT_FOUND", "NOTIFICATION_OUTLET_FORBIDDEN"],
+      "authorizationMatrix": {
+        "allowed": ["assigned merchant staff member"],
+        "denied": [
+          "revoked or suspended assigned merchant staff member",
+          "actor outside selected outlet recipient",
+          "actor presenting a resource outside selected outlet recipient"
+        ],
+        "ownershipRules": [
+          "Authorize selected outlet recipient on the server before reading or changing merchant outlet notification inbox.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "list merchant notifications does not mutate merchant outlet notification inbox; it reads selected outlet recipient from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Merchant notifications observes merchant outlet notification inbox without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Merchant notifications must not combine incompatible versions of merchant outlet notification inbox in one response.",
+          "behavior": [
+            "Read merchant outlet notification inbox from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Merchant notifications has an explicit connectivity and reconnect rule for merchant outlet notification inbox.",
+          "behavior": ["cache signal and revalidate target on reconnect"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Merchant notifications is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for MER-NOT-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Merchant notifications has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and merchant outlet notification inbox status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "blocked",
+          "reason": "Merchant notifications contains a bounded policy portion that cannot be finalized until the referenced decisions are authorized.",
+          "behavior": [
+            "Keep the decision-dependent portion disabled while implementing only behavior independent of BD-010."
+          ],
+          "decisionRefs": ["BD-010"]
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-NOT-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of merchant outlet notification inbox."
+      ],
+      "businessDecisionRefs": ["BD-010"],
+      "featureBehavior": [
+        "Return only selected-outlet events and deep-link to a freshly authorized resource.",
+        "Scope every merchant outlet notification inbox read to selected outlet recipient.",
+        "Merchant notifications exposes only notifications, nextCursor, unreadCount after list merchant notifications."
+      ],
+      "requiredUnitTests": [
+        "Exercise Merchant notifications boundaries, NOTIFICATION_NOT_FOUND, NOTIFICATION_OUTLET_FORBIDDEN, and the notifications unchanged to notifications unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Render Merchant notifications loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify merchant outlet notification inbox ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate list merchant notifications fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive assigned merchant staff member through Merchant notifications and verify the resulting merchant outlet notification inbox projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing list merchant notifications.",
+        "Executable tests for MER-NOT-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, NOTIFICATION_NOT_FOUND, NOTIFICATION_OUTLET_FORBIDDEN, state, retry, and concurrency evidence at the exact implementation SHA.",
+        "User authorization resolving BD-010 before the blocked policy portion is activated."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-AUD-001",
+      "contractIds": ["MER-AUD-001"],
+      "priority": "P1",
+      "actors": {
+        "initiators": ["merchant supervisor"],
+        "allowed": ["merchant supervisor"],
+        "denied": [
+          "revoked or suspended merchant supervisor",
+          "actor outside selected outlet",
+          "actor presenting a resource outside selected outlet"
+        ]
+      },
+      "given": [
+        "merchant supervisor has a current server-verified identity authorized for selected outlet.",
+        "audit log unchanged is the authoritative starting state for outlet audit event page."
+      ],
+      "when": [
+        "merchant supervisor invokes view merchant audit with outletId, actorId, action, cursor.",
+        "The producer authorizes authorize selected outlet on the server before reading or changing outlet audit event page. and evaluates AUDIT_ACCESS_DENIED, AUDIT_CURSOR_INVALID."
+      ],
+      "then": [
+        "Return immutable outlet events with actor, action, resource, outcome, and timestamp.",
+        "AUDIT_ACCESS_DENIED returns the standard error envelope and leaves outlet audit event page at its last committed version.",
+        "The observed state is audit log unchanged; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "audit log unchanged",
+          "to": "audit log unchanged",
+          "trigger": "GET /api/v1/merchant/outlets/{outletId}/audit-events completes view merchant audit"
+        }
+      ],
+      "requiredFixtures": [
+        "audit log unchanged fixture for Merchant audit history",
+        "merchant supervisor and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "http",
+        "operation": "view merchant audit",
+        "method": "GET",
+        "path": "/api/v1/merchant/outlets/{outletId}/audit-events",
+        "fields": ["outletId", "actorId", "action", "cursor"]
+      },
+      "apiResponse": {
+        "fields": ["events", "nextCursor"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["AUDIT_ACCESS_DENIED", "AUDIT_CURSOR_INVALID"],
+      "authorizationMatrix": {
+        "allowed": ["merchant supervisor"],
+        "denied": [
+          "revoked or suspended merchant supervisor",
+          "actor outside selected outlet",
+          "actor presenting a resource outside selected outlet"
+        ],
+        "ownershipRules": [
+          "Authorize selected outlet on the server before reading or changing outlet audit event page.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "view merchant audit does not mutate outlet audit event page; it reads selected outlet from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Merchant audit history observes outlet audit event page without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Merchant audit history must not combine incompatible versions of outlet audit event page in one response.",
+          "behavior": [
+            "Read outlet audit event page from one committed snapshot and discard stale client responses."
+          ],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Merchant audit history has an explicit connectivity and reconnect rule for outlet audit event page.",
+          "behavior": ["no offline audit export"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Merchant audit history is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for MER-AUD-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Merchant audit history has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and outlet audit event page status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Merchant audit history does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-AUD-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of outlet audit event page."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Return immutable outlet events with actor, action, resource, outcome, and timestamp.",
+        "Scope every outlet audit event page read to selected outlet.",
+        "Merchant audit history exposes only events, nextCursor after view merchant audit."
+      ],
+      "requiredUnitTests": [
+        "Exercise Merchant audit history boundaries, AUDIT_ACCESS_DENIED, AUDIT_CURSOR_INVALID, and the audit log unchanged to audit log unchanged decision."
+      ],
+      "requiredComponentTests": [
+        "Render Merchant audit history loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify outlet audit event page ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate view merchant audit fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive merchant supervisor through Merchant audit history and verify the resulting outlet audit event page projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing view merchant audit.",
+        "Executable tests for MER-AUD-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, AUDIT_ACCESS_DENIED, AUDIT_CURSOR_INVALID, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    },
+    {
+      "scenarioId": "SCN-MER-A11Y-001",
+      "contractIds": ["MER-A11Y-001"],
+      "priority": "P1",
+      "actors": {
+        "initiators": ["merchant staff using assistive technology"],
+        "allowed": ["merchant staff using assistive technology"],
+        "denied": [
+          "revoked or suspended merchant staff using assistive technology",
+          "actor outside current merchant UI",
+          "actor presenting a resource outside current merchant UI"
+        ]
+      },
+      "given": [
+        "merchant staff using assistive technology has a current server-verified identity authorized for current merchant UI.",
+        "screen loading is the authoritative starting state for merchant operational UI semantics."
+      ],
+      "when": [
+        "merchant staff using assistive technology invokes MerchantAccessibility.describeOperationalState with screen, operationState, errors.",
+        "The producer authorizes authorize current merchant ui on the server before reading or changing merchant operational ui semantics. and evaluates FOCUS_TARGET_MISSING, STATUS_ANNOUNCEMENT_MISSING."
+      ],
+      "then": [
+        "Expose scanner, forms, queues, sync conflicts, and status changes without color-only meaning.",
+        "FOCUS_TARGET_MISSING returns the standard error envelope and leaves merchant operational UI semantics at its last committed version.",
+        "The observed state is screen operable and announced; no cross-scope or partial result is visible."
+      ],
+      "stateTransitions": [
+        {
+          "from": "screen loading",
+          "to": "screen operable and announced",
+          "trigger": "MerchantAccessibility.describeOperationalState completes MerchantAccessibility.describeOperationalState"
+        }
+      ],
+      "requiredFixtures": [
+        "screen loading fixture for Merchant accessibility",
+        "merchant staff using assistive technology and denied cross-scope actor identities",
+        "deterministic merchant clock, identifiers, and provider outcomes"
+      ],
+      "apiRequest": {
+        "kind": "client",
+        "operation": "MerchantAccessibility.describeOperationalState",
+        "interface": "MerchantAccessibility.describeOperationalState",
+        "fields": ["screen", "operationState", "errors"]
+      },
+      "apiResponse": {
+        "fields": ["labels", "focusOrder", "announcements"],
+        "errorEnvelope": "{ error: { code, message, traceId, details? } }"
+      },
+      "errorCodes": ["FOCUS_TARGET_MISSING", "STATUS_ANNOUNCEMENT_MISSING"],
+      "authorizationMatrix": {
+        "allowed": ["merchant staff using assistive technology"],
+        "denied": [
+          "revoked or suspended merchant staff using assistive technology",
+          "actor outside current merchant UI",
+          "actor presenting a resource outside current merchant UI"
+        ],
+        "ownershipRules": [
+          "Authorize current merchant UI on the server before reading or changing merchant operational UI semantics.",
+          "Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence."
+        ]
+      },
+      "databaseInvariant": "MerchantAccessibility.describeOperationalState does not mutate merchant operational UI semantics; it reads current merchant UI from one committed snapshot.",
+      "applicability": {
+        "idempotency": {
+          "status": "not-applicable",
+          "reason": "Merchant accessibility observes merchant operational UI semantics without creating or changing a business result.",
+          "behavior": [],
+          "decisionRefs": []
+        },
+        "concurrency": {
+          "status": "applicable",
+          "reason": "Merchant accessibility must not combine incompatible versions of merchant operational UI semantics in one response.",
+          "behavior": ["latest operation state is announced once"],
+          "decisionRefs": []
+        },
+        "offlineRetry": {
+          "status": "applicable",
+          "reason": "Merchant accessibility has an explicit connectivity and reconnect rule for merchant operational UI semantics.",
+          "behavior": ["offline/sync status is explicit and operable"],
+          "decisionRefs": []
+        },
+        "audit": {
+          "status": "not-applicable",
+          "reason": "Merchant accessibility is an ordinary non-privileged read and does not create a business audit event.",
+          "behavior": [
+            "Operational access logs still follow the observability rule for MER-A11Y-001."
+          ],
+          "decisionRefs": []
+        },
+        "accessibility": {
+          "status": "applicable",
+          "reason": "Merchant accessibility has a user-visible state that must work with keyboard, screen reader, text scaling, and non-color cues.",
+          "behavior": [
+            "Label controls and merchant operational UI semantics status, preserve logical focus, and announce errors and recovery."
+          ],
+          "decisionRefs": []
+        },
+        "businessDecision": {
+          "status": "not-applicable",
+          "reason": "Merchant accessibility does not depend on an unresolved business decision in the P0 catalog.",
+          "behavior": [],
+          "decisionRefs": []
+        }
+      },
+      "observabilityExpectations": [
+        "Emit MER-A11Y-001, the operation, actor class, outcome code, trace ID, and latency.",
+        "Redact credentials and private fields of merchant operational UI semantics."
+      ],
+      "businessDecisionRefs": [],
+      "featureBehavior": [
+        "Expose scanner, forms, queues, sync conflicts, and status changes without color-only meaning.",
+        "Scope every merchant operational UI semantics read to current merchant UI.",
+        "Merchant accessibility exposes only labels, focusOrder, announcements after MerchantAccessibility.describeOperationalState."
+      ],
+      "requiredUnitTests": [
+        "Exercise Merchant accessibility boundaries, FOCUS_TARGET_MISSING, STATUS_ANNOUNCEMENT_MISSING, and the screen loading to screen operable and announced decision."
+      ],
+      "requiredComponentTests": [
+        "Render Merchant accessibility loading, success, empty, denied, stale, offline, and recovery states with accessible semantics."
+      ],
+      "requiredIntegrationTests": [
+        "Verify merchant operational UI semantics ownership, the state transition, and database invariants against PostgreSQL and deterministic providers."
+      ],
+      "requiredContractTests": [
+        "Validate MerchantAccessibility.describeOperationalState fields, stable errors, authorization, and applicability rules."
+      ],
+      "requiredE2ETests": [
+        "Drive merchant staff using assistive technology through Merchant accessibility and verify the resulting merchant operational UI semantics projection."
+      ],
+      "evidenceRequiredToActivate": [
+        "Production paths implementing MerchantAccessibility.describeOperationalState.",
+        "Executable tests for MER-A11Y-001 at every required layer with no skips, focus, todo, or placeholders.",
+        "Authorization, FOCUS_TARGET_MISSING, STATUS_ANNOUNCEMENT_MISSING, state, retry, and concurrency evidence at the exact implementation SHA."
+      ]
+    }
+  ]
+}

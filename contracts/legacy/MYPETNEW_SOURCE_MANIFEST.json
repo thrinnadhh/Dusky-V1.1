@@ -1,0 +1,1578 @@
+{
+  "schemaVersion": "2.0.0",
+  "sourceRepository": "https://github.com/thrinnadhh/Mypetnew.git",
+  "sourceSha": "817c6487cdbf18fc282dc0a44538d83e7bc5ef8b",
+  "pinnedTestFileCount": 240,
+  "preservedLocalRegressionFileCount": 5,
+  "additionalLocalEvidenceFileCount": 3,
+  "localEvidenceFileCount": 8,
+  "testFileCount": 248,
+  "individualTestCount": 1163,
+  "countsBySourceModule": {
+    "Customer": 492,
+    "Merchant": 51,
+    "Captain": 261,
+    "Admin": 0,
+    "Backend": 276,
+    "E2E": 83
+  },
+  "dispositionCounts": {
+    "mapped": 1035,
+    "duplicate": 0,
+    "obsolete-with-evidence": 0,
+    "implementation-specific-rewritten": 128,
+    "requires-business-decision": 0
+  },
+  "publicEvidence": {
+    "verificationScope": "pinned-public-ci-verifiable",
+    "sourceRepository": "https://github.com/thrinnadhh/Mypetnew.git",
+    "sourceSha": "817c6487cdbf18fc282dc0a44538d83e7bc5ef8b",
+    "files": [
+      {
+        "path": ".github/workflows/ci.yml",
+        "sha256": "e45a1298656ec9d3e05576b071ef429c18329358291547e1a781b899a02a7063",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": ".github/workflows/merchant-operations-contract.yml",
+        "sha256": "83b69bcd52d0d602ee9eaf794379caad6201c35785fc057ad50a4f25712c9109",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": ".github/workflows/validate-captain.yml",
+        "sha256": "3dacfd623128b9c351b9da89189dab343443e02e4fadddc20f5ba715bde70bff",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": ".github/workflows/validate-merchant.yml",
+        "sha256": "a853cf34804dd9c2096ca5e2cccf79550029887dba9fc0ad9762e31b14488365",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": ".github/workflows/validate-restored-customer.yml",
+        "sha256": "7d506e3e54be1d3d336b1d03b702c00ec95cbf8eec85c76eba6bb791e9c3214b",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/api/active-delivery-contract.test.ts",
+        "sha256": "619489fd31df45990b374eaf740f6f390f897d157a33346454ad05b6776ff6fa",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/api/dispatch.test.ts",
+        "sha256": "c8678287e718bf732b5bc551bff6e31d2c83a341913edc5257581a991e9b2b2c",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/architecture/runtime-boundaries.test.ts",
+        "sha256": "54fac04d4b29a29257f9353153b0586bb0f3f12aa47faf2d97fc05df71396fed",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/auth/session.test.ts",
+        "sha256": "cdd2cc9ba6f3e4780678d9c964c1aca9216607411499200bc05ec603d4ce1dec",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/domain/server-authority.test.ts",
+        "sha256": "8af6d89fcb940afc660023fa33a794eee4c598771f11f759f990bf7abd022263",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/domain/state-machines.test.ts",
+        "sha256": "296ebf721cd34ce0006df807d96ee8b4a0586aeb54c972580c3f851e0963915b",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/e2e/captain-complete-lifecycle.e2e.test.ts",
+        "sha256": "a5b3f58a67b206bd05b59f83c5d81c2349695ec75ef50eda587de51c138efce5",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/e2e/multi-captain-dispatch-concurrency.e2e.test.ts",
+        "sha256": "876e7e28c266581119185930f826032180af2913b808a3254e717ffbc71b4248",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/e2e/network-resilience-recovery.e2e.test.ts",
+        "sha256": "b2a52af154d1188b9820b3e89dfda882d44f2bbbf2f918a11293cc5ff457fecc",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/e2e/onboarding-flow.e2e.test.ts",
+        "sha256": "539ad6ae3f356fff97005aa37a7e4c2bac2bbd740dcf3ce45dce78ba4d190f35",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/features/delivery-e2e.test.ts",
+        "sha256": "2ffe6f352dfa2b2aa68d5fd4549528f45e2cfdd5323c0bd64b98bc22946770e0",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/features/location.test.ts",
+        "sha256": "782edea1b6dd7d7778c18176f8f250745b24a3a282612ad731f3ea9324e01122",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/features/truthful-operational-ui.test.ts",
+        "sha256": "6ad5bc63251648367d544c01389f11ca57221ae4e7de8dacf9df6e0c821e49f3",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level1-unit/state-machines/auth-state-machine.test.ts",
+        "sha256": "fc48d7716448b9acc7f5ee52d25a4a43a2ca12b2b575d5573c162d079679859a",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level1-unit/state-machines/command-state-machine.test.ts",
+        "sha256": "de6413f097e4bae2902c2c86a0aa54a9f198bdb5e6ca24aa139a6f6d727cfbe0",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level1-unit/state-machines/delivery-state-machine.test.ts",
+        "sha256": "6217898810c3369a1dc9af17358509516132ba1a13f2390f5a86ad98c05c7ca3",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level1-unit/state-machines/location-state-machine.test.ts",
+        "sha256": "4b660ef43cd75efdd897969ac999bd7b6cc37ba326fd5b24ec883ce00fb01ca7",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level1-unit/state-machines/offer-state-machine.test.ts",
+        "sha256": "ca87a807fc479a92e15bd1551b15f79fc1b78c518d3bfb75c6cc032cc3e78276",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level1-unit/utils/date.test.ts",
+        "sha256": "030a0d2f3bf5d2aa3eda3cc682804731adc78b222502202cb987ebb995a7c565",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level1-unit/utils/idempotency.test.ts",
+        "sha256": "67cb069a2463dadc8a391429585a18bc2ecaf5d4542d33cebc8de8ec2dee6d51",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level1-unit/utils/money.test.ts",
+        "sha256": "945e2c46cf32cfd439f95f08a7e82cdd763ea3ee3659d7f53e7f8ac46b0cb1d8",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level1-unit/utils/privacy.test.ts",
+        "sha256": "6a39caa6f4547937c186bdf1f6bba04071413469bfc323011312f9aa014c2437",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level1-unit/utils/validation.test.ts",
+        "sha256": "af128ca223139e37dceb5781eb6afbf5df8f08fed07c34f3ca9ea9adec27552e",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level2-api-contracts/api-client-contracts.test.ts",
+        "sha256": "f1e3415cf9d8cf04f5e42162a1b718628c2531bcffb9eb5d446a8aa420340955",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level2-api-contracts/auth-and-profile-contract.test.ts",
+        "sha256": "4416e39ca6e04889129c5778d694017e5fc6f503a44e1d3a0cd574ba99f5bdd1",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level2-api-contracts/availability-api-contract.test.ts",
+        "sha256": "3d6e179a1285910216ad598070cbf0d96b51893847b4fce5665ff4cd3ebb8891",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level2-api-contracts/dispatch-api-contract.test.ts",
+        "sha256": "12ca9a0616573bbbbd5ab83fc97a232d1b1a924e048b8f1873b22e25fb36ce11",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level3-durable-commands/command-runner.test.ts",
+        "sha256": "289ff59c804c7705feb0cd23d7eb9bbc1417cd89f3fa28632d9f8ef63ca3db72",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level3-durable-commands/command-store.test.ts",
+        "sha256": "0b5ec350fe5744386a57af80efbd18eddbe91807e2192938f072c0529cc3a6e1",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level3-durable-commands/reconciliation.test.ts",
+        "sha256": "ba7b3714878405b0cc230b60c6d3df4503e2a572a409bd03aac56f2337e7907c",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level4-backend-contracts/backend-integration-contracts.test.ts",
+        "sha256": "6ae5a07b52bc8377395958c763139d35fc96a6bd8fec7849d9d35f3166feef33",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level5-mobile-flow/mutation-coverage.test.ts",
+        "sha256": "434a5f55ab8a1ac8d95fa401400762cc9076f6ade6c7f2b683f3d5afe43bf86b",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level5-mobile-flow/negative-and-recovery-flow.test.ts",
+        "sha256": "aac2c822782f133063210ce530b61fc7dfabc649d13903e3b7c391b96d8184f1",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/level5-mobile-flow/positive-delivery-flow.test.ts",
+        "sha256": "ca2bbde7646dac76f62336c34f2e150a428dc558c5dd156e0d8a61621b0a4bbf",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/location/background-process.test.ts",
+        "sha256": "72d98f22e88d9aec1d8d0dc760a9217bbd5133e4d267b516c5784d86606df8cf",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/location/location-lifecycle.test.ts",
+        "sha256": "b2a764c1eb45c24ac248ceb1015038c3f00db8b65913ee7ffe18bb37b3f57a35",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/location/server-authority-location.test.ts",
+        "sha256": "ab99a09f42bc9391e29757b9a62d6b3b2f04b4f935a199b3c69d82693d815a07",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/navigation/auth-route-guard.test.ts",
+        "sha256": "98911c1f46138fcca02ab061cb6a41885161d943d8f738a28389f78793c68a06",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/notifications/captain-notification-bridge.test.tsx",
+        "sha256": "88ed31b23fc28e61ad6bdf77c980e786889b036c0a1c3d1a5495dc7470d59f40",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/notifications/captain-notifications.test.ts",
+        "sha256": "71b10294de1c264c18aba394078dafbd9056e2d6947d676b8850410b120ee4fe",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/sync/command-runner.test.ts",
+        "sha256": "91f75fa29fd37d71f99acf05676673f628ff3a793df11898fbdcb54f976bd87a",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/sync/command-store.test.ts",
+        "sha256": "b612d08fefca8b5a1a6d1d97bd19f55caf88d71315133a26d4d6a9d79eb03210",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/sync/reconciliation.test.ts",
+        "sha256": "e7176be9eff5d96ba302c77e9631d4ad88551f0553efa17b435338d0ff656fca",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/utils/date.test.ts",
+        "sha256": "b80873b6ee0fdb819e125a9bc4fcf713ed396e2f77426ecf878c8bf6d04ba2be",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/utils/idempotency.test.ts",
+        "sha256": "a3bf79af1046841324b14419ac78f478a58bec50099070a88a078d3b11535060",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/utils/money.test.ts",
+        "sha256": "b4d2fb428aff06f01733d252b58ef3f007fcc92690a371200b69df289e354e38",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/src/__tests__/utils/uuid.test.ts",
+        "sha256": "1c34fe1da8a731bd962eb0d74c0087207f13cc27a2168827a00ec69dd80916db",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/captain-app/test-flow.sh",
+        "sha256": "9fa62f02ddf40007b2e73aaf5e14997809fd5c6c2b85e1a2f7eed58c89b5a346",
+        "sourceModule": "Captain"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/accessibility-device-contract.test.ts",
+        "sha256": "e00a6f53492a2de7f815b6a5b9c3e9deeb7673eb74b5baf51cf9f3d6b4f577a6",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/customer-e2e-regressions.test.ts",
+        "sha256": "850adc7b5f4a5ae68389475a8e56b509dee4e97a8ba8c95b54bbbd945b7a6f1b",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/customer-journey-contracts.test.ts",
+        "sha256": "163d7ee2bd60efb26eca077e7d717ec85b16d7f2d769c27057c1de080198cd91",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/customer-payment-contract.test.ts",
+        "sha256": "505316ee8afd421510e97562744f9527117de497e72988aaa3800d21f10e3b96",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/customer-route-destinations.test.ts",
+        "sha256": "b170d8c248362227c42b885437158167fc5d55c751fe7a1170338b7f9a3654b6",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/customer-screen-layout.test.ts",
+        "sha256": "509184a6204058ee147d4f5df10c8a8bdaa66170386398356a2d5261d20578af",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/food-filter-tags.test.ts",
+        "sha256": "65f21660bb64022ca40b302d33a69bc2c4cea1150fae38a85657180b97847132",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/foundation-touch-target-contract.test.ts",
+        "sha256": "b00fb81d1876fadbeaf702d3ffb14b2e66431394ab9f077deb4b7191d870520d",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/home-discovery-state-contract.test.ts",
+        "sha256": "9b33bc606d4aed0bfcc1263666d04cc1de19299e0397e63f1aafc2fa825184c2",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/home-entitlement-truth-contract.test.ts",
+        "sha256": "378bb1951c3c01a447730942e10372086da30ed2ea3728dfbb2bd269450372e2",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/home-live-content-contract.test.ts",
+        "sha256": "406ee1b8d5f2cf63c57f63e163a0fe3e1f558bce974414eeb5aae985bd7c7108",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/location-modal-touch-target-contract.test.ts",
+        "sha256": "950d857610c912012572b87b0067f8483ea371fae83ea2da1013a896805f5feb",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/medical-support-contract.test.ts",
+        "sha256": "5e069116643a356352c46d484e4ee01ed673e5695abccd076b04ad51c15bef77",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/medicine-discovery-contract.test.ts",
+        "sha256": "ac5d7d0d70e2701a19d185cb5c56383ba2fc46454fdac8593a0af04d64e66c68",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/p10-groomer-detail.test.ts",
+        "sha256": "3622a6bad9aa91df5054825e7438a976e046c7d668b6f0d0d821a90a47002e1a",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/p10-groomer-slots.test.ts",
+        "sha256": "89348681f9f3f96238ae6f7d4f58f9db15a41be602090b190c311fd39c77ed5e",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/p10-grooming-integration.test.ts",
+        "sha256": "adbd93cdd29d912957ff3c8109dce16428db1c01d8f313e7916ac1c4fe27b3b9",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/p11-veterinary-discovery.test.ts",
+        "sha256": "d49a22bd5e5df6f1fff84252c9fcf7dfe21f0c1aade4993266fa5f577ba3a0db",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/p12-appointment-booking.test.ts",
+        "sha256": "fed5569b1cc0524668bcab16dc8bcf8bc51a3b017df3cd3ba62a471332f1bcaf",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/p13-appointment-payment-history.test.ts",
+        "sha256": "1beb014809beab6e5b07442837cebc74048b21bd31426ac7583055b6f9cf13d0",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/p3-favourites-contract.test.ts",
+        "sha256": "354f33174d2e90b558c0ba167938e77d2e8fd6ebf2763b95ff6cdac573a26eb4",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/p4-commerce-completion-contract.test.ts",
+        "sha256": "c3e3133773fb2ac83d8669f304caa8ad5032d27507ed8a22f0ecd831e14d57e0",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/p5-product-detail-cart-contract.test.ts",
+        "sha256": "f5ff1f1a5ec930294b1ccc9991b3c4b7457de10160d766a2878c98182be5a63a",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/p6-search-favourites-provider-discovery.test.ts",
+        "sha256": "96495cc21ecd03b5d364932c48a95eb2d5ebdd475b685ebd6639618229384108",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/p7-checkout-hardening.test.ts",
+        "sha256": "f30700dbfcbac6debf3fcaaa48c05dddeaec447e07dfb699a2bb95242b744931",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/p9-grooming-discovery.test.ts",
+        "sha256": "59755d69523d2dfdf01ca6ceaf824f189a595dde4d3594ba5f94d53382c8c0a3",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/phase-2-ui-contract.test.ts",
+        "sha256": "42b0f69db0781b6ed53ac922370fcefc867ecdf4e100a273b53470b8e7be4016",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/recurring-orders-contract.test.ts",
+        "sha256": "6b9b601681a614ae65ee85c349bbbb3f0d883c3f922397c6c44fe3acba0fc001",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/s12-commerce.test.ts",
+        "sha256": "38052a9d25026d33ba36826ec18b8b25e630e59f946db5485b46a6f6d73226c7",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/__tests__/t2b2-contract-corrections.test.ts",
+        "sha256": "b38333881511a84864af7a3f8a1de2b1a0350cec7a2883af3253cb645167bd9e",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/auth/__tests__/auth-intent.test.ts",
+        "sha256": "1fa8ec424850aaeb994555d7c53f9691a0068559ffaf25fe9c84e9177e5e5fc8",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/auth/__tests__/fresh-otp.test.ts",
+        "sha256": "4ac800130f1eec3cfd036811367e941324e6c9ed512cb82dfbcc89e3ee9a9651",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/auth/__tests__/otp-auth.test.ts",
+        "sha256": "bf68f61f42fcca47b161536322b99801526bd04e2eb6d5ab4b5f93a1d749209c",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/auth/__tests__/production-auth-communications.test.ts",
+        "sha256": "5ecf811d7e5db259e23fe7638c71768bbce4af80754ff5c1e2e852ad720f09f6",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/auth/__tests__/profile-completeness.test.ts",
+        "sha256": "a3bf4a21b5f599c34771f0f70d6bbe404412fdbc6125c94a31a1b2635d43d547",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/context/__tests__/FavouritesContext.behavior.test.tsx",
+        "sha256": "fb258c4569a2090faf5ee39b6a7c919aeb5c9dc5096d5633b0749b7abec0842f",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/contracts/__tests__/api-error-formatting.test.ts",
+        "sha256": "3f245f8fd991625817444e695a2c35f804302df1162b5213b9d5eb2447033c1b",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/hooks/__tests__/usePushNotifications.test.ts",
+        "sha256": "71bf89359b29bee4cb29844ef4325f61226d25235b8323059c1f57ac983e3b41",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/i18n/__tests__/i18n.smoke.test.ts",
+        "sha256": "db632d68f04773972b299c423f28ae12506262428caa360084344212035191ec",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/i18n/__tests__/s10-i18n.test.ts",
+        "sha256": "1d6be9090a67ae186c0e4f463c50d50e01a416e0b09619835e8b74f7d36cf320",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/navigation/__tests__/customer-navigation.test.ts",
+        "sha256": "0c03c922d5024c42a53cb9671eaaf51e5bbbe6696ebd5e5208c599fe310f5005",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/navigation/__tests__/route-patterns.test.ts",
+        "sha256": "b204ad69f0ed41ae0fcd680e54c84cd8ba10ec2923fa6150ed3e5ffc76e8065a",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/api-client-auth-epoch.test.ts",
+        "sha256": "ddff6f3bd3f5ed9319ae4c3b22d9306b94e386a59749b1acace4e4a7057a9949",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/api-client-refresh.test.ts",
+        "sha256": "519e27da22f4e636866f947d06c334db4194f7957c3bac41f07645192905780d",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/api-client-transport.test.ts",
+        "sha256": "14a5b54c5507d0722f6722529310a2836053abf2ec8be4418c25dbe633065cdc",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/api-convention-normalization.test.ts",
+        "sha256": "85a8f5689438f573a3e5db7fdfd39541b342470109b821040b9090e98555573a",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/appointment-booking-errors.test.ts",
+        "sha256": "5cf6b39195fd1a0d5d5a7295b4d360b8d4745bec19fe06bd50738aa553af4808",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/appointment-capability-isolation.test.ts",
+        "sha256": "22a8597710ceffa7df65219c57cd5873e00e3fc843ef6c1727f122d8806834ac",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/appointment-serviceability.test.ts",
+        "sha256": "ac19a3e65c4d10350f12bb1e34351c9b0281656722c1751b58cdcf98b8ed01ac",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/checkout-safety.test.ts",
+        "sha256": "f0f1c652098497ed3fdc4c33c97ce8cb2044fd3d9c16e8eb5426910668adaabf",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/critical-security-services.test.ts",
+        "sha256": "325652a2b0c2f75892a574f0ab505a61cb51cbe6a68b7da1402b7a89c4817907",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-appointment-payments.test.ts",
+        "sha256": "f410671c7d06364966b30762d6b6fb78a25a95ce1792cf89588cb4394cd307cb",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-checkout-contract.test.ts",
+        "sha256": "4dfd04a9f003cff1c7e7a7650854ba67755f01b6c37dd992b53203ab57f849e4",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-connected-services.test.ts",
+        "sha256": "740634b3e92ad015973168874b4f950da975715349212b50d90910ba05683ddc",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-delivery-contract.test.ts",
+        "sha256": "ced3992760f60a9db365f85656740d61d06a54ee209d52a088e54963d5c05e2e",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-discovery-filter-contract.test.ts",
+        "sha256": "302e521909f7ac4c4518e42938e8bddba797666083fefbda4f09cafb4d3ebf2d",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-loyalty-v2.test.ts",
+        "sha256": "26e608fd3f192c8970fb9182dcbcd2af40e389a22fc3b748180a59fe7fa9f70b",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-order-detail-contract.test.ts",
+        "sha256": "7fcb91d85fa020c5d3522c4a13f5411a7adaa5a6787f46142e2b63669ec05261",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-order-list-contract.test.ts",
+        "sha256": "3c6b227a40856d8d9a816f24dfd64e34d95f2b839763e43a18e934455e10dcbb",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-orders-canonical-dto.test.ts",
+        "sha256": "577920815dfa8d97b8251f7d7ae28f5291f5a9b0b80f5d1381e8c488454bba22",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-orders-production-edgecases.test.ts",
+        "sha256": "64350863c9905d784999d9b602a1a74d786f76135ddd15e8ddbfca6291c1755c",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-profile-data-contract.test.ts",
+        "sha256": "94992b4c65d87f967c2d587a47c422c9377b22484d692d7f99c34f70f8863396",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-quote-contract.test.ts",
+        "sha256": "b69af5e061d76e5daeede8a4070d006fa35a006a4f6efa4d1a15950d6dccfce5",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/customer-service-foundations.test.ts",
+        "sha256": "a6553d20394adeae1c540a86f5c1f6ce9d253eb40948cbef6d61b0114da1f541",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/demo-customer-data.test.ts",
+        "sha256": "26e1845235d0ca7453788d1a68d25779d1e911bedcf6e286ce96306095e2ebb6",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/device-location.test.ts",
+        "sha256": "390895314990d2f2846bd949c01a866ab65874af3b164c6c39c0941bd09b8632",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/high-risk-customer-services.test.ts",
+        "sha256": "c4564babcd530b92d15baf7fe5133342aae4ea7c5cef08cc8d5907a036cd7982",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/p10-grooming-services.test.ts",
+        "sha256": "5ce21fd3a6449715618464b4d47f46cbc05a5c1bc7690c62ee4017f7224adaad",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/paginated-catalog.test.ts",
+        "sha256": "74c25cd346733e8afe9a5a5e6f893eee4399d0db49d745731ea908f96d32312d",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/privacy.test.ts",
+        "sha256": "908e8bccfcae8ca661f263d2686fdf3b1027a03a0707f0d78661d4e799aff486",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/production-service-coverage.test.ts",
+        "sha256": "a57b920b909225127d6a6b1dcb48bef3cf38b42c3ea147e956e92c971955ed29",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/provider-profile-serviceability.test.ts",
+        "sha256": "d0b0348cfa332c74275d625bec0af0adb1df10a5177d3034e449c9da004c70d7",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/recurring-renewal-behavior.test.ts",
+        "sha256": "2d47bdb4fca9ea86c89951a77301866804b39575ac62fe638f81258d9955f6e9",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/services/__tests__/route-catalog.test.ts",
+        "sha256": "cb42cb17b1f1d0ffdcae0a300db06120eb2b0d046b81bb7fb9e1faa897785857",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/utils/__tests__/app-config.test.ts",
+        "sha256": "5cc1bd00514da734341ad03268e80d391d14b95c76b0f9d59365ad150f8e2379",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/utils/__tests__/customer-navigation-safety.test.ts",
+        "sha256": "1639e16734e423d2d14fddea94cd3498b795c5ae6f132dce843b397477b99ef8",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/utils/__tests__/installation-id.test.ts",
+        "sha256": "49ccb563ae8b244cecf743f72bb1d04dff55ff7d00a238514a411121ec4ccf40",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/utils/__tests__/production-utilities.test.ts",
+        "sha256": "1546bb2324d298c5b914cedafc6c9bc92c3f65c67755d9c80ac162227ffa8525",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/utils/__tests__/secure-session-storage.test.ts",
+        "sha256": "3a4fc6b7abfa687051b235e2f2cc230f3734a98c5fe5240074277eb636596e95",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/customer-app/src/utils/__tests__/uuid.test.ts",
+        "sha256": "1e3d23af2c9e5d772027a7f5c4811cf373cf283a8b21e01efccf8ecadc60ee20",
+        "sourceModule": "Customer"
+      },
+      {
+        "path": "apps/merchant-app/app/inventory.test.tsx",
+        "sha256": "b92df0d7f0ae1478313fd8e930352ecceecd44df3c1ee93f8fccc2432f4dab5f",
+        "sourceModule": "Merchant"
+      },
+      {
+        "path": "apps/merchant-app/src/appointments/api.test.ts",
+        "sha256": "ff4ab95d7ef54f1d4a1716f2136c7bb90a556541be8ece3694ca91ab71b21dd0",
+        "sourceModule": "Merchant"
+      },
+      {
+        "path": "apps/merchant-app/src/auth/session.test.ts",
+        "sha256": "a890726f3982f34ed8ea98ae51976fbe7b9de537aea6f1e027f9292345adb5b1",
+        "sourceModule": "Merchant"
+      },
+      {
+        "path": "apps/merchant-app/src/barcode/api.test.ts",
+        "sha256": "fef705e18cd31732e4f5ef0a67d0b8441ff5eb033f99eba72ff0c4d5673530d9",
+        "sourceModule": "Merchant"
+      },
+      {
+        "path": "apps/merchant-app/src/barcode/model.test.ts",
+        "sha256": "d8a7e0d741e86be984df23a56322f0681bf98bc7f61f89abc18e3f1e0bc2f312",
+        "sourceModule": "Merchant"
+      },
+      {
+        "path": "apps/merchant-app/src/catalog/api.test.ts",
+        "sha256": "f3a62a15c7cdc9f5dba138f579f1bb906901cfe9b31473f5bc93453c50bc67fd",
+        "sourceModule": "Merchant"
+      },
+      {
+        "path": "apps/merchant-app/src/catalog/model.test.ts",
+        "sha256": "064471556f2adc7fd667848141ccbf5d5f519593d1b221fff02d93d909819b17",
+        "sourceModule": "Merchant"
+      },
+      {
+        "path": "apps/merchant-app/src/inventory/api.test.ts",
+        "sha256": "ae904dac4f6bb09d161b173645a23a08895e8b1fb7d27ebf731efeed118412f3",
+        "sourceModule": "Merchant"
+      },
+      {
+        "path": "apps/merchant-app/src/test-support/offline-harness.test.ts",
+        "sha256": "a251f7a3257e33713dc23e9f6cd4463b418ea544cd78d36d81d00696e9062b75",
+        "sourceModule": "Merchant"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/ApplicationApiContractTest.kt",
+        "sha256": "240eeeed3c0e42bf2a4c0be614b0d3cf60a64dcaaf5b2e9db38a568d82a578cf",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/CaptainDeliveryApiTest.kt",
+        "sha256": "03f8aea8f70a95f4b92de3f2cca0fc83012042ee7f97785d14cf04a01f272fe9",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/CaptainIdentityApiTest.kt",
+        "sha256": "7688b7cdd6810bcc35473b053a281bce920a0b029bdc8a517e4a078eeff39aab",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/CaptainProofAndContractsTest.kt",
+        "sha256": "d43cdd2f171e6e41bcbd8507e30a3e96e8058aaf5609ee344b1321b7d0d1930c",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/CustomerAppointmentApiTest.kt",
+        "sha256": "b66114009e72eadff6b75b6deeaefff209744c7ae05aeb3b5d9468ee1e924974",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/CustomerDataDeletionApiTest.kt",
+        "sha256": "13e764e194ca5c1795ddd351ae2768c22306ebf9d1a4dade947b6bd6a2e0d2b8",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/CustomerDeliveryApiTest.kt",
+        "sha256": "9947cc6edeed0b5d22ee3f5e28c8b0f216842203351b16179036a9b0ac26c43a",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/CustomerFavouriteApiTest.kt",
+        "sha256": "27c03376833a3bf3816ae5cb632f460ce3594d7b556b3556e9cccfd07df53980",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/CustomerOrderDetailSecurityApiTest.kt",
+        "sha256": "087bf771254da34b0cb989644c7f7f586b3b007c9cea2cdb9cbe4743d9659288",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/CustomerOrderListSecurityApiTest.kt",
+        "sha256": "9f42ddbca6ba0591fca08c8933aea0270643d15f85611ef233cf6ee0d06f0146",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/CustomerPaymentApiTest.kt",
+        "sha256": "baa8f5635c9eed688ea32240d8cb32b9a6432572b8226092741ac5fa940310f9",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/CustomerProfileDataApiTest.kt",
+        "sha256": "d8f931d3a613f4e4bcb0bf5b39143dbd2578fe1f96d20d531f1e7898bbcae651",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/MerchantIdentityApiTest.kt",
+        "sha256": "b9c5b943b085735fa65b3dae6ced69b232fdde9b9aee1f18f1dc4f49f4722838",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/PublicCatalogApiTest.kt",
+        "sha256": "6e8982ee2a60bf39d0fd0827fa88be9df19b29da757496e16c3c5c9e41182f2a",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/PublicDiscoveryFilterApiTest.kt",
+        "sha256": "d6434c0c1cc53a5abf5d2b0ff5d9f0e36d74ae218b369eabdb3eb6f93cc0c147",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/ServiceRegionApiTest.kt",
+        "sha256": "f5f108cf06f3d2346d870ae9d4510bae8bf7fe3984414b9c606530c35f599231",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/api/WalkingSkeletonApiTest.kt",
+        "sha256": "260f2045ea4663c8b3a64899165c21b3b528fc625e43169a64c7f4c49157abeb",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/application/StagingRuntimeConfigurationTest.kt",
+        "sha256": "97f804df4c9015f11bdb2ff77211bebcc24ee39bb0b087357bee09d5567237f2",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/appointment/AppointmentMerchantLifecycleTest.kt",
+        "sha256": "f542577d7f1aed03ffe85973d92c455b0148c36b17cbad70894b3999bf66c2d9",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/appointment/AppointmentServiceTest.kt",
+        "sha256": "fa1c1d3aebce24fdc6eecef0bb7a235fa8c1aadb983338f3ce63234179b0dfda",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/appointment/JdbcAppointmentPersistenceConcurrencyTest.kt",
+        "sha256": "0295d49cb3ff614f2240134a55b83aa5acc371968981b8f8ae72c0a75a4665f3",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/appointment/MerchantAppointmentQueryTest.kt",
+        "sha256": "61e84eafaeaff46def19c069da09207cd514c5657b35ebe54203334b7c507819",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/appointment/P10AppointmentContractTest.kt",
+        "sha256": "73328f5d7e9883feca38a93cce841279691e37b0321bf2b727cdd2ec7b8be16f",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/appointment/P12AppointmentAuthoritySecurityTest.kt",
+        "sha256": "97200038ce6a2254169c327e1410b5a81d5766ca71a51e93b508798a46793f6a",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/architecture/ModuleBoundaryTest.kt",
+        "sha256": "f9224a4ce969a830d731c7ba99fdab8906ca2fe340769a1f23b20f8397e33780",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/catalog/BarcodeCatalogContractTest.kt",
+        "sha256": "36522f311d90108b27b8b73e6d47c63619115e2992674e1851dfacb259483a8f",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/catalog/InventoryServiceMerchantContractTest.kt",
+        "sha256": "80b69669d4b5f51025fbc9060853580264f74515bae4b3aff86031afb0bbab8d",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/catalog/JdbcCatalogPersistenceContractTest.kt",
+        "sha256": "056de0a5b3243d1f34fb6ec4c16afa277c66240836066480b2b9c39df12a8c65",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/catalog/JdbcInventoryPersistenceContractTest.kt",
+        "sha256": "d3ce201e162f28dc604cddef0824611fc9bf0e02d414e9de49283b3567671f2e",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/catalog/M2CatalogInMemoryContractTest.kt",
+        "sha256": "d3e9dafec3df4acedde468c2c5210d17a5dd30f94e089ec22369b627c120bc4c",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/catalog/M4BarcodeResolutionContractTest.kt",
+        "sha256": "6cb43ea012f19820cdffdc6b5b0ddb7effb7b34ff8d00b4a21c60085bdd9e5e4",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/commerce/CommerceInventoryContractTest.kt",
+        "sha256": "723467064d06d7db9ac27a44d5c1ca1f6db81493a5e10c092037226f478ef726",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/commerce/CustomerOrderQueryContractTest.kt",
+        "sha256": "d26bd97b2d4159ac6fed5cff84e13d91b514f112871e6f202c8fe7f88c186eeb",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/commerce/JdbcCustomerOrderQueryContractTest.kt",
+        "sha256": "71beb7630d046d00c6c034126448b75fbebd5b75bb6b09a29401a25713fa9491",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/commerce/JdbcOrderPersistenceContractTest.kt",
+        "sha256": "b02cb146a9a875ea1864323f832c97322a256543c7201d2e3d46ae626d387b3e",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/commerce/JdbcQuotePersistenceContractTest.kt",
+        "sha256": "d5524097a64498ff053a5834dc03e61c6d857c7999f5f10a789860cb29b945ab",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/commerce/OrderLifecycleActorContractTest.kt",
+        "sha256": "77fe457083e825e779344ff0f9e86f51f717dcc40b2c7682b49cc12daf04b256",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/common/CommonKernelContractTest.kt",
+        "sha256": "dfc84ebc8def466a993fa52bf2d28f257c31c199b64e79f7acb4a8f8407e6737",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/common/SensitiveDataRedactorContractTest.kt",
+        "sha256": "414efddf878ca2a8bf3fdc763aeba65c5d681729814f7549e078efe09f80b147",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/customer/CustomerDataServiceTest.kt",
+        "sha256": "d99d3a6e69ea35341d155c1e888eb8a2b5e489d4f2b53b78acf670cf26043169",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/customer/CustomerFavouriteServiceTest.kt",
+        "sha256": "17e959bab79c23c798749dae31317c6f6f7b36804812c9987f191437ed9424e0",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/customer/JdbcCustomerDataPersistenceContractTest.kt",
+        "sha256": "4d7db518cb66add5ed5a39d71e321bf2d0191f98e9e3c2fa5efd589a9a05b6db",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/customer/JdbcCustomerFavouritePersistenceContractTest.kt",
+        "sha256": "c5090b115cae12d258179f302fde744f521054c0960e45b67a1ff1ef52d524fd",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/delivery/CaptainDomainServicesTest.kt",
+        "sha256": "5114da48727c162d6f907ce37d6023a27d39fbc80d3170b3baefd6bc52a2b341",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/delivery/DispatchRetrySemanticsTest.kt",
+        "sha256": "8d1a560b40e481a2173e0f2b1be0eea264925a65ec7e79476193da712a1cef9c",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/delivery/DispatchServiceTest.kt",
+        "sha256": "3cd0f123b6826fba13d45db0a5d4c3d25aa1cf2ddc68be24caf90f4931136e9e",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/delivery/JdbcDeliveryDataEraserTest.kt",
+        "sha256": "d20d06c95546ca8f8c46cddece72b7fd29dbf6ff8d69741882c654d06fa6a7f1",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/engagement/DeviceRegistrationContractTest.kt",
+        "sha256": "24bda2b1ad1d241f8734ba22ba3acbcd34de04bfd81959326cbec0010e43a683",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/engagement/FirebaseNotificationProviderContractTest.kt",
+        "sha256": "fc8316f008462992c013b731ba98723ab54a696f7c93ce230a69fc2da833f69f",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/engagement/NotificationDeliveryWorkerContractTest.kt",
+        "sha256": "9ea6655e0a09dbb4f616967fde1515a4cee0ccc17ce1b79e263b534edf30da9a",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/engagement/infrastructure/FirebasePropertiesTest.kt",
+        "sha256": "c94bbfcdc42d442659218ebd699fa498bf99798fada5beeaf032d918f6b2517c",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/engagement/infrastructure/NotificationDeliveryConfigurationTest.kt",
+        "sha256": "d241765628bbad6bc1ca0819f83efa01b656842a09a02783a8d1bcf359a4a8b9",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/identity/AuthorizedMerchantSessionIssuerContractTest.kt",
+        "sha256": "0b5cb3b784e51f2b63f4b73a9becc524c2096e710e2eeb611ce2095482f16a1e",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/identity/IdentityContractTest.kt",
+        "sha256": "1b61d64623ed48b793b0878ff1c6b70d0ba671aadfcd48b1c872da1a86e0cf82",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/identity/MerchantPrincipalResolverContractTest.kt",
+        "sha256": "e3f6c44ab2d4d9f54666ee37b5f9061aff7ac9f858d93fa123c4291397e6a67a",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/loyalty/JdbcPosLoyaltyContractTest.kt",
+        "sha256": "c6026ae5bb8155520e4e09aa494bdc86465a93c576379af0060f641a35afe4de",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/loyalty/LoyaltyRewardProjectionTest.kt",
+        "sha256": "d80dfa268760b6bfdae8317d321813a9293756c7e99c4a9035a0df158c2b47ee",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/loyalty/PosLoyaltyNotificationContractTest.kt",
+        "sha256": "ea1912e89c0dd847dee353d68219e0f608407ee6fd91ac9b1555b589926a5e9f",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/ConcurrentScenarioRunnerTest.kt",
+        "sha256": "52a3982906b6d0f058256dbf2c8fd52b2477bec8382c66491ab3e7b10e320778",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/M1MerchantAuthorityPostgresContractTest.kt",
+        "sha256": "17ee60f9e3e2f1b78176463e35f9112c4122f9bfbdc12c02ea2155e0ef102ae7",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/M1PostMergeHardeningContractTest.kt",
+        "sha256": "8be4a67a3515ce00f1d72c0df6c2f9c63405852d743c27a89201cf910d7083bc",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/M1ReplayRevocationDeletionContractTest.kt",
+        "sha256": "7195eee609e22ec33a26379e1c7a9a1d0b1f71bc59ec0575906cf4391f6b24dd",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/M2CatalogAdversarialPostgresContractTest.kt",
+        "sha256": "3befed779c6b7813aa9f10f4d7d9894dc6253e4d76c40868b056f6f276a6db23",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/M2CatalogPostgresContractTest.kt",
+        "sha256": "9d656256a2639ed2de53ef857824b3db0bc299be85825227425b3acd29c4768b",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/M3InventoryApiAdversarialPostgresContractTest.kt",
+        "sha256": "e51fd9fe99dbbd018b213fb87418764bccbf631b643edbcbba91f5449c9bb583",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/M3InventoryPostgresContractTest.kt",
+        "sha256": "1cdacf5347ec923434a3dd1ddf46e9ecae26f78db46c8870af173dc8e75ef1d4",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/M3InventorySourceGuardContractTest.kt",
+        "sha256": "92ae2d8b6052bc9c28cfb61ea8bfeebf96f2aa24d3ba304de7c87d209051735d",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/M4BarcodeResolutionSourceGuardContractTest.kt",
+        "sha256": "8a7d509b6ab973682067193273221838a8d74e102c6ed7fcab25f16f1dfc960f",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/PostgresMigrationContractTest.kt",
+        "sha256": "e0214d5c940e9518e133e90f26a7488a4c3e8cc4e15a1ff126c2e3cf2381e3d1",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/testsupport/CommandReplayAssertions.kt",
+        "sha256": "6d6b224cfd796acad0e9caee5b9a6c6c9f30f8646ae898be92a001d8725a5792",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/testsupport/ConcurrentScenarioRunner.kt",
+        "sha256": "e919522009a362b05abc0b8bd3903a40cdb7da78625896e642fc6377cf2ad469",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/testsupport/MerchantOpsTags.kt",
+        "sha256": "6532feb548ffb7a23b978aae1e42e3ffc4d5db121012bf67460b22e3ca6bf693",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/testsupport/MerchantScenarioFixture.kt",
+        "sha256": "2de5ae939d13426e58ca35dd84889dff610ce4e5728c160f33ceed27d0965e14",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/testsupport/MutableTestClock.kt",
+        "sha256": "770b00aca26c92b8dbd934c89c9708e686efd40dea7eb389fb2ea505c05d04f3",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/merchantops/testsupport/PostgresTestDatabase.kt",
+        "sha256": "c4ffb831ac4f752720dc4b0763a2e56d2d19b8ac04dd1e28dc047698e7603f79",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/payment/AppointmentOnlinePaymentSourceContractTest.kt",
+        "sha256": "acbdd4cacdc2bf88006ca382d32a2dd7939dfa9e566fd56c7ed4c57a7194a742",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/payment/CashfreePaymentContractTest.kt",
+        "sha256": "d407ee5336e9cbed14c073c92c7994499b040d7ce24b50a76b751133f56e8a8b",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/payment/JdbcAppointmentPaymentStateMachineTest.kt",
+        "sha256": "a5659cfcb1bd21ce981b3e6a9be92da5d90182affe9e358ae6ee94184b10b49f",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/payment/JdbcPaymentFailureRaceCertificationTest.kt",
+        "sha256": "0ef027e9e0444ac5130968458ce46708b4460e16f7e19cc035c6458d241c6d2a",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/payment/PaymentFoundationTest.kt",
+        "sha256": "11e84f4436c823534b31d613a07145acd6ece37ec1914d41af9e9cd4cd7fc817",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/payment/PaymentServiceLifecycleTest.kt",
+        "sha256": "1839a22139018bbeed530834979f77678316dbf10a6cb4cf9311636feddaf0a8",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/persistence/FlywaySchemaContractTest.kt",
+        "sha256": "6e26205af37c94b0231d3cfa7b0e90a4bcb2396bf0f31fb48a6a43f0fb4a5fb0",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/privacy/PrivacyApiContractTest.kt",
+        "sha256": "3553e0fa5b45abf58136d141cb47bae2effcfaa3d527211576d97031fe83de02",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/provider/ProviderContractTest.kt",
+        "sha256": "7e2a7a522843e1d74076b00ce81dd159996fa9df1aec66f0fbff9742d2b62bf9",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/recurring/GuardedRecurringOrderPersistenceConcurrencyTest.kt",
+        "sha256": "710b264ef3a58a7d1ffe67ecd345f7b34a98f716c608dbc6679ac467241de713",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/recurring/JdbcRecurringOrderPersistenceConcurrencyTest.kt",
+        "sha256": "7303c30a68a1dceb6ccb06ba52ac9e3ce9f4202e9cf377c4b342b3f433df9969",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/recurring/RecurringOrderServiceTest.kt",
+        "sha256": "032a474812a3f564a27d73c0521da70a4ad8a10ccf1ac0de507ec482f5827667",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/security/BearerTokenServiceContractTest.kt",
+        "sha256": "4d1aa7e27592f7e155340fe88a9419523af6c61aabecbfd5eebadd12567cfa4c",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "backend/src/test/kotlin/in/mypetnew/storage/DocumentStoreContractTest.kt",
+        "sha256": "b4b10442d37c56b758bfe2542d995c48ba0bd059438d7ad81b953306be4e700c",
+        "sourceModule": "Backend"
+      },
+      {
+        "path": "scripts/merchant-operations/validate-program.mjs",
+        "sha256": "af381ec1c6754661b24881e6f4bc95ba8a169f3211561b960f5e375e901b7ec2",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": "scripts/merchant-operations/validate-program.test.mjs",
+        "sha256": "73bf92317378d773d33f3d707f887de130cad1c779ef5cd19f18ac4dc536212b",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": "scripts/merchant-operations/verify-forward-migrations.sh",
+        "sha256": "8e4ff1daa20b3c966eecf6b196d3ca64b3c4f8880e07924c39247930cbd4d9d3",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": "scripts/p5-cashfree-checkpoint3-evidence.sh",
+        "sha256": "374550613fd31926c36722d2c9499f7c5f3a801edb34bf767a1f4af9d59b4b83",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": "scripts/p5-cashfree-sandbox-preflight.sh",
+        "sha256": "9df26418765f702b9f5f3cd60ad6e602adec14857cbebd1763b7237ebb5a82b2",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": "scripts/verify-captain.sh",
+        "sha256": "cd4b82393b1d4e256ff756305d1f4215984afa265f21a9bb96a88cd3f0289ac6",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": "scripts/verify-merchant-operations.sh",
+        "sha256": "f7e749df04a9946e8aff0ff3e6a0500059c41ff4a9e6cf78d4be9c8386e2f9c7",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": "scripts/verify-merchant.sh",
+        "sha256": "9cfd7c22bb37856ae922128dd996ea8ce6e0f2e283345b366e5a1924dc4c221d",
+        "sourceModule": "E2E"
+      },
+      {
+        "path": "scripts/verify.sh",
+        "sha256": "99955dc0dcea51b99172ee8a6bab1be91c099a6f1b4cb05c52085e9df5c03513",
+        "sourceModule": "E2E"
+      }
+    ]
+  },
+  "localEvidence": [
+    {
+      "path": "apps/customer-app/src/__tests__/customer-journey-contracts.test.ts",
+      "sha256": "8f388d0e7a120f34ae8e8a12b7e09805c60f54d250329a755d9d9e31c6c6ba18",
+      "category": "preserved-regression",
+      "verificationScope": "local-hash-only"
+    },
+    {
+      "path": "apps/customer-app/src/__tests__/food-filter-tags.test.ts",
+      "sha256": "77cefd926357557b385b4ac2596e9231be63308494e41d39343c7562b404fce9",
+      "category": "preserved-regression",
+      "verificationScope": "local-hash-only"
+    },
+    {
+      "path": "apps/customer-app/src/__tests__/p5-product-detail-cart-contract.test.ts",
+      "sha256": "0ed89ae10eed619e63394a225c18933e09fac4d14568c944688732b20d18f8cd",
+      "category": "preserved-regression",
+      "verificationScope": "local-hash-only"
+    },
+    {
+      "path": "apps/customer-app/src/__tests__/s12-commerce.test.ts",
+      "sha256": "d30528005c1ea212d1210a9ea643ad93f6e4ac83e2df78c264bb260c7147d224",
+      "category": "preserved-regression",
+      "verificationScope": "local-hash-only"
+    },
+    {
+      "path": "apps/customer-app/src/services/__tests__/paginated-catalog.test.ts",
+      "sha256": "8f76f2ae6044d22b1a8befce41b97f2779632df86abed1290f9499dacc088461",
+      "category": "preserved-regression",
+      "verificationScope": "local-hash-only"
+    },
+    {
+      "path": "apps/customer-app/src/demo/__tests__/customer-data.test.ts",
+      "sha256": "9ec39b175574b21faacb1a99021abf04dec8dc3397ce9f788c0046072a6bf3e8",
+      "category": "additional-dirty-candidate",
+      "verificationScope": "local-hash-only"
+    },
+    {
+      "path": "apps/customer-app/src/__tests__/demo-isolation-architecture.test.ts",
+      "sha256": "7d7afabe7fd0cb7a61aa04db0941cc01d4f64a76fc374ebc2b07a31b89f171ed",
+      "category": "additional-dirty-candidate",
+      "verificationScope": "local-hash-only"
+    },
+    {
+      "path": "apps/customer-app/src/services/__tests__/backend-capabilities.test.ts",
+      "sha256": "b52eca481a66537acc3f338603af392d35c4cfefc5e734ab5e938a321b6c1d19",
+      "category": "additional-dirty-candidate",
+      "verificationScope": "local-hash-only"
+    }
+  ],
+  "knowledgeEvidence": [
+    {
+      "path": "backend/src/main/resources/db/migration/V10__add_catalog_listing_merchandising_metadata.sql",
+      "sha256": "fd44b7d773b7bd9335821c26befb5df602afbc2f65ec789a2c19b1291fa9baba"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V11__privacy_data_lifecycle.sql",
+      "sha256": "c95114600c5fbad781bba5944263b590a9f44cfb908bbf9f6fba2d2348177964"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V12__customer_order_list_index.sql",
+      "sha256": "895117d9d5744df26eef2a9ef5b5e764a43b44a717054fea1eca55634763f438"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V13__customer_profile_pets_addresses.sql",
+      "sha256": "27c9eff7253aa5b823ce22b26c43c1471d17806a073d5a9abc842971e5bfb096"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V14__customer_listing_favourites.sql",
+      "sha256": "81564b46aa8ef0750b486b422f598a0ed6bfe45f8ea17d6d5d4f4abe7f749612"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V15__captain_delivery_dispatch.sql",
+      "sha256": "ff9a50776b4559ae53304e562129f4573ab8b86db18aa3485e5b4c59d4b41d4d"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V16__customer_p5_payments_and_refunds.sql",
+      "sha256": "1ee61268af06ca76153c98ae2fa9893185a6c13f418ba92fb1f004e641dda35a"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V17__service_appointments.sql",
+      "sha256": "282cbcec58e2ea06eddda7b4b6f90a9c6dfc2178de1e4f6626a6ed862b041d8c"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V18__appointment_online_payment.sql",
+      "sha256": "4a2549a0e3a2f0bc5d30236944d484eb6a949303f63b24ab99f1945d7518d698"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V19__service_regions_and_launch_requests.sql",
+      "sha256": "f4e77adffa90a4fdfd218400b3fc82648df9624b1b48a8edc30a35a3469d931c"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V1__sprint_1_private_schema.sql",
+      "sha256": "41e08c34e7b8fe4cabe75c8b5c39fef54f8f639448d5d833e5e63335d5a32abe"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V20__customer_recurring_orders.sql",
+      "sha256": "3ad7df1cfd2e5b3b4b9272def2cadbd86affb83373c0114a1543c242806d59b7"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V21__recurring_renewal_proposals.sql",
+      "sha256": "4a1e3b7df3aa019239de3eb767b4b0cddbb8760f602d6078afc91041a2fe02f9"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V22__merchant_owner_membership_backfill.sql",
+      "sha256": "b49deb6b53628546c5a752b610f49f5cecade9a383991e5cc86a395f6469564b"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V23__catalog_lifecycle_history_idempotency.sql",
+      "sha256": "de0a6460f76ee6a86435c719e538a852ab9dac847f5c55f95678b983451c6d35"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V24__captain_proof_onboarding_support_earnings.sql",
+      "sha256": "73fac91e8400bc5527ae15e51279271d8060f27e5d6b8fa6e4eec1994c5a7e82"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V25__merchant_inventory_ledger_foundation.sql",
+      "sha256": "20c1d9b64e8a621b75c9888b4207635f6faa99f5c8219d5fb344a066c68d49ef"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V2__session_rotation_lineage.sql",
+      "sha256": "fc276fd5639c13a992a1aa96bae7e31c644d15d84371651bc5d03d3135148fdf"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V3__notification_worker_claims.sql",
+      "sha256": "535369b25e916ae427bfcd0892cd5bb503d74cd96044fbb033bb27d03f2ca31b"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V4__inventory_command_fingerprint.sql",
+      "sha256": "d416db67ba30d8c070e354ce5b67c23c4708d8c9f615576c9056d03e1b52b4af"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V5__order_checkout_idempotency.sql",
+      "sha256": "701664597bcf7f2847bf67320f4b885af421c670ad439a67908b716fe3abaf0a"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V6__pos_completion_fingerprint.sql",
+      "sha256": "a3db2608c9504fe1f3d14023cd4cdc31cc89d421dcad5e71dd717414c380ac7a"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V7__catalog_creation_fingerprint.sql",
+      "sha256": "9f805ce87f39dbf436c528ec897de6929a158d32562856100ff8abb40f6272a8"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V8__provider_replay_metadata.sql",
+      "sha256": "34f342c535e28784078ad59bd2f12b9a62d1dc20cf4a4e2a42db33320930cc26"
+    },
+    {
+      "path": "backend/src/main/resources/db/migration/V9__pos_association_fingerprint.sql",
+      "sha256": "5dffc4484ceb1bbe973e7473536693b6ed706ebe9b38c3fa110c2e2ddea1e3dd"
+    },
+    {
+      "path": "contracts/merchant-operations/README.md",
+      "sha256": "0eddc5bff6faf4fc3b6669ba1983d5819f8e281808cdd1fd1c7bc2d5ff508907"
+    },
+    {
+      "path": "contracts/merchant-operations/invariants.json",
+      "sha256": "db493062cf8b5efd884fd938808cb62da7a05e0c66e239338820ab9dc12440ca"
+    },
+    {
+      "path": "contracts/merchant-operations/program-state.json",
+      "sha256": "8b4c5603a48c44692f472362074711f46ee092818a8af918c00b3a488e267e0f"
+    },
+    {
+      "path": "contracts/merchant-operations/sealed-flyway-v21.sha256",
+      "sha256": "03ca8ad239a18d4bd9a5901e1a9994df63b2c271d9f8ad173e3ab90f26b587e9"
+    },
+    {
+      "path": "contracts/merchant-operations/sprint-dependencies.json",
+      "sha256": "175addb45c9024d1b0774e013120f34c1e87e83d9ec8094db2225f46e39c3d82"
+    },
+    {
+      "path": "contracts/merchant-operations/test-obligations.json",
+      "sha256": "4cf18397564e0c489e3b4bf5b58d60d68013c5a2824bd6100b58746d1a21c196"
+    },
+    {
+      "path": "docs/CAPTAIN_ARCHITECTURE.md",
+      "sha256": "2e94e55457b7aa1fbe971593faae32952e74415491b4f440d4fa7ec04094cb48"
+    },
+    {
+      "path": "docs/CAPTAIN_LOCATION_ARCHITECTURE.md",
+      "sha256": "a231e7f0b7fb7de67bcc57dc4a9eacf420cffd338385cd6849925493290c6ea8"
+    },
+    {
+      "path": "docs/CAPTAIN_TEST_MATRIX.md",
+      "sha256": "8ee5aaff0d695ddfdef378682c02c7e0a12f72cdea60f3b433ba65c587d5df16"
+    },
+    {
+      "path": "docs/architecture/CUSTOMER_API_COMPATIBILITY_MATRIX.md",
+      "sha256": "c1f395a772d2e88fc0e1a6244416f9fe1d8b9bb1fd59aa4a4596e292f057d953"
+    },
+    {
+      "path": "docs/architecture/CUSTOMER_PRODUCTION_10_PLAN_ROADMAP.md",
+      "sha256": "2bca3394cf1e62d16efa361faa4bb133a162084330529b7be464235eb76b4210"
+    },
+    {
+      "path": "docs/architecture/LEGACY_REUSE_MATRIX.md",
+      "sha256": "c03a1396d842aa72bfd450a759cb42a8924618c30faf35ec632149141379b16f"
+    },
+    {
+      "path": "docs/architecture/M0_MERCHANT_OPERATIONS_PROGRAM_FOUNDATION.md",
+      "sha256": "2e570a7b3b8a26ffe3ff7dad9e8e2472d140b7406123afdd02dae42f959a9349"
+    },
+    {
+      "path": "docs/architecture/M1A_MERCHANT_FOUNDATION_AUTH_CONTRACT.md",
+      "sha256": "5096aaf28ea03bb21b87c34847d202b7fe82cd6b54326e1fa794d3a239d67e7b"
+    },
+    {
+      "path": "docs/architecture/M1_MERCHANT_AUTHORITY_PERMISSIONS_OUTLET_FOUNDATION.md",
+      "sha256": "1703186aeb615423d12ef7d116164eaaf3828fb28d7047af5d6c9f5eec603437"
+    },
+    {
+      "path": "docs/architecture/M3_MERCHANT_INVENTORY_LEDGER.md",
+      "sha256": "84e31a7b7bb6ec43c65dddf86ae41a856eec6bfa420e51868cffd951d927da5e"
+    },
+    {
+      "path": "docs/architecture/P3B_DISCOVERY_FILTER_CONTRACT.md",
+      "sha256": "1ce45e53505def1bdc64e9d237b8aa0579fd20519ad7394061d70cce68002005"
+    },
+    {
+      "path": "docs/architecture/P4_CAPTAIN_DELIVERY_CONTRACT.md",
+      "sha256": "14a86ca8f6b5fc28e821fb1a967c2b116ec34a26ef5076afe968787ee53a9615"
+    },
+    {
+      "path": "docs/architecture/P4_IMPLEMENTATION_STATUS.md",
+      "sha256": "c81a2b987bcab1c39b81ad39060926fe1ac04c64bfa4b7f9312ab0d34510686f"
+    },
+    {
+      "path": "docs/architecture/P5_CASHFREE_PROVIDER_VERSION_DECISION.md",
+      "sha256": "33b0b236f10f32531596a57137a583d1a6990c96717626838a5a59fac9dcff9f"
+    },
+    {
+      "path": "docs/architecture/P5_PAYMENT_CONTRACT.md",
+      "sha256": "67fb237fa183a9812640c7064005b7fdeeeb448a28677b8f09eefc60140ac626"
+    },
+    {
+      "path": "docs/architecture/P5_PAYMENT_CONTRACT_AMENDMENT_20260815.md",
+      "sha256": "2fbe7e8287d1165d3ecc9c278303ff9baed8b3bad1006c21f0a047a153df8191"
+    },
+    {
+      "path": "docs/architecture/SYSTEM_CONTEXT.md",
+      "sha256": "f2756b639a175fd2daf087359897334f216c2527b9d7dbfaaae91c389ccf09f3"
+    },
+    {
+      "path": "docs/architecture/T2A_CUSTOMER_AUTH_SESSION_CONTRACT.md",
+      "sha256": "30aca4baad08dfd385ca1a2d103f9d7e7f4c1336c1ebef9c8221d322afa5e369"
+    },
+    {
+      "path": "docs/architecture/T2B2_CUSTOMER_CATALOG_RUNTIME_CONTRACT.md",
+      "sha256": "1b3322713f2f2f6263cc5867d1f25d33189478889be2d03bb4a9905c7f154c79"
+    },
+    {
+      "path": "docs/architecture/T2B_CUSTOMER_CATALOG_CONTRACT.md",
+      "sha256": "4445efaa68c8ab4677908d43ab0a89427e8346a5400785339ce5955659a7b8b1"
+    },
+    {
+      "path": "docs/architecture/T2C_CUSTOMER_PICKUP_QUOTE_CONTRACT.md",
+      "sha256": "60c6dc7267cbe135bb36bde90a1ec82f66f2199e12680cf3a820922d68e7381e"
+    },
+    {
+      "path": "docs/architecture/T2D_CUSTOMER_CHECKOUT_ORDER_CONTRACT.md",
+      "sha256": "7ed046b203586143b138beae7389f7ac8bf2d51f9c0a07afeeb467f16b628092"
+    },
+    {
+      "path": "docs/architecture/T2E_CUSTOMER_ORDER_DETAIL_CANCEL_CONTRACT.md",
+      "sha256": "e5eab6ac396a96fafefe357773aa84d6bc9b270349eeedb301f1fe7f75608caa"
+    },
+    {
+      "path": "docs/architecture/T2F_CUSTOMER_LOYALTY_READ_CONTRACT.md",
+      "sha256": "cbbe0df754ba71afc65bc7a3d150a92f50767adc530c00a5a418d17b6defb8a4"
+    },
+    {
+      "path": "docs/compliance/P2_CUSTOMER_DATA_INVENTORY_ADDENDUM.md",
+      "sha256": "841ffd0833507c657c9b97ed64d8fd4ae39d0388cdef15e3163faf562ce328ef"
+    },
+    {
+      "path": "docs/compliance/P3_CUSTOMER_FAVOURITES_DATA_ADDENDUM.md",
+      "sha256": "abad3e1ad30f199b51929d44ba56be970b2ce9053f5c4ddc09bfbf1eff6bcd95"
+    },
+    {
+      "path": "docs/compliance/P4_DELIVERY_DATA_INVENTORY_ADDENDUM.md",
+      "sha256": "ec5ca161fd6be891edb157c0378d5b765223afb3594aeceb6e4a41019ebf7d80"
+    },
+    {
+      "path": "docs/compliance/P5_PAYMENT_PRIVACY_SECURITY.md",
+      "sha256": "bfd89c41037d31e961f209299f930b2d6d6a697b4b92438abeb9e40cd464d0d9"
+    },
+    {
+      "path": "docs/compliance/SECURITY_ARCHITECTURE.md",
+      "sha256": "a4bbaefdc33e5f1479047e1827870eb2da620d2e7be9b7ad71f6cb289103c723"
+    },
+    {
+      "path": "docs/compliance/SECURITY_DEPENDENCY_EXCEPTIONS.md",
+      "sha256": "37b25129210b622b44b22ba61340f45b746a1f545b0d6f2b0945b5ad3c0c7e92"
+    },
+    {
+      "path": "docs/customer/P1_FRONTEND_PRODUCTION_BASELINE.md",
+      "sha256": "ef72d1bba134bcb625f6fc3c74f3e1ec73bd02c21322f34333be10dc837d1c19"
+    },
+    {
+      "path": "docs/qa/CUSTOMER_APPOINTMENT_MIGRATION_VERIFICATION.md",
+      "sha256": "62417382b64af71078e2408bfa11e8e815078168df6f884699c8ecc17771e695"
+    },
+    {
+      "path": "docs/qa/CUSTOMER_DEPENDENCY_SECURITY_TRIAGE.md",
+      "sha256": "ef741b7a660596e4c9ba1c84338b29c8c3b95376b29f05ec7db6496ac8d1da29"
+    },
+    {
+      "path": "docs/qa/LEGACY_MIGRATION_REPORT.md",
+      "sha256": "0cf53e5c277368fe627ef106638a3dea8ef421196d367658e25de0df82ccad1d"
+    },
+    {
+      "path": "docs/qa/MERCHANT_OPERATIONS_TEST_OBLIGATIONS.md",
+      "sha256": "5bb5e6438a224417e4d6515c27582a93a22818a6c439bc3b817d3ea5bd59c8e2"
+    },
+    {
+      "path": "docs/qa/P4_CAPTAIN_DELIVERY_TEST_MATRIX.md",
+      "sha256": "de7481fbe45347526c705bd4834896d77659bd9146aa2f2c8f267a25967481ed"
+    },
+    {
+      "path": "docs/qa/SPRINT_1_HARD_TEST_CASES.md",
+      "sha256": "74fca6046ae6696c7e12da9dea81abf54fdd7001b146ed8564673f9c7bb41231"
+    },
+    {
+      "path": "docs/runbooks/P2_STAGING_BACKEND_RUNTIME.md",
+      "sha256": "b69c7b5ca39704c9beb28413bbc683ce5f46d03056a2dce5b11b4e24a39b1714"
+    },
+    {
+      "path": "docs/runbooks/P5_CASHFREE_SANDBOX_CERTIFICATION.md",
+      "sha256": "f27f5e3822f18b245e830099b4d540c00306e1d782984d3ac08a5d4ad40d5bf0"
+    },
+    {
+      "path": "docs/runbooks/P5_CHECKPOINT3_LIVE_SANDBOX_CERTIFICATION.md",
+      "sha256": "c4c1a4fbb509328ffcf6217e69fed2ac4a5feeb48b22d7f64d3dc363d544cf3e"
+    },
+    {
+      "path": "docs/runbooks/P5_CHECKPOINT3_STATUS.md",
+      "sha256": "5350d3835c7815541ec6947afdf052e2fb5dc131bd54b92d98080c85d3a8992c"
+    },
+    {
+      "path": "docs/runbooks/P5_PAYMENT_FAILURE_RACE_CERTIFICATION.md",
+      "sha256": "18dec0e3a1c8dabee3d7121dd86dbddf5ae7b1bc51e9a7bfde93e06a90a01bee"
+    }
+  ],
+  "extractionScriptVersion": "2.1.0"
+}

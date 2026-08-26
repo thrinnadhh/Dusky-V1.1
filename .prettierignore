@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+.next
+apps/admin-web/next-env.d.ts
+backend/build
+pnpm-lock.yaml
+contracts/legacy/MYPETNEW_TEST_INVENTORY.json
