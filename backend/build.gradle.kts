@@ -10,6 +10,8 @@ plugins {
 group = "in.dusky"
 version = "0.0.1-SNAPSHOT"
 
+repositories { mavenCentral() }
+
 kotlin {
     jvmToolchain(21)
     compilerOptions {
@@ -31,6 +33,7 @@ dependencies {
 
     testImplementation(platform("org.springframework.boot:spring-boot-dependencies:4.1.0"))
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-webmvc-test")
     testImplementation("com.h2database:h2")
     testImplementation(platform("org.testcontainers:testcontainers-bom:2.0.5"))
@@ -62,4 +65,3 @@ tasks.jacocoTestCoverageVerification {
 }
 
 tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }
-

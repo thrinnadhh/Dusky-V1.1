@@ -2,9 +2,9 @@ package `in`.dusky.foundation
 
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import org.testcontainers.containers.PostgreSQLContainer
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.testcontainers.postgresql.PostgreSQLContainer
 import java.sql.DriverManager
-import kotlin.test.assertEquals
 
 @Tag("postgres")
 class PostgresFoundationTest {

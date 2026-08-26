@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: dusky-backend
+  datasource:
+    url: ${DUSKY_DATABASE_URL:jdbc:postgresql://localhost:5432/dusky}
+    username: ${DUSKY_DATABASE_USERNAME:dusky}
+    password: ${DUSKY_DATABASE_PASSWORD:dusky}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+

@@ -5,9 +5,10 @@ import App from '../App';
 
 describe('Captain bootstrap', () => {
   it('renders its app-specific identity and active contract reference', () => {
-    const tree = renderer.create(<App />).toJSON();
+    let component: renderer.ReactTestRenderer;
+    renderer.act(() => { component = renderer.create(<App />); });
+    const tree = component!.toJSON();
     expect(JSON.stringify(tree)).toContain('Dusky Captain');
     expect(JSON.stringify(tree)).toContain('FOUND-APP-CAP-001');
   });
 });
-
