@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { validateSemanticCatalog } from './validate-scenarios.mjs';
@@ -185,4 +186,95 @@ test('rejects normalized boilerplate duplicated across unrelated contracts', () 
       }),
     /duplicated semantic boilerplate/i,
   );
+});
+
+const e2eCatalog = () =>
+  JSON.parse(
+    readFileSync(new URL('../contracts/scenarios/e2e.json', import.meta.url), 'utf8'),
+  );
+const registry = () =>
+  JSON.parse(
+    readFileSync(new URL('../contracts/registry/contracts.json', import.meta.url), 'utf8'),
+  );
+
+const requiredLifecycleFields = [
+  'checkpoint',
+  'initiatingActor',
+  'authorizedActors',
+  'from',
+  'to',
+  'trigger',
+  'interaction',
+  'databaseInvariant',
+  'idempotencyAndCorrelation',
+  'visibility',
+  'failureResult',
+  'businessDecisionRefs',
+];
+
+test('committed order and appointment scenarios contain implementation-ready checkpoints', () => {
+  const scenarios = e2eCatalog().scenarios;
+  const expected = {
+    'SCN-E2E-ORDER-001': [
+      'quote-cart-confirmation',
+      'merchant-acceptance',
+      'merchant-rejection',
+      'inventory-reservation',
+      'captain-assignment',
+      'captain-acceptance',
+      'pickup',
+      'delivery',
+      'cancellation-failure-compensation',
+      'terminal-visibility',
+    ],
+    'SCN-E2E-APT-001': [
+      'slot-availability',
+      'slot-hold',
+      'booking',
+      'merchant-confirmation',
+      'merchant-rejection',
+      'completion',
+      'cancellation',
+      'no-show',
+      'refund-compensation',
+      'terminal-visibility',
+    ],
+  };
+  for (const [scenarioId, checkpoints] of Object.entries(expected)) {
+    const candidate = scenarios.find((item) => item.scenarioId === scenarioId);
+    assert.deepEqual(
+      candidate.stateTransitions.map(({ checkpoint }) => checkpoint),
+      checkpoints,
+    );
+    for (const transition of candidate.stateTransitions) {
+      for (const field of requiredLifecycleFields)
+        assert.ok(field in transition, `${scenarioId} ${transition.checkpoint} lacks ${field}`);
+      assert.deepEqual(Object.keys(transition.visibility).sort(), [
+        'Admin',
+        'Captain',
+        'Customer',
+        'Merchant',
+      ]);
+    }
+  }
+});
+
+test('semantic gate rejects missing multi-stage E2E checkpoints', () => {
+  const catalog = e2eCatalog();
+  const contracts = registry().contracts;
+  for (const [scenarioId, checkpoint] of [
+    ['SCN-E2E-ORDER-001', 'pickup'],
+    ['SCN-E2E-APT-001', 'no-show'],
+  ]) {
+    const candidate = structuredClone(
+      catalog.scenarios.find((item) => item.scenarioId === scenarioId),
+    );
+    candidate.stateTransitions = candidate.stateTransitions.filter(
+      (transition) => transition.checkpoint !== checkpoint,
+    );
+    assert.throws(
+      () => validateSemanticCatalog({ contracts, scenarios: [candidate] }),
+      new RegExp(`checkpoint.*${checkpoint}|${checkpoint}.*checkpoint`, 'i'),
+    );
+  }
 });

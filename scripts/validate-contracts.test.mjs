@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { validateContracts, validateRegistryData } from './validate-contracts.mjs';
+import {
+  validateActiveContractProtection,
+  validateContracts,
+  validateRegistryData,
+} from './validate-contracts.mjs';
 import { validateScenarios } from './validate-scenarios.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
@@ -49,4 +53,60 @@ test('active downgrade and missing executable evidence are rejected', () => {
   const missing = baseInput();
   missing.registry.contracts.find(({ status }) => status === 'active').executableTestPaths = [];
   assert.throws(() => validateRegistryData(missing), /Active contract without tests/);
+});
+
+test('base-aware protection rejects every reviewed active semantic mutation', () => {
+  const base = structuredClone(
+    baseInput().registry.contracts.find(({ contractId }) => contractId === 'FOUND-CI-001'),
+  );
+  const mutations = [
+    ['domain', (contract) => (contract.domain = 'Backend')],
+    ['criticality', (contract) => (contract.criticality = 'high')],
+    ['businessDecisionRefs', (contract) => contract.businessDecisionRefs.push('BD-001')],
+    [
+      'provenance',
+      (contract) =>
+        (contract.provenance = {
+          legacyTestIds: [],
+          greenfieldRationale: 'Changed provenance must require explicit user authorization.',
+        }),
+    ],
+    [
+      'plannedImplementationWorkstream',
+      (contract) => (contract.plannedImplementationWorkstream = 'unreviewed-workstream'),
+    ],
+  ];
+
+  for (const [field, mutate] of mutations) {
+    const current = structuredClone(base);
+    mutate(current);
+    assert.throws(
+      () =>
+        validateActiveContractProtection({
+          baseRegistry: { contracts: [base] },
+          currentRegistry: { contracts: [current] },
+          exceptions: { exceptions: [] },
+        }),
+      new RegExp(`semantic change.*${field}|${field}.*semantic change`, 'i'),
+      `${field} changed without an exception`,
+    );
+  }
+});
+
+test('base-aware protection compares newly introduced active semantic fields by default', () => {
+  const base = structuredClone(
+    baseInput().registry.contracts.find(({ contractId }) => contractId === 'FOUND-CI-001'),
+  );
+  base.securityExpectation = 'Reject execution outside the checked-out repository.';
+  const current = structuredClone(base);
+  current.securityExpectation = 'Allow execution from any directory.';
+  assert.throws(
+    () =>
+      validateActiveContractProtection({
+        baseRegistry: { contracts: [base] },
+        currentRegistry: { contracts: [current] },
+        exceptions: { exceptions: [] },
+      }),
+    /semantic change.*securityExpectation|securityExpectation.*semantic change/i,
+  );
 });

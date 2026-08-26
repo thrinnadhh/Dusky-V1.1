@@ -82,3 +82,84 @@ test('ambiguous evidence is never automatically marked mapped', () => {
   assert.notEqual(ambiguous.disposition, 'mapped');
   assert.match(ambiguous.dispositionEvidence, /manual|ambiguous|insufficient/i);
 });
+
+test('uses curated path semantics instead of broad production and product substrings', () => {
+  for (const name of [
+    '4. production environment allows production',
+    '5. production environment is allowed',
+  ]) {
+    const result = classify('apps/customer-app/src/utils/__tests__/app-config.test.ts', name);
+    assert.equal(result.mappingRuleId, 'CUS-UTILITIES-REWRITE');
+    assert.equal(result.disposition, 'implementation-specific-rewritten');
+    assert.deepEqual(result.targetDuskyContractIds, ['FOUND-CI-001']);
+    assert.ok(!result.targetDuskyContractIds.includes('CUS-PROV-001'));
+  }
+});
+
+test('prefers feature-specific path evidence for favourites guest-to-server migration', () => {
+  const result = classify(
+    'apps/customer-app/src/context/__tests__/FavouritesContext.behavior.test.tsx',
+    'migrates guest products to the server and guest shops into the signed-in account bucket',
+  );
+  assert.equal(result.mappingRuleId, 'CUS-FAVOURITES-SUITES');
+  assert.deepEqual(result.targetDuskyContractIds, ['CUS-FAV-001']);
+});
+
+test('maps Captain refresh, coordinates, and money by bounded feature semantics', () => {
+  const refresh = classify(
+    'apps/captain-app/src/__tests__/auth/session.test.ts',
+    '3. 20 concurrent 401 requests -> one refresh flight',
+  );
+  assert.equal(refresh.mappingRuleId, 'CAP-AUTH-SUITES');
+  assert.deepEqual(refresh.targetDuskyContractIds, ['CAP-AUTH-001']);
+
+  for (const [path, name] of [
+    [
+      'apps/captain-app/src/__tests__/features/location.test.ts',
+      'rejects invalid or out of range coordinates',
+    ],
+    [
+      'apps/captain-app/src/__tests__/level1-unit/state-machines/location-state-machine.test.ts',
+      'rejects invalid or out of bound coordinates',
+    ],
+  ]) {
+    const result = classify(path, name);
+    assert.deepEqual(result.targetDuskyContractIds, ['CAP-GPS-001']);
+  }
+
+  for (const path of [
+    'apps/captain-app/src/__tests__/level1-unit/utils/money.test.ts',
+    'apps/captain-app/src/__tests__/utils/money.test.ts',
+  ]) {
+    const result = classify(path, 'gracefully handles null and undefined without throwing');
+    assert.deepEqual(result.targetDuskyContractIds, ['BE-REPR-001']);
+  }
+});
+
+test('generic accept and reject words do not imply assignment', () => {
+  const result = classify(
+    'apps/captain-app/src/__tests__/misc.test.ts',
+    'accepts valid input and rejects malformed input',
+  );
+  assert.notEqual(result.disposition, 'mapped');
+  assert.ok(!result.targetDuskyContractIds.includes('CAP-ASG-001'));
+});
+
+test('rejects a real unresolved overlap instead of choosing the first rule', () => {
+  const result = classify(
+    'apps/customer-app/src/__tests__/misc.test.ts',
+    'checkout payment and reward recovery',
+  );
+  assert.equal(result.mappingRuleId, 'MANUAL-REVIEW-AMBIGUOUS');
+  assert.equal(result.disposition, 'requires-business-decision');
+  assert.deepEqual(result.targetDuskyContractIds, []);
+  assert.match(result.mappingResolutionReason, /incompatible.*CUS-PAYMENT.*CUS-CHECKOUT-PRICE/i);
+});
+
+test('records an auditable resolution reason for every automatic mapping', () => {
+  const result = classify(
+    'apps/customer-app/src/context/__tests__/FavouritesContext.behavior.test.tsx',
+    'migrates guest products to the server',
+  );
+  assert.match(result.mappingResolutionReason, /priority|specific|override/i);
+});
