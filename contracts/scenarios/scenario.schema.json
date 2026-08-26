@@ -43,9 +43,56 @@
       "additionalProperties": false,
       "required": ["from", "to", "trigger"],
       "properties": {
+        "checkpoint": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+        "initiatingActor": { "type": "string", "minLength": 2 },
+        "authorizedActors": { "$ref": "#/$defs/nonEmptyStrings" },
         "from": { "type": "string", "minLength": 2 },
         "to": { "type": "string", "minLength": 2 },
-        "trigger": { "type": "string", "minLength": 10 }
+        "trigger": { "type": "string", "minLength": 10 },
+        "interaction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "operation", "requestFields", "responseFields"],
+          "properties": {
+            "kind": { "enum": ["http", "client", "internal", "database"] },
+            "operation": { "type": "string", "minLength": 3 },
+            "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+            "path": { "type": "string", "pattern": "^/api/v1/" },
+            "interface": { "type": "string", "minLength": 3 },
+            "requestFields": { "$ref": "#/$defs/nonEmptyStrings" },
+            "responseFields": { "$ref": "#/$defs/nonEmptyStrings" }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "kind": { "const": "http" } } },
+              "then": {
+                "properties": { "method": {}, "path": {} },
+                "required": ["method", "path"]
+              },
+              "else": { "properties": { "interface": {} }, "required": ["interface"] }
+            }
+          ]
+        },
+        "databaseInvariant": { "type": "string", "minLength": 20 },
+        "idempotencyAndCorrelation": { "type": "string", "minLength": 20 },
+        "visibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Customer", "Merchant", "Captain", "Admin"],
+          "properties": {
+            "Customer": { "type": "string", "minLength": 10 },
+            "Merchant": { "type": "string", "minLength": 10 },
+            "Captain": { "type": "string", "minLength": 10 },
+            "Admin": { "type": "string", "minLength": 10 }
+          }
+        },
+        "failureResult": { "type": "string", "minLength": 20 },
+        "businessDecisionRefs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^BD-[0-9]{3}$" },
+          "uniqueItems": true
+        },
+        "applicableWhen": { "type": "string", "minLength": 5 }
       }
     },
     "actors": {

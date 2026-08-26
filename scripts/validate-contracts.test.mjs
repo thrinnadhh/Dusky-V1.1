@@ -110,3 +110,44 @@ test('base-aware protection compares newly introduced active semantic fields by 
     /semantic change.*securityExpectation|securityExpectation.*semantic change/i,
   );
 });
+
+test('semantic exception must be exact, unexpired, user-authorized, and migration-backed', () => {
+  const base = structuredClone(
+    baseInput().registry.contracts.find(({ contractId }) => contractId === 'FOUND-CI-001'),
+  );
+  const current = structuredClone(base);
+  current.domain = 'Backend';
+  const validException = {
+    id: 'EXC-FOUND-CI-DOMAIN-001',
+    contractId: 'FOUND-CI-001',
+    changeType: 'semantic-change',
+    reason: 'Reviewed domain ownership migration for this exact active contract.',
+    owner: 'repository maintainer',
+    replacementOrMigrationPlan:
+      'Move executable evidence and downstream ownership before changing the registry.',
+    expiresAt: '2099-01-01T00:00:00Z',
+    userAuthorizationReference: 'USER-AUTH-REVIEW-0001',
+  };
+  assert.equal(
+    validateActiveContractProtection({
+      baseRegistry: { contracts: [base] },
+      currentRegistry: { contracts: [current] },
+      exceptions: { exceptions: [validException] },
+      now: new Date('2026-08-26T00:00:00Z'),
+    }).protectedActiveCount,
+    1,
+  );
+
+  const malformed = structuredClone(validException);
+  malformed.userAuthorizationReference = 'review-comment';
+  assert.throws(
+    () =>
+      validateActiveContractProtection({
+        baseRegistry: { contracts: [base] },
+        currentRegistry: { contracts: [current] },
+        exceptions: { exceptions: [malformed] },
+        now: new Date('2026-08-26T00:00:00Z'),
+      }),
+    /malformed.*exception/i,
+  );
+});

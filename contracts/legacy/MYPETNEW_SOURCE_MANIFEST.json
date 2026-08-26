@@ -17,10 +17,10 @@
     "E2E": 83
   },
   "dispositionCounts": {
-    "mapped": 1035,
+    "mapped": 1029,
     "duplicate": 0,
     "obsolete-with-evidence": 0,
-    "implementation-specific-rewritten": 128,
+    "implementation-specific-rewritten": 134,
     "requires-business-decision": 0
   },
   "publicEvidence": {
@@ -1574,5 +1574,5 @@
       "sha256": "18dec0e3a1c8dabee3d7121dd86dbddf5ae7b1bc51e9a7bfde93e06a90a01bee"
     }
   ],
-  "extractionScriptVersion": "2.0.0"
+  "extractionScriptVersion": "2.1.0"
 }

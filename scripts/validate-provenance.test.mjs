@@ -24,6 +24,9 @@ const reciprocalFixture = () => ({
         evidenceScope: 'pinned-public-ci-verifiable',
         disposition: 'mapped',
         dispositionEvidence: 'Catalog discovery behavior is retained.',
+        mappingRuleId: 'TEST-CATALOG-DISCOVERY',
+        mappingResolutionReason:
+          'Selected explicit test fixture mapping rule for reciprocal provenance validation.',
         targetDuskyContractIds: ['CUS-PROV-001'],
       },
     ],
@@ -149,7 +152,7 @@ test('rejects active version regression, silent weakening, and malformed blanket
         exceptions: { exceptions: [] },
         now: new Date('2026-08-26T00:00:00Z'),
       }),
-    /silent weakening/i,
+    /silent weakening|semantic change/i,
   );
 
   assert.throws(

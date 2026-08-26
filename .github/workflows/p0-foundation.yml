@@ -14,6 +14,7 @@ concurrency:
 
 env:
   CI: 'true'
+  EXPECTED_DUSKY_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
 jobs:
   repository-policy:
@@ -21,6 +22,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with: { node-version: '22', package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
@@ -31,6 +43,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           repository: thrinnadhh/Mypetnew
@@ -47,7 +70,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-        with: { fetch-depth: 0 }
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with: { node-version: '22', package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
@@ -64,6 +97,17 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with: { node-version: '22', package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
@@ -71,7 +115,7 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: customer-foundation-${{ github.sha }}
+          name: customer-foundation-${{ env.EXPECTED_DUSKY_SHA }}
           path: |
             apps/customer-app/reports
             apps/customer-app/coverage
@@ -82,6 +126,17 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with: { node-version: '22', package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
@@ -89,7 +144,7 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: merchant-foundation-${{ github.sha }}
+          name: merchant-foundation-${{ env.EXPECTED_DUSKY_SHA }}
           path: |
             apps/merchant-app/reports
             apps/merchant-app/coverage
@@ -100,6 +155,17 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with: { node-version: '22', package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
@@ -107,7 +173,7 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: captain-foundation-${{ github.sha }}
+          name: captain-foundation-${{ env.EXPECTED_DUSKY_SHA }}
           path: |
             apps/captain-app/reports
             apps/captain-app/coverage
@@ -118,6 +184,17 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with: { node-version: '22', package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
@@ -125,7 +202,7 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: admin-foundation-${{ github.sha }}
+          name: admin-foundation-${{ env.EXPECTED_DUSKY_SHA }}
           path: |
             apps/admin-web/reports
             apps/admin-web/coverage
@@ -136,6 +213,17 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with: { distribution: temurin, java-version: '21' }
       - uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2
@@ -143,7 +231,7 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: backend-foundation-${{ github.sha }}
+          name: backend-foundation-${{ env.EXPECTED_DUSKY_SHA }}
           if-no-files-found: error
           path: backend/build/reports
 
@@ -152,6 +240,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with: { node-version: '22', package-manager-cache: false }
       - run: corepack enable && pnpm install --frozen-lockfile
@@ -174,6 +273,17 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ env.EXPECTED_DUSKY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact Dusky checkout
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          echo "expected_sha=$EXPECTED_DUSKY_SHA"
+          echo "actual_sha=$actual_sha"
+          test "$actual_sha" = "$EXPECTED_DUSKY_SHA"
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with: { node-version: '22', package-manager-cache: false }
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961

@@ -36,6 +36,67 @@ export function validateSetupNodeCaching(workflow) {
   return setupNodeCount;
 }
 
+const REQUIRED_CI_JOBS = [
+  'repository-policy',
+  'legacy-inventory',
+  'contract-registry',
+  'customer-foundation',
+  'merchant-foundation',
+  'captain-foundation',
+  'admin-foundation',
+  'backend-foundation',
+  'cross-app-scenarios',
+  'build-readiness',
+];
+
+const jobBody = (workflow, jobName) => {
+  const match = workflow.match(
+    new RegExp(`^  ${jobName}:\\n([\\s\\S]*?)(?=^  [a-z][a-z0-9-]+:\\n|(?![\\s\\S]))`, 'm'),
+  );
+  if (!match) throw new Error(`P0 workflow is missing required job ${jobName}.`);
+  return match[1];
+};
+
+export function validateExactHeadWorkflow(workflow) {
+  if (
+    !/^\s{2}EXPECTED_DUSKY_SHA:\s*\$\{\{ github\.event_name == 'pull_request' && github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}\s*$/m.test(
+      workflow,
+    )
+  )
+    throw new Error(
+      'P0 workflow must derive EXPECTED_DUSKY_SHA from the PR head SHA or github.sha.',
+    );
+
+  let verifiedCheckoutCount = 0;
+  for (const jobName of REQUIRED_CI_JOBS) {
+    const body = jobBody(workflow, jobName);
+    const checkout = body.match(
+      /^\s{6}- uses: actions\/checkout@[0-9a-f]{40}\s*$[\s\S]*?(?=^\s{6}- (?:uses|name|if|run):|(?![\s\S]))/m,
+    )?.[0];
+    if (!checkout) throw new Error(`${jobName} is missing its primary immutable Dusky checkout.`);
+    if (!/^\s{10}ref:\s*\$\{\{ env\.EXPECTED_DUSKY_SHA \}\}\s*$/m.test(checkout))
+      throw new Error(`${jobName} checkout ref must use the exact expected head SHA.`);
+    if (!/^\s{10}fetch-depth:\s*0\s*$/m.test(checkout))
+      throw new Error(`${jobName} exact-head checkout must preserve full history.`);
+
+    const assertion = body.match(
+      /^\s{6}- name: Assert exact Dusky checkout\s*$[\s\S]*?(?=^\s{6}- (?:uses|name|if|run):|(?![\s\S]))/m,
+    )?.[0];
+    if (!assertion) throw new Error(`${jobName} is missing the runtime exact-head SHA assertion.`);
+    if (!/actual_sha="\$\(git rev-parse HEAD\)"/.test(assertion))
+      throw new Error(`${jobName} runtime SHA check must execute git rev-parse HEAD.`);
+    if (
+      !/echo "expected_sha=\$EXPECTED_DUSKY_SHA"/.test(assertion) ||
+      !/echo "actual_sha=\$actual_sha"/.test(assertion)
+    )
+      throw new Error(`${jobName} must print both expected and actual checkout SHA values.`);
+    if (!/test "\$actual_sha" = "\$EXPECTED_DUSKY_SHA"/.test(assertion))
+      throw new Error(`${jobName} exact-head assertion must fail on SHA mismatch.`);
+    verifiedCheckoutCount += 1;
+  }
+  return { jobCount: REQUIRED_CI_JOBS.length, verifiedCheckoutCount };
+}
+
 export function validateRepository(root = DEFAULT_ROOT) {
   const missing = required.filter((path) => !existsSync(join(root, path)));
   if (missing.length) throw new Error(`Missing required repository paths:\n${missing.join('\n')}`);
@@ -46,6 +107,7 @@ export function validateRepository(root = DEFAULT_ROOT) {
     throw new Error(`Competing root lockfiles: ${competingLockfiles.join(', ')}`);
   const workflow = readFileSync(join(root, '.github/workflows/p0-foundation.yml'), 'utf8');
   const setupNodeJobCount = validateSetupNodeCaching(workflow);
+  validateExactHeadWorkflow(workflow);
   if (
     !/fetch-depth:\s*0/.test(workflow) ||
     !/validate:contracts --base-sha "\$\{\{ github\.event\.pull_request\.base\.sha \}\}"/.test(

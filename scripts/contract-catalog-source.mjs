@@ -13,6 +13,39 @@ const internal = (kind, operation, requestFields, responseFields) => ({
   requestFields,
   responseFields,
 });
+const appVisibility = (Customer, Merchant, Captain, Admin) => ({
+  Customer,
+  Merchant,
+  Captain,
+  Admin,
+});
+const lifecycleTransition = ({
+  checkpoint,
+  initiatingActor,
+  authorizedActors,
+  from,
+  to,
+  interaction,
+  databaseInvariant,
+  idempotencyAndCorrelation,
+  visibility,
+  failureResult,
+  businessDecisionRefs = [],
+  applicableWhen = 'always',
+}) => ({
+  checkpoint,
+  initiatingActor,
+  authorizedActors,
+  from,
+  to,
+  interaction,
+  databaseInvariant,
+  idempotencyAndCorrelation,
+  visibility,
+  failureResult,
+  businessDecisionRefs,
+  applicableWhen,
+});
 const row = (
   contractId,
   title,
@@ -27,7 +60,11 @@ const row = (
   contractId,
   title,
   resource,
-  interactions: [interaction, ...(options.additionalInteractions ?? [])],
+  interactions: [
+    interaction,
+    ...(options.additionalInteractions ?? []),
+    ...(options.lifecycleTransitions ?? []).map((transition) => transition.interaction),
+  ],
   actor,
   success,
   state,
@@ -2216,13 +2253,308 @@ export const plannedDefinitions = {
       'authenticated customer',
       'Propagate one order through merchant acceptance, captain delivery, and customer delivered history using authoritative states.',
       ['quote confirmed', 'delivered order visible to owner'],
-      ['ORDER_TRANSITION_INVALID', 'ASSIGNMENT_NOT_OWNED', 'ORDER_HISTORY_STALE'],
+      [
+        'QUOTE_STALE',
+        'CART_VERSION_CONFLICT',
+        'ORDER_TRANSITION_INVALID',
+        'MERCHANT_REJECTED',
+        'INVENTORY_RESERVATION_FAILED',
+        'CAPTAIN_ASSIGNMENT_UNAVAILABLE',
+        'ASSIGNMENT_NOT_OWNED',
+        'PICKUP_PROOF_INVALID',
+        'DELIVERY_PROOF_INVALID',
+        'COMPENSATION_PENDING',
+        'ORDER_HISTORY_STALE',
+      ],
       {
         actors: ['customer', 'merchant order operator', 'assigned captain', 'backend'],
         scope: 'customer order and fulfilment outlet',
         concurrency: 'each lifecycle transition has one winner',
         offline: 'queued captain actions revalidate ownership',
-        decisions: ['BD-001', 'BD-005'],
+        decisions: ['BD-001', 'BD-005', 'BD-007', 'BD-009'],
+        lifecycleTransitions: [
+          lifecycleTransition({
+            checkpoint: 'quote-cart-confirmation',
+            initiatingActor: 'customer',
+            authorizedActors: ['customer', 'backend'],
+            from: 'cart_quote_open',
+            to: 'merchant_decision_pending',
+            interaction: h(
+              'POST',
+              '/api/v1/customer/orders',
+              ['quoteId', 'cartVersion', 'fulfillmentMode', 'paymentSelection', 'idempotencyKey'],
+              ['orderId', 'orderVersion', 'state', 'merchantOutletId'],
+              'confirm quote and cart into order',
+            ),
+            databaseInvariant:
+              'The order snapshot, quote version, cart lines, customer ownership, and initial history row commit atomically; no client-authored price is persisted.',
+            idempotencyAndCorrelation:
+              'Idempotency-Key is scoped to customer plus canonical quote payload; orderId is the correlation root for every later transition.',
+            visibility: appVisibility(
+              'Order appears as awaiting merchant decision with the accepted quote snapshot.',
+              'Outlet queue receives one versioned pending order.',
+              'Not visible until a delivery assignment is created.',
+              'Read-only order timeline shows creation actor, outlet, quote version, and correlation ID.',
+            ),
+            failureResult:
+              'QUOTE_STALE or CART_VERSION_CONFLICT leaves the cart and quote open and creates no order.',
+            businessDecisionRefs: ['BD-001', 'BD-005'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'merchant-acceptance',
+            initiatingActor: 'merchant order operator',
+            authorizedActors: ['merchant order operator', 'backend'],
+            from: 'merchant_decision_pending',
+            to: 'merchant_accepted',
+            interaction: h(
+              'PATCH',
+              '/api/v1/merchant/orders/{orderId}/decision',
+              ['orderId', 'outletId', 'decision', 'orderVersion', 'idempotencyKey'],
+              ['orderId', 'orderVersion', 'state'],
+              'accept pending order',
+            ),
+            databaseInvariant:
+              'Only the owning outlet can advance the expected order version; the acceptance history and reservation request outbox record commit together.',
+            idempotencyAndCorrelation:
+              'The merchant decision key binds outlet, orderId, expected version, and ACCEPT; replay returns the winning order version.',
+            visibility: appVisibility(
+              'Customer sees accepted and inventory confirmation pending.',
+              'Order leaves the pending queue and shows the accepted version.',
+              'Not visible until dispatch creates an offer.',
+              'Timeline identifies the authorized merchant actor and accepted version.',
+            ),
+            failureResult:
+              'ORDER_TRANSITION_INVALID returns the current order version and preserves merchant_decision_pending.',
+            businessDecisionRefs: ['BD-001', 'BD-005'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'merchant-rejection',
+            initiatingActor: 'merchant order operator',
+            authorizedActors: ['merchant order operator', 'backend'],
+            from: 'merchant_decision_pending',
+            to: 'merchant_rejected',
+            interaction: h(
+              'PATCH',
+              '/api/v1/merchant/orders/{orderId}/decision',
+              ['orderId', 'outletId', 'decision', 'reasonCode', 'orderVersion', 'idempotencyKey'],
+              ['orderId', 'orderVersion', 'state', 'reasonCode'],
+              'reject pending order',
+            ),
+            databaseInvariant:
+              'Rejection writes one terminal history row and emits compensation only for resources already committed; no reservation or assignment can remain active.',
+            idempotencyAndCorrelation:
+              'The decision key binds REJECT and reasonCode to the expected order version; orderId correlates compensation and visibility events.',
+            visibility: appVisibility(
+              'Customer sees merchant_rejected with the stable reason code and any compensation status.',
+              'Merchant sees the terminal rejection and cannot accept a later replay.',
+              'No offer is created; an already-created offer is revoked by the same correlation ID.',
+              'Timeline exposes rejection, actor, reason, and compensation outcome.',
+            ),
+            failureResult:
+              'ORDER_TRANSITION_INVALID preserves the winning current state; MERCHANT_REJECTED is the stable customer-visible terminal result after success.',
+            businessDecisionRefs: ['BD-005'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'inventory-reservation',
+            initiatingActor: 'backend inventory worker',
+            authorizedActors: ['backend inventory worker', 'backend'],
+            from: 'merchant_accepted',
+            to: 'inventory_reserved',
+            interaction: internal(
+              'internal',
+              'InventoryReservationRequested',
+              ['orderId', 'outletId', 'lines', 'orderVersion', 'correlationId'],
+              ['reservationId', 'reservationVersion', 'reservedLines'],
+            ),
+            databaseInvariant:
+              'Every line reservation, stock ledger entry, order version, and outbox event commits in one transaction; partial reservation is forbidden.',
+            idempotencyAndCorrelation:
+              'The unique orderId plus reservation purpose deduplicates retries; correlationId links stock movements to the order history.',
+            visibility: appVisibility(
+              'Customer sees inventory confirmed or the stable reservation failure.',
+              'Merchant sees reserved quantities against the accepted order.',
+              'Delivery remains hidden until reservation succeeds.',
+              'Timeline links reservation and stock ledger identifiers without exposing unrelated stock.',
+            ),
+            failureResult:
+              'INVENTORY_RESERVATION_FAILED moves the order to failed_compensation_pending and releases any provisional line changes.',
+          }),
+          lifecycleTransition({
+            checkpoint: 'captain-assignment',
+            initiatingActor: 'backend dispatch worker',
+            authorizedActors: ['backend dispatch worker', 'backend'],
+            from: 'inventory_reserved',
+            to: 'captain_assignment_pending',
+            interaction: internal(
+              'internal',
+              'DispatchAssignmentRequested',
+              ['orderId', 'pickupOutletId', 'deliveryAddressId', 'orderVersion', 'correlationId'],
+              ['assignmentId', 'offerId', 'captainId', 'offerExpiresAt'],
+            ),
+            databaseInvariant:
+              'At most one live offer or accepted assignment exists for the order; assignment and offer outbox records share the order correlation ID.',
+            idempotencyAndCorrelation:
+              'orderId plus dispatch generation identifies the attempt; a retry returns the same live offer or a newer explicitly superseding generation.',
+            visibility: appVisibility(
+              'Delivery orders show assignment pending without disclosing rejected captains.',
+              'Merchant sees dispatch pending for the accepted delivery order.',
+              'Only the offered captain sees the bounded offer and expiry.',
+              'Admin sees dispatch generation, candidate outcome, and correlation ID.',
+            ),
+            failureResult:
+              'CAPTAIN_ASSIGNMENT_UNAVAILABLE preserves inventory reservation and exposes a retry/compensation-pending state without fabricating a captain.',
+            businessDecisionRefs: ['BD-001'],
+            applicableWhen:
+              'fulfillmentMode=DELIVERY; pickup orders record this checkpoint as not-applicable only after BD-001 authorizes the launch matrix',
+          }),
+          lifecycleTransition({
+            checkpoint: 'captain-acceptance',
+            initiatingActor: 'assigned captain',
+            authorizedActors: ['offered captain', 'backend'],
+            from: 'captain_assignment_pending',
+            to: 'pickup_pending',
+            interaction: h(
+              'POST',
+              '/api/v1/captain/dispatch/offers/{offerId}/respond',
+              ['offerId', 'action', 'assignmentVersion', 'idempotencyKey'],
+              ['assignmentId', 'deliveryId', 'assignmentVersion', 'state'],
+              'accept delivery offer',
+            ),
+            databaseInvariant:
+              'Offer acceptance, captain ownership, assignment version, and order transition commit atomically; competing acceptance has one winner.',
+            idempotencyAndCorrelation:
+              'The response key binds captain, offerId, ACCEPT, and assignmentVersion; deliveryId retains the order correlation ID.',
+            visibility: appVisibility(
+              'Customer sees captain assigned only after authoritative acceptance.',
+              'Merchant sees the accepted captain assignment for pickup coordination.',
+              'Winning captain receives the active delivery; rejected or expired offers remain terminal.',
+              'Admin timeline records offer generation and winning captain identity.',
+            ),
+            failureResult:
+              'ASSIGNMENT_NOT_OWNED or an expired offer leaves the assignment unchanged and reveals no foreign assignment.',
+            businessDecisionRefs: ['BD-001'],
+            applicableWhen: 'fulfillmentMode=DELIVERY and a live offer exists',
+          }),
+          lifecycleTransition({
+            checkpoint: 'pickup',
+            initiatingActor: 'assigned captain',
+            authorizedActors: ['assigned captain', 'backend'],
+            from: 'pickup_pending',
+            to: 'in_transit',
+            interaction: h(
+              'POST',
+              '/api/v1/captain/deliveries/{deliveryId}/pickup',
+              ['deliveryId', 'assignmentVersion', 'pickupProof', 'idempotencyKey'],
+              ['deliveryId', 'deliveryVersion', 'state', 'pickedUpAt'],
+              'confirm pickup',
+            ),
+            databaseInvariant:
+              'Pickup proof, assignment ownership, delivery version, order history, and notification event commit once; stock is not decremented a second time.',
+            idempotencyAndCorrelation:
+              'The pickup key binds captain, deliveryId, proof fingerprint, and expected version; replay returns the original pickedUpAt.',
+            visibility: appVisibility(
+              'Customer sees picked up and the authoritative delivery timestamp.',
+              'Merchant sees handoff completed and can no longer alter order acceptance.',
+              'Captain sees in_transit with the next permitted command.',
+              'Admin sees proof metadata, versions, and trace without private proof content.',
+            ),
+            failureResult:
+              'PICKUP_PROOF_INVALID or ASSIGNMENT_NOT_OWNED preserves pickup_pending and records a denied audit outcome.',
+            businessDecisionRefs: ['BD-001'],
+            applicableWhen: 'fulfillmentMode=DELIVERY and the accepted captain owns the delivery',
+          }),
+          lifecycleTransition({
+            checkpoint: 'delivery',
+            initiatingActor: 'assigned captain',
+            authorizedActors: ['assigned captain', 'backend'],
+            from: 'in_transit',
+            to: 'delivered',
+            interaction: h(
+              'POST',
+              '/api/v1/captain/deliveries/{deliveryId}/complete',
+              [
+                'deliveryId',
+                'deliveryVersion',
+                'deliveryProof',
+                'codCollectionEvidence',
+                'idempotencyKey',
+              ],
+              ['deliveryId', 'deliveryVersion', 'state', 'deliveredAt'],
+              'complete delivery',
+            ),
+            databaseInvariant:
+              'Delivery proof, COD evidence when authorized, terminal order state, payment action, history, and outbox events commit atomically.',
+            idempotencyAndCorrelation:
+              'The completion key binds deliveryId, proof fingerprint, COD evidence fingerprint, and expected version; correlationId is unchanged.',
+            visibility: appVisibility(
+              'Customer sees delivered only after the terminal transaction and receives payment/receipt status.',
+              'Merchant sees delivery completed and the final fulfilment/payment projection.',
+              'Captain sees completed and cannot replay a different proof or COD amount.',
+              'Admin sees delivery, proof metadata, payment action, and correlated audit events.',
+            ),
+            failureResult:
+              'DELIVERY_PROOF_INVALID or a payment/COD boundary failure preserves in_transit and exposes a retryable stable error.',
+            businessDecisionRefs: ['BD-001', 'BD-005', 'BD-007'],
+            applicableWhen: 'fulfillmentMode=DELIVERY and delivery is in_transit',
+          }),
+          lifecycleTransition({
+            checkpoint: 'cancellation-failure-compensation',
+            initiatingActor:
+              'authorized customer, merchant operator, captain, or backend recovery worker',
+            authorizedActors: [
+              'authorized customer',
+              'merchant order operator',
+              'assigned captain',
+              'backend recovery worker',
+            ],
+            from: 'any non-terminal order state permitted by policy',
+            to: 'cancelled_or_failed_compensated',
+            interaction: internal(
+              'internal',
+              'OrderCompensationRequested',
+              ['actor', 'orderId', 'reasonCode', 'orderVersion', 'correlationId'],
+              ['terminalState', 'inventoryRelease', 'paymentAction', 'compensationStatus'],
+            ),
+            databaseInvariant:
+              'The winning terminal state, inventory release, payment/refund action, assignment revocation, history, and outbox records are atomic or durably compensation_pending.',
+            idempotencyAndCorrelation:
+              'One correlation ID spans cancellation, stock release, payment action, and assignment revocation; component retries are idempotent.',
+            visibility: appVisibility(
+              'Customer sees the winning terminal state, reason, and refund/compensation status.',
+              'Merchant sees cancellation source, released stock, and terminal fulfilment status.',
+              'Captain sees revoked/cancelled only when an assignment existed.',
+              'Admin sees each compensation component, owner, attempt, and terminal outcome.',
+            ),
+            failureResult:
+              'COMPENSATION_PENDING is durable and visible until every required component reaches a terminal result; no success is fabricated.',
+            businessDecisionRefs: ['BD-005', 'BD-009'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'terminal-visibility',
+            initiatingActor: 'backend projection worker',
+            authorizedActors: ['backend projection worker', 'backend'],
+            from: 'delivered_or_cancelled_or_rejected_or_failed_compensated',
+            to: 'terminal_projected_to_all_authorized_apps',
+            interaction: internal(
+              'internal',
+              'OrderLifecycleEventPublished',
+              ['orderId', 'terminalState', 'orderVersion', 'correlationId'],
+              ['customerProjection', 'merchantProjection', 'captainProjection', 'adminTimeline'],
+            ),
+            databaseInvariant:
+              'Every projection records the same orderId, terminal state, orderVersion, and correlation ID; consumers may lag but cannot publish an older terminal version.',
+            idempotencyAndCorrelation:
+              'The outbox event ID and order version deduplicate delivery; every app projection retains the originating correlation ID.',
+            visibility: appVisibility(
+              'Customer history shows the final authorized order and compensation projection.',
+              'Merchant history shows the same terminal version for its outlet.',
+              'Captain history shows the terminal delivery only when the captain participated.',
+              'Admin timeline shows all actor transitions, versions, and compensation results.',
+            ),
+            failureResult:
+              'ORDER_HISTORY_STALE retains the prior labelled projection and retries the same event ID; it never invents a newer terminal state.',
+          }),
+        ],
       },
     ),
     row(
@@ -2238,13 +2570,309 @@ export const plannedDefinitions = {
       'authenticated customer',
       'Reserve one slot and reflect provider lifecycle transitions in customer history.',
       ['slot available', 'appointment completed or terminal'],
-      ['SLOT_UNAVAILABLE', 'APPOINTMENT_TRANSITION_INVALID'],
+      [
+        'SLOT_QUERY_INVALID',
+        'SLOT_UNAVAILABLE',
+        'SLOT_HOLD_EXPIRED',
+        'APPOINTMENT_TRANSITION_INVALID',
+        'MERCHANT_REJECTED',
+        'NO_SHOW_NOT_ALLOWED',
+        'REFUND_PENDING',
+        'APPOINTMENT_HISTORY_STALE',
+      ],
       {
         actors: ['customer', 'merchant appointment operator', 'backend'],
         scope: 'customer appointment and provider outlet',
         concurrency: 'slot and status transitions have one winner',
         offline: 'booking and transitions require authoritative connectivity',
-        decisions: ['BD-004', 'BD-005'],
+        decisions: ['BD-004', 'BD-005', 'BD-008'],
+        lifecycleTransitions: [
+          lifecycleTransition({
+            checkpoint: 'slot-availability',
+            initiatingActor: 'customer',
+            authorizedActors: ['guest or authenticated customer', 'backend'],
+            from: 'slot_query_ready',
+            to: 'slot_available_observed',
+            interaction: h(
+              'GET',
+              '/api/v1/public/providers/{providerId}/slots',
+              ['providerId', 'serviceId', 'postalCode', 'date', 'cursor'],
+              ['slots', 'providerVersion', 'serviceVersion', 'nextCursor'],
+              'read authoritative slot availability',
+            ),
+            databaseInvariant:
+              'The read does not create a hold or appointment and returns provider, service, and slot versions from one committed availability snapshot.',
+            idempotencyAndCorrelation:
+              'The safe read needs no mutation key; a client searchRequestId correlates pagination and stale-response suppression.',
+            visibility: appVisibility(
+              'Customer sees versioned available slots or a stable empty/error state.',
+              'Merchant availability is unchanged by the read.',
+              'Not applicable: captains do not participate in appointment availability.',
+              'Admin receives only operational diagnostics, not a business transition.',
+            ),
+            failureResult:
+              'SLOT_QUERY_INVALID returns no slots and creates no hold; SLOT_UNAVAILABLE is a stable empty/changed result.',
+            businessDecisionRefs: ['BD-004'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'slot-hold',
+            initiatingActor: 'authenticated customer',
+            authorizedActors: ['authenticated customer', 'backend'],
+            from: 'slot_available_observed',
+            to: 'slot_held',
+            interaction: h(
+              'POST',
+              '/api/v1/customer/appointment-holds',
+              ['providerId', 'serviceId', 'slotStart', 'slotEnd', 'slotVersion', 'idempotencyKey'],
+              ['holdId', 'holdVersion', 'expiresAt', 'state'],
+              'hold selected appointment slot',
+            ),
+            databaseInvariant:
+              'At most one active hold reserves the provider/service/time tuple; hold, expiry, customer ownership, and history commit atomically.',
+            idempotencyAndCorrelation:
+              'The key binds customer, provider, service, timestamps, and slotVersion; holdId becomes the appointment correlation root.',
+            visibility: appVisibility(
+              'Customer sees the held slot and authoritative expiry countdown.',
+              'Merchant availability excludes the held capacity without exposing customer-private data.',
+              'Not applicable: captains do not participate in appointment holds.',
+              'Admin timeline may inspect hold version, expiry, and correlation ID.',
+            ),
+            failureResult:
+              'SLOT_UNAVAILABLE returns the current availability version and creates no partial hold.',
+            businessDecisionRefs: ['BD-004'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'booking',
+            initiatingActor: 'authenticated customer',
+            authorizedActors: ['authenticated customer', 'backend'],
+            from: 'slot_held',
+            to: 'merchant_confirmation_pending',
+            interaction: h(
+              'POST',
+              '/api/v1/customer/appointments',
+              ['holdId', 'holdVersion', 'petId', 'notes', 'paymentSelection', 'idempotencyKey'],
+              ['appointmentId', 'appointmentVersion', 'state', 'paymentState'],
+              'book held appointment',
+            ),
+            databaseInvariant:
+              'Hold consumption, appointment snapshot, customer/pet ownership, payment boundary, initial history, and merchant notification commit atomically.',
+            idempotencyAndCorrelation:
+              'The booking key binds customer, holdId, petId, and payment selection; appointmentId inherits holdId correlation.',
+            visibility: appVisibility(
+              'Customer sees awaiting merchant confirmation and payment state.',
+              'Owning merchant outlet receives one pending appointment.',
+              'Not applicable: captains do not participate in appointment booking.',
+              'Admin timeline sees booking, ownership checks, versions, and payment boundary.',
+            ),
+            failureResult:
+              'SLOT_HOLD_EXPIRED leaves the slot unbooked and returns recovery data for a new availability query.',
+            businessDecisionRefs: ['BD-004', 'BD-005'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'merchant-confirmation',
+            initiatingActor: 'merchant appointment operator',
+            authorizedActors: ['merchant appointment operator', 'backend'],
+            from: 'merchant_confirmation_pending',
+            to: 'confirmed',
+            interaction: h(
+              'PATCH',
+              '/api/v1/merchant/appointments/{appointmentId}/decision',
+              ['appointmentId', 'outletId', 'decision', 'appointmentVersion', 'idempotencyKey'],
+              ['appointmentId', 'appointmentVersion', 'state'],
+              'confirm pending appointment',
+            ),
+            databaseInvariant:
+              'Only the owning outlet can confirm the expected version; confirmation, history, and customer notification event commit atomically.',
+            idempotencyAndCorrelation:
+              'The merchant key binds outlet, appointmentId, CONFIRM, and expected version; replay returns the winning version.',
+            visibility: appVisibility(
+              'Customer sees confirmed with authoritative provider/time details.',
+              'Merchant queue shows confirmed and the next permitted transition.',
+              'Not applicable: captains do not participate in appointment confirmation.',
+              'Admin timeline identifies the confirming actor and appointment version.',
+            ),
+            failureResult:
+              'APPOINTMENT_TRANSITION_INVALID preserves merchant_confirmation_pending or returns the already-winning terminal state.',
+            businessDecisionRefs: ['BD-004', 'BD-005'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'merchant-rejection',
+            initiatingActor: 'merchant appointment operator',
+            authorizedActors: ['merchant appointment operator', 'backend'],
+            from: 'merchant_confirmation_pending',
+            to: 'merchant_rejected',
+            interaction: h(
+              'PATCH',
+              '/api/v1/merchant/appointments/{appointmentId}/decision',
+              [
+                'appointmentId',
+                'outletId',
+                'decision',
+                'reasonCode',
+                'appointmentVersion',
+                'idempotencyKey',
+              ],
+              ['appointmentId', 'appointmentVersion', 'state', 'refundStatus'],
+              'reject pending appointment',
+            ),
+            databaseInvariant:
+              'Rejection, slot release, history, notification, and required refund intent commit atomically or leave a durable refund_pending record.',
+            idempotencyAndCorrelation:
+              'The decision key binds REJECT and reasonCode to the appointment version; the appointment correlation ID follows refund work.',
+            visibility: appVisibility(
+              'Customer sees merchant_rejected, reason, released slot, and refund status.',
+              'Merchant sees a terminal rejected appointment and cannot later confirm it.',
+              'Not applicable: captains do not participate in appointment rejection.',
+              'Admin sees rejection actor, reason, slot release, and compensation state.',
+            ),
+            failureResult:
+              'MERCHANT_REJECTED is the stable successful terminal result; APPOINTMENT_TRANSITION_INVALID preserves the existing winner.',
+            businessDecisionRefs: ['BD-004', 'BD-005'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'completion',
+            initiatingActor: 'merchant appointment operator',
+            authorizedActors: ['merchant appointment operator', 'backend'],
+            from: 'confirmed',
+            to: 'completed',
+            interaction: h(
+              'POST',
+              '/api/v1/merchant/appointments/{appointmentId}/complete',
+              [
+                'appointmentId',
+                'outletId',
+                'appointmentVersion',
+                'completionEvidence',
+                'idempotencyKey',
+              ],
+              ['appointmentId', 'appointmentVersion', 'state', 'completedAt'],
+              'complete confirmed appointment',
+            ),
+            databaseInvariant:
+              'Completion evidence, appointment terminal version, history, loyalty/payment side-effect intents, and notification commit once.',
+            idempotencyAndCorrelation:
+              'The completion key binds outlet, appointmentId, evidence fingerprint, and expected version; replay returns completedAt.',
+            visibility: appVisibility(
+              'Customer history shows completed and any receipt/loyalty projection.',
+              'Merchant history shows completed with the evidence metadata.',
+              'Not applicable: captains do not participate in appointment completion.',
+              'Admin timeline shows completion actor, version, and correlated side effects.',
+            ),
+            failureResult:
+              'APPOINTMENT_TRANSITION_INVALID preserves confirmed or the winning terminal state and creates no completion side effect.',
+            businessDecisionRefs: ['BD-004'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'cancellation',
+            initiatingActor: 'authorized customer, merchant operator, or admin operator',
+            authorizedActors: [
+              'authorized customer',
+              'merchant appointment operator',
+              'admin operator',
+              'backend',
+            ],
+            from: 'slot_held_or_confirmation_pending_or_confirmed',
+            to: 'cancelled',
+            interaction: internal(
+              'internal',
+              'AppointmentCancellationRequested',
+              ['actor', 'appointmentOrHoldId', 'reasonCode', 'expectedVersion', 'correlationId'],
+              ['state', 'slotRelease', 'refundStatus'],
+            ),
+            databaseInvariant:
+              'The authorized cancellation winner, slot release, history, notification, and refund intent commit atomically or remain durably refund_pending.',
+            idempotencyAndCorrelation:
+              'Actor, resource ID, reason, and expected version define the cancellation key; one correlation ID spans slot and payment compensation.',
+            visibility: appVisibility(
+              'Customer sees cancelled, reason, and refund status.',
+              'Merchant sees cancelled and capacity released.',
+              'Not applicable: captains do not participate in appointment cancellation.',
+              'Admin sees authority source, reason, version, and compensation state.',
+            ),
+            failureResult:
+              'APPOINTMENT_TRANSITION_INVALID returns the winning state; unauthorized cancellation is denied without releasing capacity.',
+            businessDecisionRefs: ['BD-004', 'BD-005', 'BD-008'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'no-show',
+            initiatingActor: 'merchant appointment operator',
+            authorizedActors: ['merchant appointment operator', 'backend'],
+            from: 'confirmed',
+            to: 'no_show',
+            interaction: h(
+              'POST',
+              '/api/v1/merchant/appointments/{appointmentId}/no-show',
+              ['appointmentId', 'outletId', 'appointmentVersion', 'reasonCode', 'idempotencyKey'],
+              ['appointmentId', 'appointmentVersion', 'state', 'refundStatus'],
+              'mark confirmed appointment no-show',
+            ),
+            databaseInvariant:
+              'No-show authority, time-window check, terminal version, history, and payment/refund intent commit together.',
+            idempotencyAndCorrelation:
+              'The no-show key binds outlet, appointmentId, reason, and expected version; appointmentId correlates compensation.',
+            visibility: appVisibility(
+              'Customer sees no_show, reason, and any charge/refund status.',
+              'Merchant sees no_show as terminal and cannot later complete it.',
+              'Not applicable: captains do not participate in no-show processing.',
+              'Admin sees time-window evidence, actor, reason, and payment boundary.',
+            ),
+            failureResult:
+              'NO_SHOW_NOT_ALLOWED preserves confirmed when authority or the approved time window is absent.',
+            businessDecisionRefs: ['BD-004', 'BD-005'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'refund-compensation',
+            initiatingActor: 'backend payment recovery worker',
+            authorizedActors: ['backend payment recovery worker', 'backend'],
+            from: 'merchant_rejected_or_cancelled_or_no_show_with_payment_action',
+            to: 'terminal_compensated',
+            interaction: internal(
+              'internal',
+              'AppointmentCompensationRequested',
+              ['appointmentId', 'paymentReference', 'terminalState', 'correlationId'],
+              ['refundStatus', 'providerReference', 'compensatedAt'],
+            ),
+            databaseInvariant:
+              'A terminal appointment has at most one canonical refund intent per payment; provider attempts and reconciliation are durable and replay safe.',
+            idempotencyAndCorrelation:
+              'Payment reference plus terminal appointment version deduplicates refund work; the appointment correlation ID remains authoritative.',
+            visibility: appVisibility(
+              'Customer sees refund pending, succeeded, failed, or not-applicable without false success.',
+              'Merchant sees the approved financial consequence without provider credentials.',
+              'Not applicable: captains do not participate in appointment compensation.',
+              'Admin sees provider reference, attempt history, owner, and reconciliation state.',
+            ),
+            failureResult:
+              'REFUND_PENDING remains durable and retryable until provider truth is terminal; appointment state is never resurrected.',
+            businessDecisionRefs: ['BD-005'],
+          }),
+          lifecycleTransition({
+            checkpoint: 'terminal-visibility',
+            initiatingActor: 'backend projection worker',
+            authorizedActors: ['backend projection worker', 'backend'],
+            from: 'completed_or_rejected_or_cancelled_or_no_show_compensated',
+            to: 'terminal_projected_to_authorized_apps',
+            interaction: internal(
+              'internal',
+              'AppointmentLifecycleEventPublished',
+              ['appointmentId', 'terminalState', 'appointmentVersion', 'correlationId'],
+              ['customerHistory', 'merchantHistory', 'adminTimeline'],
+            ),
+            databaseInvariant:
+              'Customer, merchant, and admin projections retain the same appointment terminal version and correlation ID; stale consumers cannot overwrite a newer terminal state.',
+            idempotencyAndCorrelation:
+              'Outbox event ID plus appointment version deduplicates projection; every consumer records the originating correlation ID.',
+            visibility: appVisibility(
+              'Customer appointment history shows terminal state and refund/compensation result.',
+              'Merchant history shows the same terminal version for the owning outlet.',
+              'Not applicable: captains have no appointment projection.',
+              'Admin timeline shows every authorized transition and compensation result.',
+            ),
+            failureResult:
+              'APPOINTMENT_HISTORY_STALE retains the prior labelled projection and retries the same event ID without inventing terminal truth.',
+            businessDecisionRefs: ['BD-004', 'BD-005'],
+          }),
+        ],
       },
     ),
     row(

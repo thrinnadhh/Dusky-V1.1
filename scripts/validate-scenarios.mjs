@@ -11,6 +11,95 @@ const hasAuthenticatedPrecondition = (scenario) =>
     (scenario.given ?? []).join(' ').replaceAll(/\bunauthenticated\b/gi, 'guest'),
   );
 
+const REQUIRED_MULTI_STAGE_CHECKPOINTS = {
+  'E2E-ORDER-001': [
+    'quote-cart-confirmation',
+    'merchant-acceptance',
+    'merchant-rejection',
+    'inventory-reservation',
+    'captain-assignment',
+    'captain-acceptance',
+    'pickup',
+    'delivery',
+    'cancellation-failure-compensation',
+    'terminal-visibility',
+  ],
+  'E2E-APT-001': [
+    'slot-availability',
+    'slot-hold',
+    'booking',
+    'merchant-confirmation',
+    'merchant-rejection',
+    'completion',
+    'cancellation',
+    'no-show',
+    'refund-compensation',
+    'terminal-visibility',
+  ],
+};
+const DETAILED_TRANSITION_FIELDS = [
+  'checkpoint',
+  'initiatingActor',
+  'authorizedActors',
+  'from',
+  'to',
+  'trigger',
+  'interaction',
+  'databaseInvariant',
+  'idempotencyAndCorrelation',
+  'visibility',
+  'failureResult',
+  'businessDecisionRefs',
+];
+
+const validateMultiStageLifecycle = (scenario, contract) => {
+  const required = REQUIRED_MULTI_STAGE_CHECKPOINTS[contract.contractId];
+  if (!required) return;
+  const transitions = scenario.stateTransitions ?? [];
+  let previousIndex = -1;
+  for (const checkpoint of required) {
+    const index = transitions.findIndex((transition) => transition.checkpoint === checkpoint);
+    if (index < 0)
+      throw new Error(`${scenario.scenarioId} lacks required checkpoint ${checkpoint}.`);
+    if (index <= previousIndex)
+      throw new Error(`${scenario.scenarioId} checkpoint ${checkpoint} is out of order.`);
+    previousIndex = index;
+  }
+  for (const transition of transitions) {
+    const missing = DETAILED_TRANSITION_FIELDS.filter(
+      (field) => transition[field] === undefined || transition[field] === null,
+    );
+    if (missing.length)
+      throw new Error(
+        `${scenario.scenarioId} checkpoint ${transition.checkpoint ?? 'unknown'} lacks ${missing.join(', ')}.`,
+      );
+    if (!transition.authorizedActors.length || !transition.interaction?.requestFields?.length)
+      throw new Error(
+        `${scenario.scenarioId} checkpoint ${transition.checkpoint} lacks authorized actors or required interaction fields.`,
+      );
+    const visibilityKeys = Object.keys(transition.visibility ?? {}).sort();
+    if (
+      JSON.stringify(visibilityKeys) !==
+      JSON.stringify(['Admin', 'Captain', 'Customer', 'Merchant'])
+    )
+      throw new Error(
+        `${scenario.scenarioId} checkpoint ${transition.checkpoint} lacks explicit cross-app visibility.`,
+      );
+    if (!scenario.errorCodes.some((code) => transition.failureResult.includes(code)))
+      throw new Error(
+        `${scenario.scenarioId} checkpoint ${transition.checkpoint} lacks a stable failure result.`,
+      );
+    if (
+      transition.businessDecisionRefs.some(
+        (decision) => !scenario.businessDecisionRefs.includes(decision),
+      )
+    )
+      throw new Error(
+        `${scenario.scenarioId} checkpoint ${transition.checkpoint} has an undeclared business-decision blocker.`,
+      );
+  }
+};
+
 export function validateSemanticCatalog({ contracts, scenarios }) {
   const contractsById = new Map(contracts.map((contract) => [contract.contractId, contract]));
   const fingerprints = new Map();
@@ -66,6 +155,7 @@ export function validateSemanticCatalog({ contracts, scenarios }) {
       if (!scenario.evidenceRequiredToActivate?.length)
         throw new Error(`Launch scenario lacks activation evidence: ${scenario.scenarioId}`);
     }
+    validateMultiStageLifecycle(scenario, contract);
     const fingerprint = JSON.stringify({
       actors: scenario.actors,
       given: scenario.given,

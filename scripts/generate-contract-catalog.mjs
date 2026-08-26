@@ -72,7 +72,7 @@ const activeDefinitions = [
     'FOUND-CI-001',
     'Test integrity and repository policy',
     'E2E',
-    ['scripts/validate-test-integrity.test.mjs'],
+    ['scripts/validate-test-integrity.test.mjs', 'scripts/validate-repository.test.mjs'],
   ],
 ];
 
@@ -271,24 +271,32 @@ const contractFor = (domain, definition) => {
       `Reject cross-role, cross-tenant, cross-outlet, or foreign-resource identifiers without revealing existence.`,
     ],
   };
-  const transitionDefinitions = definition.transitions ?? [
-    {
-      from: definition.state[0],
-      to: definition.state[1],
-      interactionIndex: 0,
-      readOnly,
-    },
-  ];
-  const stateTransitions = transitionDefinitions.map((transition) => ({
-    from: transition.from,
-    to: transition.to,
-    trigger: interactionTrigger(definition.interactions[transition.interactionIndex]),
-  }));
-  const databaseInvariants = transitionDefinitions.map((transition) =>
-    (transition.readOnly ?? readOnly)
-      ? `${definition.interactions[transition.interactionIndex].operation} does not mutate ${definition.resource}; it reads ${definition.scope} from one committed snapshot.`
-      : `The ${transition.from} to ${transition.to} transition, ownership checks, and audit or outbox record for ${definition.resource} commit atomically.`,
-  );
+  const transitionDefinitions = definition.lifecycleTransitions ??
+    definition.transitions ?? [
+      {
+        from: definition.state[0],
+        to: definition.state[1],
+        interactionIndex: 0,
+        readOnly,
+      },
+    ];
+  const stateTransitions = definition.lifecycleTransitions
+    ? transitionDefinitions.map((transition) => ({
+        ...transition,
+        trigger: interactionTrigger(transition.interaction),
+      }))
+    : transitionDefinitions.map((transition) => ({
+        from: transition.from,
+        to: transition.to,
+        trigger: interactionTrigger(definition.interactions[transition.interactionIndex]),
+      }));
+  const databaseInvariants = definition.lifecycleTransitions
+    ? transitionDefinitions.map(({ databaseInvariant }) => databaseInvariant)
+    : transitionDefinitions.map((transition) =>
+        (transition.readOnly ?? readOnly)
+          ? `${definition.interactions[transition.interactionIndex].operation} does not mutate ${definition.resource}; it reads ${definition.scope} from one committed snapshot.`
+          : `The ${transition.from} to ${transition.to} transition, ownership checks, and audit or outbox record for ${definition.resource} commit atomically.`,
+      );
   return {
     contractId: definition.contractId,
     title: definition.title,
@@ -480,6 +488,7 @@ const activeContracts = activeDefinitions.map(activeContractFor);
 
 const scenarioFor = (contract) => {
   const interaction = contract.interactions[0];
+  const detailedLifecycle = contract.stateTransitions.every(({ checkpoint }) => checkpoint);
   const apiRequest = {
     kind: interaction.kind,
     operation: interaction.operation,
@@ -498,21 +507,37 @@ const scenarioFor = (contract) => {
       denied: contract.authorization.denied,
     },
     given: contract.preconditions,
-    when: [
-      `${contract.actors.initiators[0]} invokes ${interaction.operation} with ${interaction.requestFields.join(', ')}.`,
-      `The producer authorizes ${contract.authorization.ownershipRules[0].toLowerCase()} and evaluates ${contract.errorCodes.join(', ')}.`,
-    ],
-    then: unique([
-      contract.successBehavior[0],
-      contract.errorBehavior[0],
-      `The observed state is ${contract.stateTransitions[0].to}; no cross-scope or partial result is visible.`,
-    ]),
+    when: detailedLifecycle
+      ? contract.stateTransitions.map(
+          (transition) =>
+            `${transition.initiatingActor} executes ${transition.interaction.operation} for checkpoint ${transition.checkpoint} with ${transition.interaction.requestFields.join(', ')}.`,
+        )
+      : [
+          `${contract.actors.initiators[0]} invokes ${interaction.operation} with ${interaction.requestFields.join(', ')}.`,
+          `The producer authorizes ${contract.authorization.ownershipRules[0].toLowerCase()} and evaluates ${contract.errorCodes.join(', ')}.`,
+        ],
+    then: detailedLifecycle
+      ? contract.stateTransitions.map(
+          (transition) =>
+            `${transition.checkpoint} moves ${transition.from} to ${transition.to} only for ${transition.authorizedActors.join(', ')}; otherwise ${transition.failureResult}`,
+        )
+      : unique([
+          contract.successBehavior[0],
+          contract.errorBehavior[0],
+          `The observed state is ${contract.stateTransitions[0].to}; no cross-scope or partial result is visible.`,
+        ]),
     stateTransitions: contract.stateTransitions,
-    requiredFixtures: [
-      `${contract.stateTransitions[0].from} fixture for ${contract.title}`,
-      `${contract.actors.initiators[0]} and denied cross-scope actor identities`,
-      `deterministic ${contract.domain.toLowerCase()} clock, identifiers, and provider outcomes`,
-    ],
+    requiredFixtures: detailedLifecycle
+      ? [
+          `A versioned fixture for every ${contract.stateTransitions.map(({ checkpoint }) => checkpoint).join(', ')} checkpoint and branch.`,
+          `Authorized and denied identities for ${unique(contract.stateTransitions.flatMap(({ authorizedActors }) => authorizedActors)).join(', ')}.`,
+          `Deterministic correlation IDs, idempotency keys, clocks, provider outcomes, projection lag, and compensation outcomes.`,
+        ]
+      : [
+          `${contract.stateTransitions[0].from} fixture for ${contract.title}`,
+          `${contract.actors.initiators[0]} and denied cross-scope actor identities`,
+          `deterministic ${contract.domain.toLowerCase()} clock, identifiers, and provider outcomes`,
+        ],
     apiRequest,
     apiResponse: {
       fields: interaction.responseFields,

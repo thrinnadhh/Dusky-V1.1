@@ -105,6 +105,8 @@ const adversarialSuites = [
   'scripts/validate-semantic-contracts.test.mjs',
   'scripts/legacy-mapping.test.mjs',
   'scripts/validate-provenance.test.mjs',
+  'scripts/validate-contracts.test.mjs',
+  'scripts/validate-repository.test.mjs',
   'scripts/validate-test-integrity.test.mjs',
 ];
 const adversarial = spawnSync(process.execPath, ['--test', ...adversarialSuites], {

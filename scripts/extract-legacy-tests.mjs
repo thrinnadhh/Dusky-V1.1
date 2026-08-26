@@ -10,7 +10,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SOURCE_REPOSITORY = 'https://github.com/thrinnadhh/Mypetnew.git';
 const SOURCE_SHA = '817c6487cdbf18fc282dc0a44538d83e7bc5ef8b';
 const LOCAL_SOURCE_SHA = `uncommitted@${SOURCE_SHA}`;
-const SCRIPT_VERSION = '2.0.0';
+const SCRIPT_VERSION = '2.1.0';
 const DISPOSITIONS = [
   'mapped',
   'duplicate',
@@ -165,6 +165,7 @@ function inventoryEntries({ repository, sourceSha, path, content, fileHash }) {
       targetDuskyContractIds: mapping.targetDuskyContractIds,
       disposition: mapping.disposition,
       mappingRuleId: mapping.mappingRuleId,
+      mappingResolutionReason: mapping.mappingResolutionReason,
       dispositionEvidence: mapping.dispositionEvidence,
     };
   });
@@ -197,7 +198,8 @@ function validateCommitted() {
     if (
       !DISPOSITIONS.includes(entry.disposition) ||
       !entry.dispositionEvidence ||
-      !entry.mappingRuleId
+      !entry.mappingRuleId ||
+      !entry.mappingResolutionReason
     )
       throw new Error(`Invalid or unexplained disposition: ${entry.legacyTestId}`);
     if (entry.disposition === 'mapped' && !entry.targetDuskyContractIds.length)

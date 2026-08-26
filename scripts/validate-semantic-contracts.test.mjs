@@ -189,9 +189,7 @@ test('rejects normalized boilerplate duplicated across unrelated contracts', () 
 });
 
 const e2eCatalog = () =>
-  JSON.parse(
-    readFileSync(new URL('../contracts/scenarios/e2e.json', import.meta.url), 'utf8'),
-  );
+  JSON.parse(readFileSync(new URL('../contracts/scenarios/e2e.json', import.meta.url), 'utf8'));
 const registry = () =>
   JSON.parse(
     readFileSync(new URL('../contracts/registry/contracts.json', import.meta.url), 'utf8'),

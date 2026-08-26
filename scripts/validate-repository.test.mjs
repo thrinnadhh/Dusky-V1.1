@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import {
-  validateExactHeadWorkflow,
-  validateSetupNodeCaching,
-} from './validate-repository.mjs';
+import { validateExactHeadWorkflow, validateSetupNodeCaching } from './validate-repository.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 const workflow = () => readFileSync(`${root}.github/workflows/p0-foundation.yml`, 'utf8');
@@ -17,15 +14,18 @@ test('every job explicitly checks out and proves the expected Dusky SHA', () => 
 });
 
 test('repository policy rejects removal of an exact-head checkout ref', () => {
-  const weakened = workflow().replace(
-    /^\s+ref:\s*\$\{\{ env\.EXPECTED_DUSKY_SHA \}\}\s*$/m,
-    '',
+  const weakened = workflow().replace(/^\s+ref:\s*\$\{\{ env\.EXPECTED_DUSKY_SHA \}\}\s*$/m, '');
+  assert.throws(
+    () => validateExactHeadWorkflow(weakened),
+    /exact.*head|expected.*sha|checkout ref/i,
   );
-  assert.throws(() => validateExactHeadWorkflow(weakened), /exact.*head|expected.*sha|checkout ref/i);
 });
 
 test('repository policy rejects removal of the runtime SHA assertion', () => {
-  const weakened = workflow().replace('actual_sha="$(git rev-parse HEAD)"', 'actual_sha="unchecked"');
+  const weakened = workflow().replace(
+    'actual_sha="$(git rev-parse HEAD)"',
+    'actual_sha="unchecked"',
+  );
   assert.throws(() => validateExactHeadWorkflow(weakened), /git rev-parse HEAD|runtime.*sha/i);
 });
 

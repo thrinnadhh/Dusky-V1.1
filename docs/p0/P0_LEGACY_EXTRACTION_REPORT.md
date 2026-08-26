@@ -1,13 +1,13 @@
 # P0 Legacy Extraction Report
 
-The public reference is cloned separately and detached at `817c6487cdbf18fc282dc0a44538d83e7bc5ef8b`; its push URL is disabled during local repair. The deterministic v2 extractor uses normalized source classification plus curated per-file/suite mapping rules. Ambiguous evidence cannot be automatically marked `mapped`, and tooling is not treated as product E2E behavior.
+The public reference is cloned separately and detached at `817c6487cdbf18fc282dc0a44538d83e7bc5ef8b`; its push URL is disabled during local repair. The deterministic v2.1 extractor uses normalized source classification, explicit rule priorities, bounded word matching, and curated per-file/suite overrides. It rejects unresolved incompatible matches instead of selecting the first match. Reviewed multi-feature files may use an exact-file composite allowlist; ordinary lower-priority path rules cannot authorize a tie. Every generated entry records the selected rule and why lower-priority or co-equal candidates were resolved. Tooling is not treated as product E2E behavior.
 
 The regenerated manifest contains 248 evidence files: 240 public pinned files reproducible in CI and eight local-uncommitted Customer files verified by SHA-256 only. It contains 1,163 individual entries and 73 architecture/contract/migration knowledge files.
 
 | Disposition                         | Count |
 | ----------------------------------- | ----: |
-| `mapped`                            | 1,035 |
-| `implementation-specific-rewritten` |   128 |
+| `mapped`                            | 1,029 |
+| `implementation-specific-rewritten` |   134 |
 | `duplicate`                         |     0 |
 | `obsolete-with-evidence`            |     0 |
 | `requires-business-decision`        |     0 |
@@ -35,6 +35,8 @@ All 45 entries extracted from the eight local files remain source-classified as 
 | `apps/customer-app/src/services/__tests__/backend-capabilities.test.ts`   | `b52eca481a66537acc3f338603af392d35c4cfefc5e734ab5e938a321b6c1d19` | 3 `implementation-specific-rewritten` |
 
 Representative repaired mappings include Customer refresh/401 concurrency to `BE-AUTH-001`, `CUS-AUTH-001`, and `CUS-SES-001`; safe transport retry and `Retry-After` to `BE-RATE-001` and `CUS-OFF-001`; pagination to `BE-PAGE-001` and `CUS-PROV-001`; product detail/cart evidence to `CUS-PDP-001`, `CUS-CART-001`, and `CUS-CART-002`; server-owned payment identity/amount to `BE-PAY-001` and `CUS-PAY-001`; and install/lint/workflow commands to `FOUND-CI-001` with `implementation-specific-rewritten` disposition. No `src/services` substring implies appointment behavior.
+
+Second-round semantic corrections include app-config tests containing “production” to `FOUND-CI-001` rather than product discovery; FavouritesContext guest/server migration to `CUS-FAV-001`; Captain concurrent 401 refresh to `CAP-AUTH-001`; invalid/out-of-range coordinates to `CAP-GPS-001`; and Captain money/null/undefined utilities to `BE-REPR-001`. Generic accept/reject wording no longer implies assignment. Real overlapping checkout/payment/reward fixtures and synthetic paths matching ordinary suite rules are rejected unless an exact-file composite override is present. The regenerated inventory contains 189 reviewed composite entries: 83 Customer, three Merchant, 21 Captain, and 82 Backend. Each records its module-specific `*-REVIEWED-COMPOSITE-FILES` rule and the complete contributing feature-rule set.
 
 Reproduce generation and verification with:
 

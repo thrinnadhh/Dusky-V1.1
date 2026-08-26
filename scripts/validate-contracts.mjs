@@ -48,7 +48,12 @@ export function validateReciprocalProvenance({ contracts, inventory, manifest })
   for (const file of manifestFiles(manifest)) assertNormalizedPath(file.path, 'source manifest');
   for (const entry of inventory.tests) {
     assertNormalizedPath(entry.sourcePath, 'legacy evidence');
-    if (!VALID_DISPOSITIONS.has(entry.disposition) || !entry.dispositionEvidence)
+    if (
+      !VALID_DISPOSITIONS.has(entry.disposition) ||
+      !entry.dispositionEvidence ||
+      !entry.mappingRuleId ||
+      !entry.mappingResolutionReason
+    )
       throw new Error(`Legacy disposition lacks evidence: ${entry.legacyTestId}`);
     const evidence = evidenceFiles.find(
       (file) => file.path === entry.sourcePath && file.sha256 === entry.sourceFileSha256,
@@ -130,28 +135,13 @@ const compareSemver = (left, right) => {
   return 0;
 };
 
-const PROTECTED_ACTIVE_FIELDS = [
-  'title',
-  'description',
-  'producer',
-  'consumers',
-  'owningModule',
-  'actors',
-  'preconditions',
-  'successBehavior',
-  'errorBehavior',
-  'stateTransitions',
-  'databaseInvariants',
-  'interactions',
-  'errorCodes',
-  'authorization',
-  'tenantOutletIsolation',
-  'applicability',
-  'requiredTestLayers',
-  'testExpectations',
-  'activationEvidence',
-  'executableTestPaths',
-];
+const ACTIVE_METADATA_ALLOWLIST = new Set(['version']);
+
+const changedActiveSemanticFields = (base, current) =>
+  [...new Set([...Object.keys(base), ...Object.keys(current)])]
+    .filter((field) => !ACTIVE_METADATA_ALLOWLIST.has(field))
+    .filter((field) => JSON.stringify(current[field]) !== JSON.stringify(base[field]))
+    .sort();
 
 function validatedExceptions(exceptions, now) {
   const byContractAndType = new Map();
@@ -176,6 +166,7 @@ function validatedExceptions(exceptions, now) {
       ) ||
       typeof migrationPlan !== 'string' ||
       migrationPlan.trim().length < 10 ||
+      !/^USER-AUTH-[A-Z0-9][A-Z0-9-]{7,}$/i.test(exception.userAuthorizationReference) ||
       Number.isNaN(Date.parse(exception.expiresAt))
     )
       throw new Error(
@@ -217,11 +208,11 @@ export function validateActiveContractProtection({
       !allowed(base.contractId, 'version-regression')
     )
       throw new Error(`Active contract version regression: ${base.contractId}`);
-    const changedSemantics = PROTECTED_ACTIVE_FIELDS.some(
-      (field) => JSON.stringify(current[field]) !== JSON.stringify(base[field]),
-    );
-    if (changedSemantics && !allowed(base.contractId, 'semantic-change'))
-      throw new Error(`Silent weakening or unapproved semantic change: ${base.contractId}`);
+    const changedSemantics = changedActiveSemanticFields(base, current);
+    if (changedSemantics.length && !allowed(base.contractId, 'semantic-change'))
+      throw new Error(
+        `Unapproved active semantic change for ${base.contractId}: ${changedSemantics.join(', ')}`,
+      );
     protectedCount += 1;
   }
   return { protectedActiveCount: protectedCount };

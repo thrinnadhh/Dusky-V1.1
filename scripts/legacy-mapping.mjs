@@ -26,25 +26,43 @@ const rule = (id, module, contracts, options = {}) => ({
   contracts,
   path: options.path,
   name: options.name,
+  priority:
+    options.priority ??
+    (options.path && options.name ? 300 : options.path ? 100 : options.name ? 200 : 0),
   disposition: options.disposition ?? 'mapped',
   evidence: options.evidence,
+  contextOnly: options.contextOnly ?? false,
 });
+
+const contextRule = (id, module, exactPaths) => {
+  const reviewedPaths = new Set(exactPaths);
+  return rule(id, module, [], {
+    path: { test: (path) => reviewedPaths.has(path) },
+    priority: 50,
+    contextOnly: true,
+    evidence:
+      'The exact reviewed source file is allowed to combine co-equal bounded feature rules; the resulting union and all contributing rule IDs remain explicit.',
+  });
+};
 
 const customerRules = [
   rule('CUS-LOCAL-DEMO-DATA', 'Customer', ['FOUND-FIX-001'], {
     path: /src\/demo\/__tests__\/customer-data\.test\./,
+    priority: 400,
     disposition: 'implementation-specific-rewritten',
     evidence:
       'Demo fixture determinism is retained as greenfield foundation-fixture quality evidence.',
   }),
   rule('CUS-LOCAL-DEMO-ISOLATION', 'Customer', ['FOUND-CI-001'], {
     path: /demo-isolation-architecture\.test\./,
+    priority: 400,
     disposition: 'implementation-specific-rewritten',
     evidence:
       'Legacy demo-module boundaries are implementation-specific and are rewritten as repository-policy evidence.',
   }),
   rule('CUS-LOCAL-CAPABILITY-GATES', 'Customer', ['FOUND-FIX-001'], {
     path: /backend-capabilities\.test\./,
+    priority: 400,
     disposition: 'implementation-specific-rewritten',
     evidence:
       'Deferred-capability fakes are implementation-specific and are rewritten into deterministic-provider evidence.',
@@ -66,12 +84,15 @@ const customerRules = [
   }),
   rule('CUS-REFRESH', 'Customer', ['BE-AUTH-001', 'CUS-AUTH-001', 'CUS-SES-001'], {
     path: /api-client-refresh\.test\./,
+    priority: 400,
   }),
   rule('CUS-PAGINATION', 'Customer', ['BE-PAGE-001', 'CUS-PROV-001'], {
     path: /paginated-catalog\.test\./,
+    priority: 400,
   }),
   rule('CUS-P5-CART-PRODUCT', 'Customer', ['CUS-CART-001', 'CUS-CART-002', 'CUS-PDP-001'], {
     path: /p5-product-detail-cart-contract\.test\./,
+    priority: 400,
   }),
   rule('CUS-JOURNEY-PAYMENT-AUTHORITY', 'Customer', ['BE-PAY-001', 'CUS-PAY-001'], {
     path: /customer-journey-contracts\.test\./,
@@ -94,6 +115,7 @@ const customerRules = [
   }),
   rule('CUS-CATALOG-FILTERS', 'Customer', ['CUS-PROV-001', 'CUS-SEARCH-001'], {
     path: /(?:food-filter-tags|s12-commerce)\.test\./,
+    priority: 400,
   }),
   rule('CUS-AUTH', 'Customer', ['CUS-AUTH-001', 'CUS-SES-001'], {
     path: /(auth|session|otp|login|logout)/,
@@ -134,7 +156,7 @@ const customerRules = [
     name: /(accessib|screen reader|focus|navigation)/,
   }),
   rule('CUS-DISCOVERY', 'Customer', ['CUS-PROV-001', 'CUS-SEARCH-001'], {
-    name: /(catalog|provider|discover|category|search|filter|product|shop|listing)/,
+    name: /\b(?:catalog|provider|discovery|discover|category|search|filter|product|shop|listing)s?\b/,
   }),
   rule('CUS-MESSAGING', 'Customer', ['CUS-NOT-001'], {
     name: /(conversation|message|marking messages read|chat)/,
@@ -178,6 +200,10 @@ const customerRules = [
     path: /production-service-coverage\.test\./,
     name: /cached history/,
   }),
+  rule('CUS-PRODUCTION-SERVICE-AVAILABILITY', 'Customer', ['CUS-OFF-001', 'CUS-PROV-001'], {
+    path: /production-service-coverage\.test\./,
+    name: /availability failures.*catalogue errors.*retries/,
+  }),
   rule('CUS-PROVIDER-SERVICEABILITY', 'Customer', ['CUS-PROV-001', 'CUS-SVC-001'], {
     path: /provider-profile-serviceability\.test\./,
   }),
@@ -194,7 +220,10 @@ const customerRules = [
     path: /(?:appointment|groom|veterinar)/,
   }),
   rule('CUS-RECURRING-SUITES', 'Customer', ['CUS-REC-001'], { path: /recurring/ }),
-  rule('CUS-FAVOURITES-SUITES', 'Customer', ['CUS-FAV-001'], { path: /favourites/ }),
+  rule('CUS-FAVOURITES-SUITES', 'Customer', ['CUS-FAV-001'], {
+    path: /favourites/,
+    priority: 400,
+  }),
   rule('CUS-NAVIGATION-SUITES', 'Customer', ['CUS-A11Y-001'], {
     path: /(?:navigation|route-pattern|layout|accessibility|i18n|touch-target)/,
   }),
@@ -212,6 +241,7 @@ const customerRules = [
   }),
   rule('CUS-UTILITIES-REWRITE', 'Customer', ['FOUND-CI-001'], {
     path: /(?:production-utilities|app-config|uuid)\.test\./,
+    priority: 400,
     disposition: 'implementation-specific-rewritten',
     evidence:
       'Client utility and configuration assertions are rewritten as greenfield repository-policy evidence.',
@@ -258,8 +288,26 @@ const merchantRules = [
 ];
 
 const captainRules = [
+  rule('CAP-SERVER-AUTHORITY-OFFER-CONFLICT', 'Captain', ['CAP-ASG-001', 'CAP-CON-001'], {
+    path: /domain\/server-authority\.test\./,
+    name: /409 conflict|reject and not accept/,
+  }),
+  rule('CAP-MUTATION-REJECTION-STATE', 'Captain', ['CAP-IDEMP-001', 'CAP-STATE-001'], {
+    path: /level5-mobile-flow\/mutation-coverage\.test\./,
+    name: /deterministic rejection.*terminal state/,
+  }),
+  rule('CAP-MUTATION-IDEMPOTENCY', 'Captain', ['BE-IDEMP-001', 'CAP-IDEMP-001'], {
+    path: /level5-mobile-flow\/mutation-coverage\.test\./,
+    name: /duplicate.*idempotency.*concurrent in-flight/,
+  }),
+  rule('CAP-UUID-REPRESENTATION', 'Captain', ['BE-REPR-001', 'BE-VALID-001'], {
+    path: /utils\/uuid\.test\./,
+    name: /canonical uuid.*malformed external route parameters/,
+  }),
   rule('CAP-AUTH', 'Captain', ['CAP-AUTH-001'], { name: /(auth|session|login|onboard)/ }),
-  rule('CAP-GPS', 'Captain', ['CAP-GPS-001'], { name: /(location|gps|background track)/ }),
+  rule('CAP-GPS', 'Captain', ['CAP-GPS-001'], {
+    name: /\b(?:location|gps|coordinates?|background track(?:ing)?)\b/,
+  }),
   rule('CAP-OFFLINE', 'Captain', ['CAP-OFF-001', 'CAP-STALE-001'], {
     name: /(offline|network|recover|reconcil|stale response)/,
   }),
@@ -273,7 +321,7 @@ const captainRules = [
     name: /(pickup|delivered|transition|state machine|duplicate action)/,
   }),
   rule('CAP-ASSIGNMENT', 'Captain', ['CAP-ASG-001', 'CAP-CON-001'], {
-    name: /(assignment|dispatch|offer|accept|reject|ownership|expiry|concurr|race)/,
+    name: /\b(?:assignment|dispatch|offer|ownership|expiry)\b|\b(?:accept|reject)(?:s|ed|ing|ion)?\b[^\n]*\b(?:assignment|dispatch|offer)\b|\b(?:concurrent|concurrency|race)\b[^\n]*\b(?:assignment|dispatch|offer)\b/,
   }),
   rule('CAP-AVAILABILITY', 'Captain', ['CAP-AVAIL-001'], { name: /(available|online)/ }),
   rule('CAP-API-CLIENT-SUITES', 'Captain', ['CAP-OFF-001', 'CAP-STALE-001'], {
@@ -302,10 +350,21 @@ const captainRules = [
   }),
   rule('CAP-LOCATION-FEATURE', 'Captain', ['CAP-GPS-001'], {
     path: /features\/location\.test\./,
+    priority: 400,
   }),
-  rule('CAP-LOCATION-SUITES', 'Captain', ['CAP-GPS-001'], { path: /\/location\// }),
+  rule('CAP-LOCATION-STATE-MACHINE', 'Captain', ['CAP-GPS-001'], {
+    path: /state-machines\/location-state-machine\.test\./,
+    priority: 400,
+  }),
+  rule('CAP-LOCATION-SUITES', 'Captain', ['CAP-GPS-001'], {
+    path: /\/location\//,
+    priority: 400,
+  }),
   rule('CAP-SYNC-SUITES', 'Captain', ['CAP-IDEMP-001', 'CAP-OFF-001'], { path: /\/sync\// }),
-  rule('CAP-AUTH-SUITES', 'Captain', ['CAP-AUTH-001'], { path: /\/auth\// }),
+  rule('CAP-AUTH-SUITES', 'Captain', ['CAP-AUTH-001'], {
+    path: /\/auth\//,
+    priority: 400,
+  }),
   rule('CAP-STATE-SUITES', 'Captain', ['CAP-ASG-001', 'CAP-STATE-001'], {
     path: /(?:state-machines|durable-commands|backend-contracts|delivery-e2e|truthful-operational-ui)/,
   }),
@@ -314,6 +373,7 @@ const captainRules = [
   }),
   rule('CAP-REPRESENTATION-UTILS', 'Captain', ['BE-REPR-001'], {
     path: /\/(?:date|money)\.test\./,
+    priority: 400,
   }),
   rule('CAP-VALIDATION-UTILS', 'Captain', ['BE-VALID-001'], { path: /validation\.test\./ }),
   rule('CAP-PRIVACY-UTILS', 'Captain', ['CAP-GPS-001'], { path: /privacy\.test\./ }),
@@ -444,12 +504,134 @@ const e2eRules = [
   rule('E2E-ORDER', 'E2E', ['E2E-ORDER-001'], { name: /(order|delivery|captain)/ }),
 ];
 
+const reviewedCompositeContexts = {
+  Customer: [
+    contextRule('CUS-REVIEWED-COMPOSITE-FILES', 'Customer', [
+      'apps/customer-app/src/__tests__/customer-e2e-regressions.test.ts',
+      'apps/customer-app/src/__tests__/customer-journey-contracts.test.ts',
+      'apps/customer-app/src/__tests__/customer-payment-contract.test.ts',
+      'apps/customer-app/src/__tests__/customer-route-destinations.test.ts',
+      'apps/customer-app/src/__tests__/customer-screen-layout.test.ts',
+      'apps/customer-app/src/__tests__/home-discovery-state-contract.test.ts',
+      'apps/customer-app/src/__tests__/p10-groomer-detail.test.ts',
+      'apps/customer-app/src/__tests__/p10-groomer-slots.test.ts',
+      'apps/customer-app/src/__tests__/p10-grooming-integration.test.ts',
+      'apps/customer-app/src/__tests__/p11-veterinary-discovery.test.ts',
+      'apps/customer-app/src/__tests__/p12-appointment-booking.test.ts',
+      'apps/customer-app/src/__tests__/p13-appointment-payment-history.test.ts',
+      'apps/customer-app/src/__tests__/p4-commerce-completion-contract.test.ts',
+      'apps/customer-app/src/__tests__/p7-checkout-hardening.test.ts',
+      'apps/customer-app/src/__tests__/p9-grooming-discovery.test.ts',
+      'apps/customer-app/src/auth/__tests__/production-auth-communications.test.ts',
+      'apps/customer-app/src/auth/__tests__/profile-completeness.test.ts',
+      'apps/customer-app/src/services/__tests__/api-client-auth-epoch.test.ts',
+      'apps/customer-app/src/services/__tests__/api-client-transport.test.ts',
+      'apps/customer-app/src/services/__tests__/appointment-capability-isolation.test.ts',
+      'apps/customer-app/src/services/__tests__/appointment-serviceability.test.ts',
+      'apps/customer-app/src/services/__tests__/checkout-safety.test.ts',
+      'apps/customer-app/src/services/__tests__/customer-appointment-payments.test.ts',
+      'apps/customer-app/src/services/__tests__/customer-checkout-contract.test.ts',
+      'apps/customer-app/src/services/__tests__/customer-connected-services.test.ts',
+      'apps/customer-app/src/services/__tests__/customer-delivery-contract.test.ts',
+      'apps/customer-app/src/services/__tests__/customer-loyalty-v2.test.ts',
+      'apps/customer-app/src/services/__tests__/customer-orders-canonical-dto.test.ts',
+      'apps/customer-app/src/services/__tests__/customer-orders-production-edgecases.test.ts',
+      'apps/customer-app/src/services/__tests__/customer-profile-data-contract.test.ts',
+      'apps/customer-app/src/services/__tests__/demo-customer-data.test.ts',
+      'apps/customer-app/src/services/__tests__/high-risk-customer-services.test.ts',
+      'apps/customer-app/src/services/__tests__/production-service-coverage.test.ts',
+      'apps/customer-app/src/services/__tests__/provider-profile-serviceability.test.ts',
+    ]),
+  ],
+  Merchant: [
+    contextRule('MER-REVIEWED-COMPOSITE-FILES', 'Merchant', [
+      'apps/merchant-app/src/auth/session.test.ts',
+      'apps/merchant-app/src/barcode/api.test.ts',
+      'apps/merchant-app/src/inventory/api.test.ts',
+    ]),
+  ],
+  Captain: [
+    contextRule('CAP-REVIEWED-COMPOSITE-FILES', 'Captain', [
+      'apps/captain-app/src/__tests__/domain/server-authority.test.ts',
+      'apps/captain-app/src/__tests__/e2e/captain-complete-lifecycle.e2e.test.ts',
+      'apps/captain-app/src/__tests__/e2e/network-resilience-recovery.e2e.test.ts',
+      'apps/captain-app/src/__tests__/features/delivery-e2e.test.ts',
+      'apps/captain-app/src/__tests__/features/truthful-operational-ui.test.ts',
+      'apps/captain-app/src/__tests__/level1-unit/state-machines/offer-state-machine.test.ts',
+      'apps/captain-app/src/__tests__/level2-api-contracts/api-client-contracts.test.ts',
+      'apps/captain-app/src/__tests__/level2-api-contracts/availability-api-contract.test.ts',
+      'apps/captain-app/src/__tests__/level2-api-contracts/dispatch-api-contract.test.ts',
+      'apps/captain-app/src/__tests__/level3-durable-commands/command-runner.test.ts',
+      'apps/captain-app/src/__tests__/level3-durable-commands/reconciliation.test.ts',
+      'apps/captain-app/src/__tests__/level5-mobile-flow/negative-and-recovery-flow.test.ts',
+      'apps/captain-app/src/__tests__/level5-mobile-flow/positive-delivery-flow.test.ts',
+      'apps/captain-app/src/__tests__/notifications/captain-notifications.test.ts',
+      'apps/captain-app/src/__tests__/sync/reconciliation.test.ts',
+    ]),
+  ],
+  Backend: [
+    contextRule('BE-REVIEWED-COMPOSITE-FILES', 'Backend', [
+      'backend/src/test/kotlin/in/mypetnew/api/applicationapicontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/api/captaindeliveryapitest.kt',
+      'backend/src/test/kotlin/in/mypetnew/api/captainproofandcontractstest.kt',
+      'backend/src/test/kotlin/in/mypetnew/api/customerappointmentapitest.kt',
+      'backend/src/test/kotlin/in/mypetnew/api/customerdeliveryapitest.kt',
+      'backend/src/test/kotlin/in/mypetnew/api/customerfavouriteapitest.kt',
+      'backend/src/test/kotlin/in/mypetnew/api/customerorderlistsecurityapitest.kt',
+      'backend/src/test/kotlin/in/mypetnew/api/customerpaymentapitest.kt',
+      'backend/src/test/kotlin/in/mypetnew/api/customerprofiledataapitest.kt',
+      'backend/src/test/kotlin/in/mypetnew/api/publiccatalogapitest.kt',
+      'backend/src/test/kotlin/in/mypetnew/api/serviceregionapitest.kt',
+      'backend/src/test/kotlin/in/mypetnew/appointment/appointmentmerchantlifecycletest.kt',
+      'backend/src/test/kotlin/in/mypetnew/appointment/jdbcappointmentpersistenceconcurrencytest.kt',
+      'backend/src/test/kotlin/in/mypetnew/appointment/merchantappointmentquerytest.kt',
+      'backend/src/test/kotlin/in/mypetnew/appointment/p12appointmentauthoritysecuritytest.kt',
+      'backend/src/test/kotlin/in/mypetnew/catalog/barcodecatalogcontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/catalog/inventoryservicemerchantcontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/catalog/jdbccatalogpersistencecontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/catalog/m2cataloginmemorycontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/commerce/customerorderquerycontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/commerce/jdbccustomerorderquerycontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/commerce/jdbcorderpersistencecontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/common/sensitivedataredactorcontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/customer/customerdataservicetest.kt',
+      'backend/src/test/kotlin/in/mypetnew/customer/jdbccustomerfavouritepersistencecontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/engagement/firebasenotificationprovidercontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/engagement/infrastructure/firebasepropertiestest.kt',
+      'backend/src/test/kotlin/in/mypetnew/engagement/infrastructure/notificationdeliveryconfigurationtest.kt',
+      'backend/src/test/kotlin/in/mypetnew/identity/identitycontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/identity/merchantprincipalresolvercontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/loyalty/posloyaltynotificationcontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/merchantops/m1merchantauthoritypostgrescontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/merchantops/m1postmergehardeningcontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/merchantops/m2catalogadversarialpostgrescontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/merchantops/m2catalogpostgrescontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/merchantops/m3inventoryapiadversarialpostgrescontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/merchantops/m3inventorypostgrescontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/merchantops/m3inventorysourceguardcontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/merchantops/m4barcoderesolutionsourceguardcontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/merchantops/postgresmigrationcontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/payment/appointmentonlinepaymentsourcecontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/payment/cashfreepaymentcontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/payment/jdbcappointmentpaymentstatemachinetest.kt',
+      'backend/src/test/kotlin/in/mypetnew/payment/jdbcpaymentfailureracecertificationtest.kt',
+      'backend/src/test/kotlin/in/mypetnew/payment/paymentfoundationtest.kt',
+      'backend/src/test/kotlin/in/mypetnew/payment/paymentservicelifecycletest.kt',
+      'backend/src/test/kotlin/in/mypetnew/privacy/privacyapicontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/provider/providercontracttest.kt',
+      'backend/src/test/kotlin/in/mypetnew/recurring/jdbcrecurringorderpersistenceconcurrencytest.kt',
+      'backend/src/test/kotlin/in/mypetnew/recurring/recurringorderservicetest.kt',
+      'backend/src/test/kotlin/in/mypetnew/security/bearertokenservicecontracttest.kt',
+    ]),
+  ],
+};
+
 const rulesByModule = {
-  Customer: customerRules,
-  Merchant: merchantRules,
-  Captain: captainRules,
+  Customer: [...customerRules, ...(reviewedCompositeContexts.Customer ?? [])],
+  Merchant: [...merchantRules, ...(reviewedCompositeContexts.Merchant ?? [])],
+  Captain: [...captainRules, ...(reviewedCompositeContexts.Captain ?? [])],
   Admin: adminRules,
-  Backend: backendRules,
+  Backend: [...backendRules, ...(reviewedCompositeContexts.Backend ?? [])],
   E2E: e2eRules,
 };
 
@@ -471,6 +653,8 @@ export function classifyLegacyEvidence(evidence) {
       targetDuskyContractIds: ['FOUND-CI-001'],
       disposition: 'implementation-specific-rewritten',
       mappingRuleId: 'FOUNDATION-TOOLING',
+      mappingResolutionReason:
+        'Selected the explicit tooling override before product rules because the normalized path or evidence category identifies repository/CI mechanics.',
       dispositionEvidence:
         'The command validates repository or CI mechanics; it is rewritten as foundation quality evidence and is not product E2E behavior.',
     };
@@ -478,29 +662,83 @@ export function classifyLegacyEvidence(evidence) {
 
   const path = sourcePath.toLowerCase();
   const name = originalTestName.toLowerCase();
-  const matches = rulesByModule[sourceModule].filter(
+  const allMatches = rulesByModule[sourceModule].filter(
     (candidate) =>
       (!candidate.path || candidate.path.test(path)) &&
       (!candidate.name || candidate.name.test(name)),
   );
-  const selected = matches[0];
-  if (!selected) {
+  const matches = allMatches.filter(({ contextOnly }) => !contextOnly);
+  if (!matches.length) {
     return {
       sourcePath,
       sourceModule,
       targetDuskyContractIds: [],
       disposition: 'requires-business-decision',
       mappingRuleId: 'MANUAL-REVIEW-REQUIRED',
+      mappingResolutionReason:
+        'No curated path or bounded feature-name rule matched; automatic mapping is forbidden until manual product review supplies an explicit rule.',
       dispositionEvidence:
         'The normalized path and test name are insufficient for an evidence-backed automatic mapping; manual product review is required.',
     };
   }
+  const highestPriority = Math.max(...matches.map(({ priority }) => priority));
+  const finalists = matches.filter(({ priority }) => priority === highestPriority);
+  const signature = (candidate) =>
+    JSON.stringify({
+      contracts: [...new Set(candidate.contracts)].sort(),
+      disposition: candidate.disposition,
+    });
+  if (new Set(finalists.map(signature)).size > 1) {
+    const pathResolvers = allMatches
+      .filter(
+        (candidate) =>
+          candidate.path &&
+          !candidate.name &&
+          candidate.priority < highestPriority &&
+          candidate.contextOnly,
+      )
+      .sort((left, right) => right.priority - left.priority || left.id.localeCompare(right.id));
+    const resolverPriority = pathResolvers[0]?.priority;
+    const resolvers = pathResolvers.filter(({ priority }) => priority === resolverPriority);
+    const dispositions = new Set(finalists.map(({ disposition }) => disposition));
+    if (resolvers.length === 1 && dispositions.size === 1) {
+      const resolver = resolvers[0];
+      const semanticRuleIds = finalists.map(({ id }) => id);
+      return {
+        sourcePath,
+        sourceModule,
+        targetDuskyContractIds: [
+          ...new Set(finalists.flatMap(({ contracts }) => contracts)),
+        ].sort(),
+        disposition: finalists[0].disposition,
+        mappingRuleId: `COMPOSITE:${resolver.id}`,
+        mappingResolutionReason: `Curated path rule ${resolver.id} resolved co-equal feature rules ${semanticRuleIds.join(', ')} as one composite mapping at priority ${highestPriority}; no first-match selection was used.`,
+        dispositionEvidence: `The reviewed ${resolver.id} source path contains one test spanning the bounded behaviors identified by ${semanticRuleIds.join(', ')}.`,
+      };
+    }
+    throw new Error(
+      `Incompatible legacy mapping rules ${finalists.map(({ id }) => id).join(', ')} tie at priority ${highestPriority} for ${sourcePath} :: ${originalTestName}; add a documented curated override.`,
+    );
+  }
+  const selected = [...finalists].sort((left, right) => left.id.localeCompare(right.id))[0];
+  const lowerPriorityRules = matches
+    .filter(({ priority }) => priority < highestPriority)
+    .map(({ id }) => id)
+    .sort();
   return {
     sourcePath,
     sourceModule,
     targetDuskyContractIds: [...new Set(selected.contracts)].sort(),
     disposition: selected.disposition,
     mappingRuleId: selected.id,
+    mappingResolutionReason: `Selected curated rule ${selected.id} at priority ${highestPriority} (${selected.path && selected.name ? 'path-and-feature specificity' : selected.path ? 'path specificity' : 'bounded feature-name specificity'})${
+      finalists.length > 1
+        ? `; compatible rules ${finalists
+            .map(({ id }) => id)
+            .sort()
+            .join(', ')} converge on the same disposition and contracts`
+        : ''
+    }${lowerPriorityRules.length ? `; lower-priority matches ${lowerPriorityRules.join(', ')} were intentionally suppressed` : ''}.`,
     dispositionEvidence:
       selected.evidence ??
       `Curated rule ${selected.id} maps the normalized ${sourceModule} evidence to its bounded Dusky contract.`,

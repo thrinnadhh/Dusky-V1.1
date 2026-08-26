@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { classifyLegacyEvidence, normalizeSourcePath } from './legacy-mapping.mjs';
@@ -156,10 +157,35 @@ test('rejects a real unresolved overlap instead of choosing the first rule', () 
   );
 });
 
+test('ordinary lower-priority path rules cannot authorize an incompatible tie', () => {
+  assert.throws(
+    () =>
+      classify(
+        'apps/customer-app/src/__tests__/customer-checkout-contract.test.ts',
+        'persists payment after quote confirmation',
+      ),
+    /incompatible.*CUS-PAYMENT.*CUS-CHECKOUT-PRICE/i,
+  );
+});
+
 test('records an auditable resolution reason for every automatic mapping', () => {
   const result = classify(
     'apps/customer-app/src/context/__tests__/FavouritesContext.behavior.test.tsx',
     'migrates guest products to the server',
   );
   assert.match(result.mappingResolutionReason, /priority|specific|override/i);
+});
+
+test('committed inventory records the selected rule and resolution reason', () => {
+  const inventory = JSON.parse(
+    readFileSync(new URL('../contracts/legacy/MYPETNEW_TEST_INVENTORY.json', import.meta.url)),
+  );
+  for (const entry of inventory.tests) {
+    assert.ok(entry.mappingRuleId, `${entry.legacyTestId} lacks a selected mapping rule`);
+    assert.match(
+      entry.mappingResolutionReason,
+      /selected|resolved|manual|override/i,
+      `${entry.legacyTestId} lacks an auditable mapping resolution`,
+    );
+  }
 });
